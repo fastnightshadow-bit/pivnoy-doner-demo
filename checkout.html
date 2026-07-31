@@ -92,6 +92,7 @@
         </header>
 
         <main class="checkout-main" data-filled-checkout>
+          <div class="checkout-form-column">
           <section class="checkout-card pickup-panel" data-pickup-panel>
             <div class="pickup-time" aria-label="Ориентировочное время самовывоза">
               <span class="row-icon" aria-hidden="true">
@@ -325,6 +326,13 @@
             </button>
           </section>
 
+          </div>
+          <aside class="checkout-summary-column">
+          <section class="checkout-card checkout-order-review" aria-labelledby="checkout-order-title">
+            <h2 id="checkout-order-title">Ваш заказ</h2>
+            <div class="checkout-order-lines" data-checkout-order-lines></div>
+          </section>
+
           <section class="checkout-card promo-card">
             <button
               class="promo-toggle"
@@ -375,18 +383,19 @@
               <strong data-grand-total>0 ₽</strong>
             </div>
           </section>
-        </main>
 
-        <footer class="checkout-bar">
-          <div>
-            <span>Итого</span>
-            <strong aria-live="polite" data-checkout-total>0 ₽</strong>
-          </div>
-          <button type="submit" data-confirm-order>
-            <span>Оплатить</span>
-            <svg class="icon"><use href="#checkout-i-spinner"></use></svg>
-          </button>
-        </footer>
+          <footer class="checkout-bar">
+            <div>
+              <span>Итого</span>
+              <strong aria-live="polite" data-checkout-total>0 ₽</strong>
+            </div>
+            <button type="submit" data-confirm-order>
+              <span>Оплатить</span>
+              <svg class="icon"><use href="#checkout-i-spinner"></use></svg>
+            </button>
+          </footer>
+          </aside>
+        </main>
       </form>
 
       <section class="empty-checkout" hidden data-empty-checkout>

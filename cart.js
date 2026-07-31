@@ -7,6 +7,7 @@ import {
   getCartItemCount,
 } from './cart-state.js';
 import { loadCart, saveCart } from './cart-storage.js';
+import { loadFulfillment } from './fulfillment-storage.js';
 import {
   pulseMotion,
   revealMotion,
@@ -169,7 +170,14 @@ const initCart = () => {
   const deliveryTotal = document.querySelector('[data-delivery-total]');
   const grandTotal = document.querySelector('[data-grand-total]');
   const checkoutTotal = document.querySelector('[data-checkout-total]');
+  const fulfillmentLabel = document.querySelector('[data-cart-fulfillment]');
   const toast = document.querySelector('[data-cart-toast]');
+
+  const fulfillment = loadFulfillment(window.localStorage);
+  if (fulfillmentLabel) {
+    fulfillmentLabel.textContent =
+      fulfillment === 'delivery' ? 'Доставка' : 'Самовывоз';
+  }
 
   let lines = hydrateCartLineMedia(loadCart(window.localStorage));
   saveCart(window.localStorage, lines);

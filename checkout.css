@@ -170,11 +170,50 @@ button {
   padding-bottom: calc(var(--checkout-bar-height) + 28px);
 }
 
+.checkout-form-column,
+.checkout-summary-column {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
 .checkout-card {
   overflow: hidden;
   background: var(--color-surface);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
+}
+
+.checkout-order-review {
+  padding: 16px;
+}
+
+.checkout-order-review h2 {
+  margin: 0 0 12px;
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.checkout-order-lines {
+  display: grid;
+  gap: 10px;
+}
+
+.checkout-order-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.checkout-order-line strong {
+  flex: none;
+  color: var(--color-text);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .pickup-time,
@@ -821,6 +860,100 @@ button {
 
   .checkout-app {
     box-shadow: 0 0 40px rgb(23 23 23 / 8%);
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    background: var(--color-soft);
+  }
+
+  .checkout-app {
+    width: min(calc(100% - 48px), 1280px);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .checkout-topbar {
+    min-height: 76px;
+    grid-template-columns: 44px minmax(320px, 430px) 1fr;
+    padding-inline: 24px;
+    border-right: 1px solid var(--color-line);
+    border-left: 1px solid var(--color-line);
+  }
+
+  .checkout-topbar::after {
+    display: none;
+  }
+
+  .checkout-main {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+    align-items: start;
+    gap: 28px;
+    padding: 32px 0 64px;
+  }
+
+  .checkout-form-column {
+    gap: 16px;
+  }
+
+  .checkout-summary-column {
+    position: sticky;
+    top: 108px;
+    gap: 14px;
+  }
+
+  .checkout-card {
+    border-radius: 20px;
+  }
+
+  .checkout-order-review {
+    padding: 20px;
+  }
+
+  .checkout-order-review h2 {
+    font-size: 20px;
+    line-height: 25px;
+  }
+
+  .checkout-order-line,
+  .checkout-order-line strong {
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .checkout-bar {
+    position: static;
+    width: auto;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin: 0;
+    padding: 18px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 20px;
+    box-shadow: 0 12px 34px rgb(23 23 23 / 7%);
+    backdrop-filter: none;
+  }
+
+  .checkout-bar > div strong {
+    font-size: 28px;
+    line-height: 34px;
+  }
+
+  .checkout-bar > button {
+    min-height: 58px;
+  }
+
+  .checkout-toast {
+    right: 32px;
+    bottom: 32px;
+    transform: translateY(8px);
+  }
+
+  .checkout-toast.is-visible {
+    transform: translateY(0);
   }
 }
 

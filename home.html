@@ -107,6 +107,17 @@
             width="118"
             height="42"
           />
+          <nav class="desktop-nav" aria-label="Разделы меню">
+            <a href="#categories" data-category="shawarma">Шаурма</a>
+            <a href="#categories" data-category="doner">Донеры</a>
+            <a href="#categories" data-category="burgers">Бургеры</a>
+            <a href="#categories" data-category="hotdogs">Хот-доги</a>
+            <a href="#categories" data-category="snacks">Закуски</a>
+          </nav>
+          <div class="desktop-fulfillment fulfillment-switch" aria-label="Способ получения">
+            <button class="is-active" type="button" aria-pressed="true" data-fulfillment="pickup">Самовывоз</button>
+            <button type="button" aria-pressed="false" data-fulfillment="delivery">Доставка</button>
+          </div>
           <a class="icon-button cart-button" href="cart.html" aria-label="Корзина, 0 товаров">
             <svg class="icon"><use href="#home-i-bag"></use></svg>
             <span class="cart-badge" data-cart-count hidden>0</span>
@@ -116,13 +127,19 @@
 
       <main class="home-content">
         <section id="home-hero" class="hero-section" aria-labelledby="hero-title">
-          <img
-            class="hero-photo"
-            src="assets/mobile-home/hero-enhanced.webp"
-            alt="Большой донер с сочным мясом и свежими овощами"
-            fetchpriority="high"
-            decoding="async"
-          />
+          <picture class="hero-picture">
+            <source
+              media="(min-width: 1024px)"
+              srcset="assets/mobile-home/desktop-hero.webp"
+            />
+            <img
+              class="hero-photo"
+              src="assets/mobile-home/hero-enhanced.webp"
+              alt="Большой донер с сочным мясом и свежими овощами"
+              fetchpriority="high"
+              decoding="async"
+            />
+          </picture>
 
           <a
             class="active-order-strip"

@@ -213,6 +213,14 @@ function initHomeScreen() {
     }
     renderFeaturedControl();
     updateCart(animateCart);
+    document
+      .querySelectorAll('.desktop-nav [data-category]')
+      .forEach((link) => {
+        const active = link.dataset.category === state.category;
+        link.classList.toggle('is-active', active);
+        if (active) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      });
     hasRenderedHome = true;
   };
 

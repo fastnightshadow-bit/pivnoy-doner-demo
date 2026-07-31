@@ -424,6 +424,112 @@ html.sheet-open body {
   }
 }
 
+@media (min-width: 1024px) {
+  .product-sheet {
+    width: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 32px;
+  }
+
+  .product-sheet[open] {
+    display: grid;
+    place-items: center;
+  }
+
+  .product-sheet__surface {
+    position: static;
+    display: grid;
+    width: min(1080px, calc(100vw - 64px));
+    max-height: min(840px, calc(100dvh - 64px));
+    grid-template-columns: minmax(380px, .92fr) minmax(440px, 1.08fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: hidden;
+    border-radius: 28px;
+    box-shadow: 0 26px 80px rgb(0 0 0 / 22%);
+    transform: none;
+    animation: product-sheet-desktop-in 200ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  .product-sheet.is-closing .product-sheet__surface {
+    animation: product-sheet-desktop-out 180ms ease-in both;
+  }
+
+  .product-sheet__handle-zone {
+    display: none;
+  }
+
+  .product-sheet__scroll {
+    display: contents;
+  }
+
+  .product-sheet__media {
+    height: auto;
+    min-height: 600px;
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .product-sheet__media > img {
+    padding: 36px;
+  }
+
+  .product-sheet__close {
+    top: 18px;
+    right: 18px;
+  }
+
+  .product-sheet__badge {
+    top: 20px;
+    left: 20px;
+  }
+
+  .product-sheet__content {
+    min-height: 0;
+    grid-column: 2;
+    grid-row: 1;
+    overflow-y: auto;
+    padding: 34px 34px 28px;
+    scrollbar-width: thin;
+    scrollbar-color: #d8d6d1 transparent;
+  }
+
+  .product-sheet__header {
+    padding-right: 48px;
+  }
+
+  .product-sheet__header h2 {
+    font-size: 32px;
+    line-height: 38px;
+  }
+
+  .product-sheet__purchase {
+    position: static;
+    grid-column: 2;
+    grid-row: 2;
+    padding: 16px 34px;
+  }
+
+  @keyframes product-sheet-desktop-in {
+    from {
+      opacity: 0;
+      transform: scale(.985) translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes product-sheet-desktop-out {
+    to {
+      opacity: 0;
+      transform: scale(.99) translateY(6px);
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .product-sheet__surface {
     animation-duration: .01ms;

@@ -274,6 +274,7 @@ export const initProductSheet = ({
   }
 
   const surface = dialog.querySelector('[data-sheet-surface]');
+  const desktopMedia = windowRef?.matchMedia?.('(min-width: 1024px)');
   const reducedMotion = Boolean(
     matchMediaRef?.('(prefers-reduced-motion: reduce)')?.matches,
   );
@@ -473,6 +474,7 @@ export const initProductSheet = ({
   };
 
   const onPointerDown = (event) => {
+    if (desktopMedia?.matches) return;
     const handle = event.target.closest?.('[data-sheet-handle]');
     if (!handle || event.button > 0 || !surface || !isOpen()) return;
     state.gesture = {

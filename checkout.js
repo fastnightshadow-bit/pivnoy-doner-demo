@@ -36,6 +36,14 @@ export const createTimeOptionsMarkup = (slots) =>
     ),
   ].join('');
 
+export const createCheckoutOrderLineMarkup = (line = {}) => ({
+  name: String(line.name || 'Блюдо'),
+  quantity: Math.max(1, Number(line.quantity) || 1),
+  total:
+    Math.max(0, Number(line.unitPrice) || 0) *
+    Math.max(1, Number(line.quantity) || 1),
+});
+
 const DELIVERY_ADDRESS_STORAGE_KEY = 'pivnoy-doner-delivery-address-v1';
 
 export const loadDeliveryAddress = (storage) => {
@@ -128,6 +136,7 @@ const initCheckout = () => {
   const discountTotal = document.querySelector('[data-discount-total]');
   const grandTotal = document.querySelector('[data-grand-total]');
   const checkoutTotal = document.querySelector('[data-checkout-total]');
+  const orderLinesRoot = document.querySelector('[data-checkout-order-lines]');
   const confirmButton = document.querySelector('[data-confirm-order]');
   const toast = document.querySelector('[data-checkout-toast]');
 
@@ -261,6 +270,21 @@ const initCheckout = () => {
     promoMessage.textContent = result.message;
   };
 
+  const renderOrderLines = () => {
+    if (!orderLinesRoot) return;
+    const nodes = lines.map(createCheckoutOrderLineMarkup).map((item) => {
+      const row = document.createElement('div');
+      const description = document.createElement('span');
+      const price = document.createElement('strong');
+      row.className = 'checkout-order-line';
+      description.textContent = `${item.quantity} × ${item.name}`;
+      price.textContent = formatCheckoutPrice(item.total);
+      row.append(description, price);
+      return row;
+    });
+    orderLinesRoot.replaceChildren(...nodes);
+  };
+
   const renderSummary = () => {
     const summary = createCheckoutSummary(lines, promoCode);
     itemsTotal.textContent = formatCheckoutPrice(summary.items);
@@ -312,6 +336,7 @@ const initCheckout = () => {
   renderFulfillment();
   renderTimeMode();
   renderPayment();
+  renderOrderLines();
   renderSummary();
 
   fulfillmentButtons.forEach((button) => {
