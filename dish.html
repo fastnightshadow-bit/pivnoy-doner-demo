@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta
+      name="description"
+      content="Настройте классическую шаурму «Пивной Донер» и добавьте её в корзину."
+    />
+    <title>Классическая шаурма — Пивной Донер</title>
+    <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="dish.css" />
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="dish-i-arrow-left" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6" />
+      </symbol>
+      <symbol id="dish-i-heart" viewBox="0 0 24 24">
+        <path d="M20.8 5.8a5.2 5.2 0 0 0-7.4 0L12 7.2l-1.4-1.4a5.2 5.2 0 0 0-7.4 7.4L12 22l8.8-8.8a5.2 5.2 0 0 0 0-7.4Z" />
+      </symbol>
+      <symbol id="dish-i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" /><path d="M12 7v5l3 2" />
+      </symbol>
+      <symbol id="dish-i-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="dish-i-minus" viewBox="0 0 24 24">
+        <path d="M5 12h14" />
+      </symbol>
+      <symbol id="dish-i-fries" viewBox="0 0 24 24">
+        <path d="M7 4v7M11 3v8M15 4v7M18 5l-1 6" />
+        <path d="M5 10h14l-2 10H7L5 10Z" />
+      </symbol>
+      <symbol id="dish-i-potato" viewBox="0 0 24 24">
+        <path d="M7 8c2-3 7-4 10-1 3 2 3 7 0 10-3 3-9 3-11 0-2-3-1-6 1-9Z" />
+        <path d="m9 11 .1.1M15 9l.1.1M13 15l.1.1" />
+      </symbol>
+      <symbol id="dish-i-bites" viewBox="0 0 24 24">
+        <path d="M7 7c2-2 5-1 5 2 0 2-1 4-3 5-2 1-5-1-5-3 0-1 1-3 3-4Z" />
+        <path d="M15 10c2-1 5 1 5 3 0 3-3 5-5 5-3 0-4-3-3-5 0-1 1-2 3-3Z" />
+      </symbol>
+      <symbol id="dish-i-cheese" viewBox="0 0 24 24">
+        <path d="M4 9 15 4l5 5v10H4V9Z" /><circle cx="10" cy="12" r="1.5" /><circle cx="16" cy="15" r="1.5" />
+      </symbol>
+    </svg>
+
+    <main class="dish-app">
+      <section id="dish-hero" class="dish-hero" aria-label="Фотография блюда">
+        <img
+          class="dish-hero__image"
+          src="assets/mobile-home/hero-enhanced.webp"
+          alt="Классическая шаурма с сочным мясом и свежими овощами"
+        />
+        <a class="floating-action back-action" href="home.html" aria-label="Назад на главную" data-motion-back>
+          <svg class="icon"><use href="#dish-i-arrow-left"></use></svg>
+        </a>
+        <button
+          class="floating-action favorite-action"
+          type="button"
+          aria-label="Добавить в избранное"
+          aria-pressed="false"
+          data-favorite
+        >
+          <svg class="icon"><use href="#dish-i-heart"></use></svg>
+        </button>
+      </section>
+
+      <section id="dish-info" class="dish-sheet" aria-labelledby="dish-title">
+        <header class="dish-heading">
+          <div>
+            <p class="eyebrow">ШАУРМА</p>
+            <h1 id="dish-title">Классическая шаурма</h1>
+          </div>
+          <strong class="heading-price" data-unit-price>300 ₽</strong>
+        </header>
+        <p class="dish-description" data-description>Курица, лаваш, салат, огурец, томат и фирменный соус</p>
+        <div class="dish-meta">
+          <svg class="icon"><use href="#dish-i-clock"></use></svg>
+          <span>12–15 мин</span>
+        </div>
+
+        <fieldset id="meat-choice" class="choice-section">
+          <legend>Выберите мясо</legend>
+          <div class="segmented-control">
+            <label>
+              <input type="radio" name="meat" value="chicken" checked data-meat />
+              <span>Курица</span>
+            </label>
+            <label>
+              <input type="radio" name="meat" value="beef" data-meat />
+              <span>Говядина</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset id="size-choice" class="choice-section">
+          <legend>Размер</legend>
+          <div class="size-grid">
+            <label class="size-card">
+              <input type="radio" name="size" value="standard" checked data-size />
+              <span><strong>Стандарт</strong><small>350 г</small></span>
+              <b data-size-price="standard">300 ₽</b>
+            </label>
+            <label class="size-card">
+              <input type="radio" name="size" value="giant" data-size />
+              <span><strong>Гигант</strong><small>650 г</small></span>
+              <b data-size-price="giant">530 ₽</b>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset id="addon-choice" class="choice-section">
+          <legend>Добавки</legend>
+          <div class="addon-list">
+            <label><input type="checkbox" value="jalapeno" data-addon /><span>Халапеньо</span><b>+50 ₽</b></label>
+            <label><input type="checkbox" value="onion" data-addon /><span>Лук</span><b>+50 ₽</b></label>
+            <label><input type="checkbox" value="fries" data-addon /><span>Фри</span><b>+50 ₽</b></label>
+            <label><input type="checkbox" value="cheese" data-addon /><span>Сыр</span><b>+100 ₽</b></label>
+            <label><input type="checkbox" value="meat" data-addon /><span>Мясо</span><b>+100 ₽</b></label>
+          </div>
+        </fieldset>
+
+        <label id="order-comment" class="comment-field">
+          <span>Комментарий к заказу</span>
+          <textarea maxlength="160" placeholder="Например, без лука" data-comment></textarea>
+        </label>
+
+        <section id="often-together" class="recommendations" aria-labelledby="recommendations-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">К ЗАКАЗУ</p>
+              <h2 id="recommendations-title">Часто берут вместе</h2>
+            </div>
+          </div>
+          <div class="recommendation-list">
+            <button class="recommendation-card" type="button" data-recommendation="Картофель фри">
+              <span class="recommendation-placeholder"><svg class="icon"><use href="#dish-i-fries"></use></svg></span>
+              <span><strong>Картофель фри</strong><small>200 ₽</small></span>
+              <i><svg class="icon"><use href="#dish-i-plus"></use></svg></i>
+            </button>
+            <button class="recommendation-card" type="button" data-recommendation="Картофель по-деревенски">
+              <span class="recommendation-placeholder"><svg class="icon"><use href="#dish-i-potato"></use></svg></span>
+              <span><strong>Картофель по-деревенски</strong><small>200 ₽</small></span>
+              <i><svg class="icon"><use href="#dish-i-plus"></use></svg></i>
+            </button>
+            <button class="recommendation-card" type="button" data-recommendation="Наггетсы">
+              <span class="recommendation-placeholder"><svg class="icon"><use href="#dish-i-bites"></use></svg></span>
+              <span><strong>Наггетсы</strong><small>200 ₽</small></span>
+              <i><svg class="icon"><use href="#dish-i-plus"></use></svg></i>
+            </button>
+            <button class="recommendation-card" type="button" data-recommendation="Сырные палочки">
+              <span class="recommendation-placeholder"><svg class="icon"><use href="#dish-i-cheese"></use></svg></span>
+              <span><strong>Сырные палочки</strong><small>250 ₽</small></span>
+              <i><svg class="icon"><use href="#dish-i-plus"></use></svg></i>
+            </button>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <aside id="purchase-bar" class="purchase-bar" aria-label="Добавление блюда в корзину">
+      <div class="purchase-bar__inner">
+        <div class="purchase-total"><span>Итого</span><strong data-total-price>300 ₽</strong></div>
+        <button class="purchase-button" type="button" data-add-to-cart>Добавить в корзину</button>
+        <div class="purchase-quantity" data-quantity-panel hidden>
+          <button type="button" aria-label="Уменьшить количество" data-quantity-change="-1">
+            <svg class="icon"><use href="#dish-i-minus"></use></svg>
+          </button>
+          <output aria-live="polite" data-quantity-output>1</output>
+          <button type="button" aria-label="Увеличить количество" data-quantity-change="1">
+            <svg class="icon"><use href="#dish-i-plus"></use></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+    <div class="toast" role="status" aria-live="polite" data-toast></div>
+    <script type="module" src="motion.js"></script>
+    <script type="module" src="dish.js"></script>
+  </body>
+</html>

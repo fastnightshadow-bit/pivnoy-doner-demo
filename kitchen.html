@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light" />
+    <title>Пивной Донер — Кухня</title>
+    <link rel="manifest" href="kitchen.webmanifest" />
+    <link rel="icon" href="assets/kitchen/icon-192.png" />
+    <link rel="apple-touch-icon" href="assets/kitchen/icon-192.png" />
+    <link rel="stylesheet" href="kitchen.css" />
+  </head>
+  <body>
+    <section class="kitchen-orientation" data-kitchen-orientation hidden aria-hidden="true">
+      <div class="kitchen-orientation__card">
+        <img src="assets/mobile-home/logo-transparent.webp" alt="" />
+        <span class="kitchen-orientation__phone" aria-hidden="true"></span>
+        <h1>Поверните телефон</h1>
+        <p>Интерфейс кухни создан для планшета и показывается горизонтально.</p>
+      </div>
+    </section>
+
+    <main class="kitchen-app" data-kitchen-app>
+      <section class="login-view" data-login-view aria-labelledby="login-title">
+        <div class="login-card">
+          <img
+            class="login-card__logo"
+            src="assets/mobile-home/logo-transparent.webp"
+            alt="Промкооперация"
+          />
+          <p class="eyebrow">Пивной Донер</p>
+          <h1 id="login-title">Вход на кухню</h1>
+          <p class="login-card__copy">Введите личный PIN сотрудника</p>
+          <form class="pin-form" data-pin-form novalidate>
+            <label for="employee-pin">Личный PIN</label>
+            <input
+              id="employee-pin"
+              name="pin"
+              type="password"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              maxlength="6"
+              aria-describedby="pin-error"
+              required
+            />
+            <p class="field-error" id="pin-error" data-pin-error hidden></p>
+            <button class="button button--primary" type="submit">
+              Начать смену
+            </button>
+          </form>
+          <p class="login-card__demo">Демо-PIN: 2468</p>
+        </div>
+      </section>
+
+      <section class="board-view" data-board-view hidden>
+        <header class="kitchen-topbar">
+          <a class="kitchen-brand" href="kitchen.html" aria-label="Пивной Донер — кухня">
+            <img src="assets/mobile-home/logo-transparent.webp" alt="" />
+            <span><strong>Пивной Донер</strong><small>Кухня</small></span>
+          </a>
+
+          <div class="topbar-status">
+            <p class="connection-state" role="status" data-connection>
+              Подключение…
+            </p>
+            <time data-current-time></time>
+          </div>
+
+          <label class="kitchen-search">
+            <svg aria-hidden="true"><use href="#kitchen-i-search"></use></svg>
+            <span class="visually-hidden">Номер заказа</span>
+            <input
+              type="search"
+              inputmode="numeric"
+              placeholder="Номер заказа"
+              autocomplete="off"
+              data-search
+            />
+          </label>
+
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" data-filters aria-label="Фильтры">
+              <svg aria-hidden="true"><use href="#kitchen-i-filter"></use></svg>
+              <span data-filter-count hidden></span>
+            </button>
+            <button class="toolbar-button" type="button" aria-label="История" data-history-open>
+              <svg aria-hidden="true"><use href="#kitchen-i-history"></use></svg>
+              <span>История</span>
+            </button>
+            <button
+              class="icon-button"
+              type="button"
+              aria-pressed="true"
+              aria-label="Выключить звук"
+              data-sound-toggle
+            >
+              <svg aria-hidden="true"><use href="#kitchen-i-volume"></use></svg>
+            </button>
+          </div>
+
+          <div class="employee-control">
+            <span class="employee-avatar" aria-hidden="true" data-employee-initials></span>
+            <span class="employee-control__copy">
+              <strong data-employee></strong>
+              <small data-shift></small>
+            </span>
+            <button type="button" data-switch-employee>Сменить</button>
+          </div>
+        </header>
+
+        <div class="offline-banner" role="alert" data-offline-banner hidden>
+          <svg aria-hidden="true"><use href="#kitchen-i-offline"></use></svg>
+          <span>Нет соединения. Статусы временно нельзя изменять.</span>
+        </div>
+
+        <div class="filter-chips" data-filter-chips hidden></div>
+
+        <section class="kitchen-board" data-board aria-label="Активные заказы кухни">
+          <section class="kanban-column" data-column="new">
+            <header class="kanban-column__header">
+              <span class="column-dot column-dot--new" aria-hidden="true"></span>
+              <h2>Новые</h2>
+              <b data-column-count>0</b>
+            </header>
+            <div class="kanban-column__list" role="list" data-column-list></div>
+          </section>
+          <section class="kanban-column" data-column="accepted">
+            <header class="kanban-column__header">
+              <span class="column-dot column-dot--accepted" aria-hidden="true"></span>
+              <h2>Приняты</h2>
+              <b data-column-count>0</b>
+            </header>
+            <div class="kanban-column__list" role="list" data-column-list></div>
+          </section>
+          <section class="kanban-column" data-column="cooking">
+            <header class="kanban-column__header">
+              <span class="column-dot column-dot--cooking" aria-hidden="true"></span>
+              <h2>Готовятся</h2>
+              <b data-column-count>0</b>
+            </header>
+            <div class="kanban-column__list" role="list" data-column-list></div>
+          </section>
+          <section class="kanban-column" data-column="ready">
+            <header class="kanban-column__header">
+              <span class="column-dot column-dot--ready" aria-hidden="true"></span>
+              <h2>Готовы</h2>
+              <b data-column-count>0</b>
+            </header>
+            <div class="kanban-column__list" role="list" data-column-list></div>
+          </section>
+        </section>
+
+        <section class="history-view" data-history-view hidden aria-labelledby="history-title">
+          <header class="history-view__header">
+            <button class="icon-button" type="button" aria-label="Вернуться к доске" data-history-close>
+              <svg aria-hidden="true"><use href="#kitchen-i-arrow-left"></use></svg>
+            </button>
+            <div><p class="eyebrow">Архив смены</p><h2 id="history-title">История заказов</h2></div>
+          </header>
+          <div class="history-list" data-history-list></div>
+        </section>
+      </section>
+
+      <button class="panel-scrim" type="button" aria-label="Закрыть детали" data-panel-scrim hidden></button>
+      <aside class="order-panel" data-order-panel hidden aria-labelledby="order-panel-title">
+        <header class="order-panel__header">
+          <div><p class="eyebrow">Подробности</p><h2 id="order-panel-title">Заказ</h2></div>
+          <button class="icon-button" type="button" aria-label="Закрыть детали" data-order-panel-close>
+            <svg aria-hidden="true"><use href="#kitchen-i-close"></use></svg>
+          </button>
+        </header>
+        <div class="order-panel__content" data-order-panel-content></div>
+      </aside>
+
+      <dialog class="filter-dialog" data-filter-dialog aria-labelledby="filter-title">
+        <form method="dialog" data-filter-form>
+          <header><h2 id="filter-title">Фильтры</h2><button value="close" aria-label="Закрыть">×</button></header>
+          <fieldset>
+            <legend>Получение</legend>
+            <label><input type="radio" name="fulfillment" value="all" checked /> Все</label>
+            <label><input type="radio" name="fulfillment" value="pickup" /> Самовывоз</label>
+            <label><input type="radio" name="fulfillment" value="delivery" /> Доставка</label>
+          </fieldset>
+          <fieldset>
+            <legend>Время</legend>
+            <label><input type="radio" name="urgency" value="all" checked /> Все</label>
+            <label><input type="radio" name="urgency" value="warning" /> Скоро истекает</label>
+            <label><input type="radio" name="urgency" value="overdue" /> Просроченные</label>
+          </fieldset>
+          <div class="dialog-actions">
+            <button class="button button--secondary" type="reset" data-filter-reset>Сбросить</button>
+            <button class="button button--primary" type="submit" value="apply">Показать</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog class="cancel-dialog" data-cancel-dialog aria-labelledby="cancel-title">
+        <form method="dialog" data-cancel-form>
+          <header><p class="eyebrow eyebrow--danger">Опасное действие</p><h2 id="cancel-title">Отменить заказ</h2></header>
+          <p data-cancel-warning>Заказ будет убран с рабочей доски.</p>
+          <fieldset class="cancel-reasons">
+            <legend>Причина</legend>
+            <label><input type="radio" name="cancelReason" value="customer_request" /> Клиент попросил отменить</label>
+            <label><input type="radio" name="cancelReason" value="missing_ingredient" /> Нет ингредиента</label>
+            <label><input type="radio" name="cancelReason" value="duplicate" /> Дублирующий заказ</label>
+            <label><input type="radio" name="cancelReason" value="technical" /> Техническая проблема</label>
+            <label><input type="radio" name="cancelReason" value="other" /> Другая причина</label>
+          </fieldset>
+          <label class="field-stack">
+            <span>Комментарий</span>
+            <textarea name="cancelComment" maxlength="200" placeholder="Обязателен для другой причины"></textarea>
+          </label>
+          <label class="field-stack">
+            <span>Введите номер заказа <b data-cancel-number></b></span>
+            <input name="cancelConfirmation" inputmode="numeric" autocomplete="off" />
+          </label>
+          <p class="field-error" data-cancel-error hidden></p>
+          <div class="dialog-actions">
+            <button class="button button--secondary" value="close">Не отменять</button>
+            <button class="button button--danger" type="submit" value="confirm" data-confirm-cancel>
+              Подтвердить отмену
+            </button>
+          </div>
+        </form>
+      </dialog>
+
+      <div class="toast-region" aria-live="polite" aria-atomic="true" data-toast></div>
+    </main>
+
+    <svg class="svg-sprite" aria-hidden="true">
+      <symbol id="kitchen-i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></symbol>
+      <symbol id="kitchen-i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"></path></symbol>
+      <symbol id="kitchen-i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8"></path><path d="M4 4v4h4M12 8v5l3 2"></path></symbol>
+      <symbol id="kitchen-i-volume" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5zM18 9a4 4 0 0 1 0 6"></path></symbol>
+      <symbol id="kitchen-i-offline" viewBox="0 0 24 24"><path d="M3 3l18 18M8.5 8.5A9 9 0 0 1 20 10M5 10a10 10 0 0 0-1 1M8 14a6 6 0 0 1 6.5-.5M12 18h.01"></path></symbol>
+      <symbol id="kitchen-i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"></path></symbol>
+      <symbol id="kitchen-i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></symbol>
+      <symbol id="kitchen-i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></symbol>
+      <symbol id="kitchen-i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></symbol>
+      <symbol id="kitchen-i-location" viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11z"></path><circle cx="12" cy="10" r="2"></circle></symbol>
+      <symbol id="kitchen-i-phone" viewBox="0 0 24 24"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-4-1-2 2a14 14 0 0 1-9-9l2-2-1-4z"></path></symbol>
+    </svg>
+
+    <script type="module" src="kitchen.js"></script>
+  </body>
+</html>

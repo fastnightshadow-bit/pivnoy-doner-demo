@@ -1,0 +1,182 @@
+:root {
+  --motion-press: 120ms;
+  --motion-hover: 150ms;
+  --motion-state: 180ms;
+  --motion-panel: 300ms;
+  --motion-page: 200ms;
+  --motion-page-exit: 140ms;
+  --motion-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --motion-ease-in: cubic-bezier(.4, 0, 1, 1);
+  --control-ink: #171717;
+  --control-surface: #f3f2ef;
+  --control-border: #d8d6d1;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+button:not(:disabled),
+a[class*="button"],
+[role="button"] {
+  transition:
+    transform var(--motion-press) var(--motion-ease-out),
+    filter var(--motion-press) ease,
+    color var(--motion-state) ease,
+    background-color var(--motion-state) ease,
+    border-color var(--motion-state) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled):active,
+a[class*="button"]:active,
+[role="button"]:active {
+  filter: brightness(.97);
+  transform: scale(.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover,
+  a[class*="button"]:hover,
+  [role="button"]:hover {
+    filter: brightness(.96);
+  }
+
+  .menu-product:hover,
+  .product-card:hover,
+  .compact-product:hover {
+    box-shadow: 0 12px 28px rgb(25 24 23 / 8%);
+  }
+}
+
+.motion-pulse {
+  animation: motion-pulse var(--motion-state) var(--motion-ease-out);
+  transform-origin: center;
+}
+
+.motion-stagger-item {
+  animation: motion-rise var(--motion-panel) var(--motion-ease-out) both;
+  animation-delay: calc(var(--motion-index, 0) * 30ms);
+}
+
+.motion-panel-enter {
+  animation: motion-panel-enter var(--motion-panel) var(--motion-ease-out) both;
+}
+
+.toast {
+  transition:
+    opacity var(--motion-state) ease,
+    transform var(--motion-panel) var(--motion-ease-out),
+    visibility var(--motion-state) ease;
+}
+
+.field-error {
+  transition:
+    opacity var(--motion-state) ease,
+    transform var(--motion-state) var(--motion-ease-out);
+}
+
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(root) {
+  animation-duration: var(--motion-page);
+  animation-timing-function: cubic-bezier(.22, .8, .22, 1);
+}
+
+html {
+  view-transition-name: root;
+}
+
+::view-transition-old(root) {
+  animation-name: page-fade-old;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+  animation-name: page-fade-new;
+}
+
+@keyframes page-fade-old {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-fade-new {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+html.motion-page-enter body {
+  animation: page-fade-new var(--motion-page) var(--motion-ease-out) both;
+}
+
+html.motion-page-exit body {
+  pointer-events: none;
+  animation: page-fade-old var(--motion-page-exit) var(--motion-ease-in) both;
+}
+
+@keyframes motion-pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.06);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes motion-panel-enter {
+  from {
+    opacity: .35;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: .01ms !important;
+  }
+}

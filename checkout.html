@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Быстрое завершение заказа в мобильном приложении «Пивной Донер»."
+    />
+    <meta name="theme-color" content="#FFFFFF" />
+    <title>Оплата — Пивной Донер</title>
+    <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="checkout.css" />
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="checkout-i-back" viewBox="0 0 24 24">
+        <path d="m15 6-6 6 6 6" />
+      </symbol>
+      <symbol id="checkout-i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 8v5l3 2" />
+      </symbol>
+      <symbol id="checkout-i-pin" viewBox="0 0 24 24">
+        <path d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11Z" />
+        <circle cx="12" cy="10" r="2" />
+      </symbol>
+      <symbol id="checkout-i-message" viewBox="0 0 24 24">
+        <path d="M5 18.5 4 21l3.7-1.2A8 8 0 1 0 5 18.5Z" />
+      </symbol>
+      <symbol id="checkout-i-phone" viewBox="0 0 24 24">
+        <path d="M7 3h3l1 4-2 1c1 3 3 5 6 6l1-2 4 1v3c0 2-2 4-4 3C9 18 4 13 3 6c-1-2 1-3 4-3Z" />
+      </symbol>
+      <symbol id="checkout-i-door" viewBox="0 0 24 24">
+        <path d="M5 21h14M7 21V4l10-1v18M13 12h.01" />
+      </symbol>
+      <symbol id="checkout-i-card" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="14" rx="3" />
+        <path d="M3 10h18M7 15h4" />
+      </symbol>
+      <symbol id="checkout-i-copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="11" height="11" rx="3" />
+        <path d="M16 8V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h1" />
+      </symbol>
+      <symbol id="checkout-i-chevron" viewBox="0 0 24 24">
+        <path d="m8 10 4 4 4-4" />
+      </symbol>
+      <symbol id="checkout-i-ticket" viewBox="0 0 24 24">
+        <path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4V7Z" />
+        <path d="M12 9v8" />
+      </symbol>
+      <symbol id="checkout-i-bag" viewBox="0 0 24 24">
+        <path d="M6 8h12l1 12H5L6 8Z" />
+        <path d="M9 8a3 3 0 0 1 6 0" />
+      </symbol>
+      <symbol id="checkout-i-spinner" viewBox="0 0 24 24">
+        <path d="M20 12a8 8 0 1 1-2.3-5.7" />
+      </symbol>
+    </svg>
+
+    <div class="checkout-app">
+      <form id="checkout-form" data-checkout-form novalidate>
+        <header class="checkout-topbar">
+          <a
+            class="checkout-back"
+            href="cart.html"
+            aria-label="Вернуться в корзину"
+            data-motion-back
+          >
+            <svg class="icon"><use href="#checkout-i-back"></use></svg>
+          </a>
+
+          <div class="segmented-control fulfillment-switch" aria-label="Способ получения">
+            <button
+              type="button"
+              aria-pressed="false"
+              data-fulfillment="delivery"
+            >
+              Доставка
+            </button>
+            <button
+              type="button"
+              aria-pressed="true"
+              data-fulfillment="pickup"
+            >
+              Самовывоз
+            </button>
+          </div>
+        </header>
+
+        <main class="checkout-main" data-filled-checkout>
+          <section class="checkout-card pickup-panel" data-pickup-panel>
+            <div class="pickup-time" aria-label="Ориентировочное время самовывоза">
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-clock"></use></svg>
+              </span>
+              <span>
+                <strong>Самовывоз</strong>
+                <small>5–13 мин</small>
+              </span>
+            </div>
+
+            <div class="checkout-row pickup-address">
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-pin"></use></svg>
+              </span>
+              <span>
+                <strong>Москва, Волоколамское шоссе, 71/22к2</strong>
+                <small>Пивной Донер</small>
+              </span>
+              <button
+                type="button"
+                aria-label="Скопировать адрес"
+                data-copy-address="Москва, Волоколамское шоссе, 71/22к2"
+              >
+                <svg class="icon"><use href="#checkout-i-copy"></use></svg>
+              </button>
+            </div>
+          </section>
+
+          <section class="checkout-card delivery-panel" hidden data-delivery-panel>
+            <div class="time-options" aria-label="Время доставки">
+              <button
+                type="button"
+                aria-pressed="true"
+                data-time-mode="asap"
+              >
+                <strong>Стандарт</strong>
+                <small>20–30 мин</small>
+              </button>
+              <button
+                type="button"
+                aria-pressed="false"
+                data-time-mode="scheduled"
+              >
+                <strong>Ко времени</strong>
+                <small>Выбрать</small>
+              </button>
+            </div>
+
+            <label
+              class="checkout-row field"
+              data-field="selectedTime"
+              hidden
+              data-time-select
+            >
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-clock"></use></svg>
+              </span>
+              <span class="row-control">
+                <span>Время доставки</span>
+                <span class="select-control">
+                  <select
+                    name="selectedTime"
+                    aria-describedby="time-error"
+                    data-time-options
+                  >
+                    <option value="">Выберите время</option>
+                  </select>
+                  <svg class="icon"><use href="#checkout-i-chevron"></use></svg>
+                </span>
+                <small id="time-error" data-error-for="selectedTime"></small>
+              </span>
+            </label>
+
+            <div class="address-panel field" data-field="address">
+              <button
+                class="checkout-row address-toggle"
+                type="button"
+                data-address-toggle
+                aria-expanded="false"
+                aria-controls="delivery-address-details"
+              >
+                <span class="row-icon" aria-hidden="true">
+                  <svg class="icon"><use href="#checkout-i-pin"></use></svg>
+                </span>
+                <span class="row-control">
+                  <span>Адрес доставки</span>
+                  <strong data-address-summary>Улица и номер дома</strong>
+                </span>
+                <svg class="icon address-chevron" aria-hidden="true">
+                  <use href="#checkout-i-chevron"></use>
+                </svg>
+              </button>
+
+              <div
+                id="delivery-address-details"
+                class="address-details"
+                hidden
+                data-address-details
+              >
+                <label class="address-details__street">
+                  <span>Улица и номер дома</span>
+                  <input
+                    name="address"
+                    type="text"
+                    autocomplete="street-address"
+                    placeholder="Введите улицу и номер дома"
+                    aria-describedby="address-error"
+                    data-address
+                    data-address-street
+                  />
+                </label>
+                <div class="address-details__grid">
+                  <label>
+                    <span>Подъезд</span>
+                    <input
+                      name="entrance"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      data-address-entrance
+                    />
+                  </label>
+                  <label>
+                    <span>Этаж</span>
+                    <input
+                      name="floor"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      data-address-floor
+                    />
+                  </label>
+                  <label>
+                    <span>Квартира</span>
+                    <input
+                      name="apartment"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      data-address-apartment
+                    />
+                  </label>
+                  <label>
+                    <span>Домофон</span>
+                    <input
+                      name="intercom"
+                      type="text"
+                      autocomplete="off"
+                      data-address-intercom
+                    />
+                  </label>
+                </div>
+                <small id="address-error" data-error-for="address"></small>
+              </div>
+            </div>
+
+            <label class="checkout-row">
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-message"></use></svg>
+              </span>
+              <span class="row-control">
+                <span>Комментарий курьеру</span>
+                <textarea
+                  name="courierComment"
+                  maxlength="160"
+                  placeholder="Например, вход со двора"
+                ></textarea>
+              </span>
+            </label>
+
+            <label class="checkout-row door-row">
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-door"></use></svg>
+              </span>
+              <span>Оставить у двери</span>
+              <input type="checkbox" name="leaveAtDoor" />
+              <span class="switch" aria-hidden="true"></span>
+            </label>
+          </section>
+
+          <section class="checkout-card contact-card">
+            <label class="checkout-row field" data-field="phone">
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-phone"></use></svg>
+              </span>
+              <span class="row-control">
+                <span>Телефон</span>
+                <input
+                  name="phone"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  placeholder="+7 (___) ___-__-__"
+                  aria-describedby="phone-error"
+                  data-phone
+                />
+                <small id="phone-error" data-error-for="phone"></small>
+              </span>
+            </label>
+          </section>
+
+          <section class="payment-options checkout-card" aria-label="Оплата">
+            <button
+              class="payment-option"
+              type="button"
+              aria-pressed="true"
+              data-payment="card"
+            >
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-card"></use></svg>
+              </span>
+              <span>Картой</span>
+            </button>
+            <button
+              class="payment-option"
+              type="button"
+              aria-pressed="false"
+              data-payment="sbp"
+            >
+              <span class="row-icon" aria-hidden="true">
+                <img
+                  class="payment-option__logo"
+                  src="assets/payment/sbp-mark.png"
+                  alt=""
+                  width="24"
+                  height="24"
+                />
+              </span>
+              <span>СБП</span>
+            </button>
+          </section>
+
+          <section class="checkout-card promo-card">
+            <button
+              class="promo-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="checkout-promo-panel"
+              data-promo-toggle
+            >
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-ticket"></use></svg>
+              </span>
+              <span>Промокод</span>
+              <svg class="icon promo-chevron"><use href="#checkout-i-chevron"></use></svg>
+            </button>
+            <div id="checkout-promo-panel" class="promo-panel" hidden data-promo-panel>
+              <div>
+                <input
+                  type="text"
+                  inputmode="text"
+                  autocomplete="off"
+                  placeholder="Введите промокод"
+                  aria-label="Промокод"
+                  data-promo-input
+                />
+                <button type="button" data-promo-apply>Применить</button>
+              </div>
+              <p role="status" aria-live="polite" data-promo-message></p>
+            </div>
+          </section>
+
+          <section class="checkout-card checkout-summary">
+            <dl>
+              <div>
+                <dt>Товары</dt>
+                <dd data-items-total>0 ₽</dd>
+              </div>
+              <div>
+                <dt>Доставка</dt>
+                <dd data-delivery-total>0 ₽</dd>
+              </div>
+              <div hidden data-discount-row>
+                <dt>Скидка</dt>
+                <dd data-discount-total>−0 ₽</dd>
+              </div>
+            </dl>
+            <div class="grand-total">
+              <span>Итого</span>
+              <strong data-grand-total>0 ₽</strong>
+            </div>
+          </section>
+        </main>
+
+        <footer class="checkout-bar">
+          <div>
+            <span>Итого</span>
+            <strong aria-live="polite" data-checkout-total>0 ₽</strong>
+          </div>
+          <button type="submit" data-confirm-order>
+            <span>Оплатить</span>
+            <svg class="icon"><use href="#checkout-i-spinner"></use></svg>
+          </button>
+        </footer>
+      </form>
+
+      <section class="empty-checkout" hidden data-empty-checkout>
+        <div aria-hidden="true">
+          <svg class="icon"><use href="#checkout-i-bag"></use></svg>
+        </div>
+        <h1>Корзина пуста</h1>
+        <p>Выберите блюда, чтобы продолжить заказ.</p>
+        <a href="home.html#categories">Перейти в меню</a>
+      </section>
+
+      <div
+        class="checkout-toast"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-checkout-toast
+      ></div>
+    </div>
+
+    <script type="module" src="motion.js"></script>
+    <script type="module" src="checkout.js"></script>
+  </body>
+</html>
