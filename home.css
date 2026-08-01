@@ -1254,9 +1254,7 @@ a:focus-visible {
   }
 
   .hero-section::after {
-    inset: 0 56% 0 0;
-    background: rgb(255 255 255 / 86%);
-    box-shadow: 120px 0 120px -70px rgb(255 255 255 / 86%);
+    display: none;
   }
 
   .hero-copy {
@@ -1282,6 +1280,10 @@ a:focus-visible {
   .hero-cta {
     width: 230px;
     min-height: 58px;
+  }
+
+  #popular .product-card__media img {
+    object-position: center top;
   }
 
   .active-order-strip {
