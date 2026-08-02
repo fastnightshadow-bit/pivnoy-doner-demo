@@ -12,6 +12,10 @@ import {
 } from './order-storage.js';
 import { createReviewService } from './review-service.js';
 import { isReviewableOrder } from './review-state.js';
+import {
+  canUseReviewDemo,
+  ensureReviewDemoOrder,
+} from './order-demo.js';
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -46,9 +50,7 @@ export const createRatingButtonsMarkup = (selectedRating = 0) =>
     .join('');
 
 export const isLocalReviewDemoHost = (hostname = '') =>
-  ['localhost', '127.0.0.1', '0.0.0.0'].includes(
-    String(hostname).trim().toLowerCase(),
-  );
+  canUseReviewDemo({ hostname });
 
 export const getTechnicalStatus = (search = '') => {
   const value = new URLSearchParams(String(search)).get('state') || '';
@@ -282,7 +284,11 @@ const initOrder = () => {
   const refs = getRefs(root);
   if (!refs.screen) return;
 
-  let currentOrder = loadActiveOrder(window.localStorage);
+  let currentOrder = ensureReviewDemoOrder({
+    storage: window.localStorage,
+    hostname: window.location.hostname,
+    search: window.location.search,
+  });
   const reviewService = createReviewService({ storage: window.localStorage });
   let selectedRating = 0;
 
@@ -315,7 +321,10 @@ const initOrder = () => {
       refs.demoComplete.hidden =
         !currentOrder ||
         isReviewableOrder(currentOrder) ||
-        !isLocalReviewDemoHost(window.location.hostname);
+        !canUseReviewDemo({
+          hostname: window.location.hostname,
+          search: window.location.search,
+        });
     }
     if (animate && currentOrder) pulseMotion(refs.title);
     void syncReview(currentOrder);
@@ -325,7 +334,10 @@ const initOrder = () => {
     if (
       !currentOrder ||
       isReviewableOrder(currentOrder) ||
-      !isLocalReviewDemoHost(window.location.hostname)
+      !canUseReviewDemo({
+        hostname: window.location.hostname,
+        search: window.location.search,
+      })
     ) {
       return;
     }
