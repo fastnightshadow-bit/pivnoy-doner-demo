@@ -1,8 +1,12 @@
 import {
   createCategoryTabs,
+  createDesktopCategoryLinks,
+  createEmptyCategoryState,
   createMenuProductCard,
   createProductQuantityControl,
+  getMenuCategory,
   getMenuProducts,
+  resolveMenuProductLine,
 } from './home-menu.js';
 import {
   changeCartLineQuantity,
@@ -30,6 +34,8 @@ import {
   savePreferredProductLine,
 } from './product-preference-storage.js';
 import { initProductSheet } from './product-sheet.js';
+import { createReviewService } from './review-service.js';
+import { createReviewsSectionMarkup } from './review-view.js';
 
 export function selectCategory(labels, activeIndex) {
   return labels.map((label, index) => ({ label, active: index === activeIndex }));
@@ -61,6 +67,7 @@ function initHomeScreen() {
   const categoriesSection = document.querySelector('#categories');
   const categoriesRoot = document.querySelector('[data-home-categories]');
   const menuRoot = document.querySelector('[data-home-menu]');
+  const desktopNavRoot = document.querySelector('[data-home-desktop-nav]');
   const productSheetDialog = document.querySelector('[data-product-sheet]');
   const navigationTabs = [...document.querySelectorAll('[data-tab]')];
   const featuredControlRoot = document.querySelector(
@@ -78,18 +85,32 @@ function initHomeScreen() {
   const activeOrderMeta = document.querySelector(
     '[data-active-order-meta]',
   );
+  const reviewsRoot = document.querySelector('[data-home-reviews]');
   const savedFulfillment = loadFulfillment(window.localStorage);
 
   const storedLines = loadInitialHomeCart(window.localStorage);
   let preferredLines = loadPreferredProductLines(window.localStorage);
 
   const state = {
-    category: 'shawarma',
+    category: 'shawarma-chicken',
     lines: storedLines,
     quantities: {},
   };
   let toastTimer;
   let hasRenderedHome = false;
+
+  const renderReviews = async () => {
+    if (!reviewsRoot) return;
+    const reviewService = createReviewService({ storage: window.localStorage });
+    try {
+      reviewsRoot.innerHTML = createReviewsSectionMarkup(
+        await reviewService.list(),
+      );
+      revealMotion(reviewsRoot);
+    } catch {
+      reviewsRoot.innerHTML = createReviewsSectionMarkup([]);
+    }
+  };
 
   const renderActiveOrder = (order) => {
     if (!activeOrder) return;
@@ -127,6 +148,33 @@ function initHomeScreen() {
       productId,
       preferredLines,
     );
+
+  const getProductView = (productId, source = null) => {
+    const product = PRODUCTS.find(({ id }) => id === productId);
+    if (!product) return null;
+    const selectedMeat = source?.dataset?.productMeat;
+    if (!selectedMeat) return product;
+    return {
+      ...product,
+      selectedMeat,
+      lockMeat: source.dataset.lockMeat === 'true',
+    };
+  };
+
+  const getProductViewLine = (product) =>
+    resolveMenuProductLine(
+      state.lines,
+      product,
+      getPreferredLine(product?.id),
+    );
+
+  const getProductSheetOptions = (product) =>
+    product?.selectedMeat
+      ? {
+          selection: { meat: product.selectedMeat },
+          lockMeat: Boolean(product.lockMeat),
+        }
+      : {};
 
   const syncQuantities = () => {
     state.quantities = Object.fromEntries(
@@ -172,13 +220,13 @@ function initHomeScreen() {
 
   const updateProductControls = (productId) => {
     syncQuantities();
-    const product = PRODUCTS.find(({ id }) => id === productId);
-    if (!product) return;
-    const quantity = state.quantities[productId] || 0;
 
     document
       .querySelectorAll(`[data-product-control="${productId}"]`)
       .forEach((control) => {
+        const product = getProductView(productId, control);
+        if (!product) return;
+        const quantity = getProductViewLine(product)?.quantity ?? 0;
         const namespace = control.dataset.controlNamespace || 'menu';
         const template = document.createElement('template');
         template.innerHTML = createProductQuantityControl(
@@ -202,12 +250,22 @@ function initHomeScreen() {
     if (categoriesRoot) {
       categoriesRoot.innerHTML = createCategoryTabs(state.category);
     }
+    if (desktopNavRoot) {
+      desktopNavRoot.innerHTML = createDesktopCategoryLinks(state.category);
+    }
     if (menuRoot) {
-      menuRoot.innerHTML = getMenuProducts(state.category)
-        .map((product) =>
-          createMenuProductCard(product, state.quantities[product.id] || 0),
-        )
-        .join('');
+      const category = getMenuCategory(state.category);
+      const products = getMenuProducts(state.category);
+      menuRoot.innerHTML = category?.empty
+        ? createEmptyCategoryState(category)
+        : products
+          .map((product) =>
+            createMenuProductCard(
+              product,
+              getProductViewLine(product)?.quantity ?? 0,
+            ),
+          )
+          .join('');
       if (!hasRenderedHome) staggerMotion(menuRoot, '.menu-product');
       if (animateMenu) revealMotion(menuRoot);
     }
@@ -277,7 +335,9 @@ function initHomeScreen() {
       `[data-quantity="${productId}"] output`,
     );
     pulseMotion(quantityOutput);
-    const quantity = state.quantities[productId] || 0;
+    const quantity = state.lines.find(
+      ({ lineId }) => lineId === preferred.lineId,
+    )?.quantity ?? 0;
     showToast(quantity > 0 ? 'Корзина обновлена' : 'Удалено из корзины');
   };
 
@@ -308,7 +368,16 @@ function initHomeScreen() {
 
     const productTrigger = event.target.closest('[data-open-product]');
     if (productTrigger) {
-      productSheet.open(productTrigger.dataset.openProduct, productTrigger);
+      const product = getProductView(
+        productTrigger.dataset.openProduct,
+        productTrigger,
+      );
+      if (!product) return;
+      productSheet.open(
+        product.id,
+        productTrigger,
+        getProductSheetOptions(product),
+      );
       return;
     }
 
@@ -339,9 +408,15 @@ function initHomeScreen() {
     const requestButton = event.target.closest('[data-request-product]');
     if (requestButton) {
       const id = requestButton.dataset.requestProduct;
-      const preferred = getPreferredLine(id);
+      const product = getProductView(id, requestButton);
+      if (!product) return;
+      const preferred = getProductViewLine(product);
       if (!preferred) {
-        productSheet.open(id, requestButton);
+        productSheet.open(
+          id,
+          requestButton,
+          getProductSheetOptions(product),
+        );
         return;
       }
       updatePreferredQuantity(preferred, 1);
@@ -355,10 +430,17 @@ function initHomeScreen() {
         changeButton.dataset.productId ||
         changeButton.closest('[data-quantity]')?.dataset.quantity;
       if (!id) return;
-      const preferred = getPreferredLine(id);
+      const control = changeButton.closest('[data-product-control]');
+      const product = getProductView(id, control);
+      if (!product) return;
+      const preferred = getProductViewLine(product);
       if (!preferred) {
         if (Number(changeButton.dataset.quantityChange) > 0) {
-          productSheet.open(id, changeButton);
+          productSheet.open(
+            id,
+            changeButton,
+            getProductSheetOptions(product),
+          );
         }
         return;
       }
@@ -395,6 +477,7 @@ function initHomeScreen() {
   };
 
   renderHomeMenu();
+  void renderReviews();
   updateHeaderState();
   window.addEventListener('scroll', updateHeaderState, { passive: true });
 }

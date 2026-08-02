@@ -111,6 +111,7 @@ const initCheckout = () => {
   const paymentButtons = [...document.querySelectorAll('[data-payment]')];
   const timeSelectField = document.querySelector('[data-time-select]');
   const timeSelect = document.querySelector('[data-time-options]');
+  const customerNameInput = document.querySelector('[data-customer-name]');
   const phoneInput = document.querySelector('[data-phone]');
   const courierComment = document.querySelector(
     '[name="courierComment"]',
@@ -487,6 +488,7 @@ const initCheckout = () => {
       summary,
       fulfillment: state.fulfillment,
       payment: state.payment,
+      customerName: customerNameInput?.value || '',
       phone: phoneInput.value,
       address: readDeliveryAddress(),
       comment: courierComment?.value || '',

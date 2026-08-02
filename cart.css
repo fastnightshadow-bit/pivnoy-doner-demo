@@ -553,7 +553,7 @@ input:focus-visible {
   margin-inline: auto;
   padding: 14px 16px;
   color: #fff;
-  background: var(--color-ink);
+  background: var(--control-fill);
   border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 650;

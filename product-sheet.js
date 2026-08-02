@@ -188,6 +188,7 @@ export const createProductSheetMarkup = (
   product,
   rawSelection = {},
   quantity = 0,
+  { lockMeat = false } = {},
 ) => {
   if (!product?.id) return '';
   const selection = normalizeSelection(product.id, rawSelection);
@@ -221,7 +222,7 @@ export const createProductSheetMarkup = (
           <p data-sheet-description>${escapeHtml(description)}</p>
         </header>
 
-        ${createMeatMarkup(product.id, selection)}
+        ${lockMeat ? '' : createMeatMarkup(product.id, selection)}
         ${createSizeMarkup(product.id, selection)}
         ${createAddonMarkup(product.id, selection)}
 
@@ -284,6 +285,7 @@ export const initProductSheet = ({
     quantity: 0,
     lineId: '',
     opener: null,
+    lockMeat: false,
     favorite: false,
     ownsHistory: false,
     closeTimer: 0,
@@ -324,6 +326,7 @@ export const initProductSheet = ({
       state.product,
       state.selection,
       state.quantity,
+      { lockMeat: state.lockMeat },
     );
     const scroll = surface.querySelector('[data-sheet-scroll]');
     if (scroll) scroll.scrollTop = previousScroll;
@@ -404,7 +407,7 @@ export const initProductSheet = ({
     }
 
     const meatButton = event.target.closest('[data-sheet-meat]');
-    if (meatButton) {
+    if (meatButton && !state.lockMeat) {
       updateSelection({ meat: meatButton.dataset.sheetMeat, size: undefined });
       return;
     }
@@ -547,19 +550,28 @@ export const initProductSheet = ({
   const openProduct = (
     productId,
     opener = null,
-    { pushHistory = true } = {},
+    {
+      pushHistory = true,
+      selection = {},
+      lockMeat = false,
+    } = {},
   ) => {
     const product = PRODUCTS.find(({ id }) => id === productId);
     if (!product || !surface) return false;
-    const meat = getAvailableMeats(product.id)[0];
-    const size = getAvailableSizes(product.id, meat)[0];
+    const meat = getAvailableMeats(product.id).includes(selection.meat)
+      ? selection.meat
+      : getAvailableMeats(product.id)[0];
+    const size = getAvailableSizes(product.id, meat).includes(selection.size)
+      ? selection.size
+      : getAvailableSizes(product.id, meat)[0];
     state.product = product;
     state.selection = normalizeSelection(product.id, {
       meat,
       size,
-      addons: [],
-      comment: '',
+      addons: selection.addons ?? [],
+      comment: selection.comment ?? '',
     });
+    state.lockMeat = Boolean(lockMeat);
     state.opener = opener;
     syncQuantity();
     render();
@@ -571,7 +583,12 @@ export const initProductSheet = ({
     }
     if (pushHistory && typeof historyRef?.pushState === 'function') {
       historyRef.pushState(
-        { ...(historyRef.state ?? {}), productSheet: productId },
+        {
+          ...(historyRef.state ?? {}),
+          productSheet: productId,
+          productSelection: { meat: state.selection.meat },
+          productLockMeat: state.lockMeat,
+        },
         '',
         `#product-${productId}`,
       );
@@ -586,7 +603,11 @@ export const initProductSheet = ({
   const onPopState = (event) => {
     const productId = event.state?.productSheet;
     if (productId) {
-      openProduct(productId, null, { pushHistory: false });
+      openProduct(productId, null, {
+        pushHistory: false,
+        selection: event.state?.productSelection ?? {},
+        lockMeat: Boolean(event.state?.productLockMeat),
+      });
       return;
     }
     if (isOpen()) close('popstate');

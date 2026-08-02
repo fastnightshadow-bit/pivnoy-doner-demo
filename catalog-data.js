@@ -1,9 +1,26 @@
 export const CATEGORIES = Object.freeze([
-  { id: 'shawarma', label: 'Шаурма', icon: 'wrap' },
+  {
+    id: 'shawarma-chicken',
+    label: 'Шаурма с курицей',
+    shortLabel: 'Курица',
+    icon: 'wrap',
+    baseCategory: 'shawarma',
+    selectedMeat: 'chicken',
+  },
+  {
+    id: 'shawarma-beef',
+    label: 'Шаурма с говядиной',
+    shortLabel: 'Говядина',
+    icon: 'wrap',
+    baseCategory: 'shawarma',
+    selectedMeat: 'beef',
+  },
   { id: 'doner', label: 'Донеры', icon: 'doner' },
   { id: 'burgers', label: 'Бургеры', icon: 'burger' },
   { id: 'hotdogs', label: 'Хот-доги', icon: 'hotdog' },
   { id: 'snacks', label: 'Закуски', icon: 'fries' },
+  { id: 'vegan', label: 'Веган', icon: 'leaf', empty: true },
+  { id: 'drinks', label: 'Напитки', icon: 'cup', empty: true },
 ]);
 
 export const PRODUCTS = Object.freeze([

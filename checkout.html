@@ -12,8 +12,10 @@
     />
     <meta name="theme-color" content="#FFFFFF" />
     <title>Оплата — Пивной Донер</title>
+    <script src="theme-preload.js"></script>
     <link rel="stylesheet" href="motion.css" />
     <link rel="stylesheet" href="checkout.css" />
+    <link rel="stylesheet" href="client-theme.css" />
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -33,6 +35,10 @@
       </symbol>
       <symbol id="checkout-i-phone" viewBox="0 0 24 24">
         <path d="M7 3h3l1 4-2 1c1 3 3 5 6 6l1-2 4 1v3c0 2-2 4-4 3C9 18 4 13 3 6c-1-2 1-3 4-3Z" />
+      </symbol>
+      <symbol id="checkout-i-user" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4.5 21a7.5 7.5 0 0 1 15 0" />
       </symbol>
       <symbol id="checkout-i-door" viewBox="0 0 24 24">
         <path d="M5 21h14M7 21V4l10-1v18M13 12h.01" />
@@ -275,6 +281,22 @@
           </section>
 
           <section class="checkout-card contact-card">
+            <label class="checkout-row field">
+              <span class="row-icon" aria-hidden="true">
+                <svg class="icon"><use href="#checkout-i-user"></use></svg>
+              </span>
+              <span class="row-control">
+                <span>Имя</span>
+                <input
+                  name="customerName"
+                  type="text"
+                  autocomplete="name"
+                  maxlength="80"
+                  placeholder="Необязательно"
+                  data-customer-name
+                />
+              </span>
+            </label>
             <label class="checkout-row field" data-field="phone">
               <span class="row-icon" aria-hidden="true">
                 <svg class="icon"><use href="#checkout-i-phone"></use></svg>
@@ -416,6 +438,7 @@
       ></div>
     </div>
 
+    <script type="module" src="theme.js"></script>
     <script type="module" src="motion.js"></script>
     <script type="module" src="checkout.js"></script>
   </body>

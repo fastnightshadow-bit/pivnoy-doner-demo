@@ -9,9 +9,11 @@
     />
     <meta name="theme-color" content="#FFFFFF" />
     <title>Пивной Донер</title>
+    <script src="theme-preload.js"></script>
     <link rel="stylesheet" href="motion.css" />
     <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="product-sheet.css" />
+    <link rel="stylesheet" href="client-theme.css" />
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -50,6 +52,13 @@
       <symbol id="home-i-minus" viewBox="0 0 24 24">
         <path d="M5 12h14" />
       </symbol>
+      <symbol id="home-i-moon" viewBox="0 0 24 24">
+        <path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z" />
+      </symbol>
+      <symbol id="home-i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3.5" />
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+      </symbol>
       <symbol id="product-sheet-i-close" viewBox="0 0 24 24">
         <path d="M6 6l12 12M18 6 6 18" />
       </symbol>
@@ -72,6 +81,14 @@
       <symbol id="home-i-fries" viewBox="0 0 24 24">
         <path d="M7 4v7M11 3v8M15 4v7M18 5l-1 6" />
         <path d="M5 10h14l-2 10H7L5 10Z" />
+      </symbol>
+      <symbol id="home-i-leaf" viewBox="0 0 24 24">
+        <path d="M19 5C11 5 6 8 6 14c0 3 2 5 5 5 6 0 8-7 8-14Z" />
+        <path d="M5 20c2-5 5-8 10-11" />
+      </symbol>
+      <symbol id="home-i-cup" viewBox="0 0 24 24">
+        <path d="M7 7h10l-1 13H8L7 7Z" />
+        <path d="m10 7 2-4h4M6 7h12" />
       </symbol>
       <symbol id="home-i-bites" viewBox="0 0 24 24">
         <path d="M7 7c2-2 5-1 5 2 0 2-1 4-3 5-2 1-5-1-5-3 0-1 1-3 3-4Z" />
@@ -107,17 +124,21 @@
             width="118"
             height="42"
           />
-          <nav class="desktop-nav" aria-label="Разделы меню">
-            <a href="#categories" data-category="shawarma">Шаурма</a>
-            <a href="#categories" data-category="doner">Донеры</a>
-            <a href="#categories" data-category="burgers">Бургеры</a>
-            <a href="#categories" data-category="hotdogs">Хот-доги</a>
-            <a href="#categories" data-category="snacks">Закуски</a>
-          </nav>
+          <nav class="desktop-nav" aria-label="Разделы меню" data-home-desktop-nav></nav>
           <div class="desktop-fulfillment fulfillment-switch" aria-label="Способ получения">
             <button class="is-active" type="button" aria-pressed="true" data-fulfillment="pickup">Самовывоз</button>
             <button type="button" aria-pressed="false" data-fulfillment="delivery">Доставка</button>
           </div>
+          <button
+            class="icon-button theme-toggle"
+            type="button"
+            aria-label="Включить тёмную тему"
+            aria-pressed="false"
+            data-theme-toggle
+          >
+            <svg class="icon" data-theme-icon="moon"><use href="#home-i-moon"></use></svg>
+            <svg class="icon" data-theme-icon="sun" hidden><use href="#home-i-sun"></use></svg>
+          </button>
           <a class="icon-button cart-button" href="cart.html" aria-label="Корзина, 0 товаров">
             <svg class="icon"><use href="#home-i-bag"></use></svg>
             <span class="cart-badge" data-cart-count hidden>0</span>
@@ -245,6 +266,24 @@
           </div>
         </section>
 
+        <section
+          id="guest-reviews"
+          class="catalog-section reviews-section"
+          aria-labelledby="reviews-title"
+        >
+          <div class="section-heading">
+            <div>
+              <span>Мнение гостей</span>
+              <h2 id="reviews-title">Отзывы</h2>
+            </div>
+          </div>
+          <div class="reviews-content" data-home-reviews aria-live="polite">
+            <div class="reviews-empty">
+              <strong>Загружаем отзывы</strong>
+            </div>
+          </div>
+        </section>
+
       </main>
 
       <nav id="mobile-tabbar" class="mobile-tabbar" aria-label="Основная навигация" data-hero-aware-nav>
@@ -263,6 +302,7 @@
       <div class="product-sheet__surface" data-sheet-surface></div>
     </dialog>
     <div class="toast" role="status" aria-live="polite" data-toast>Добавлено в корзину</div>
+    <script type="module" src="theme.js"></script>
     <script type="module" src="motion.js"></script>
     <script type="module" src="home.js"></script>
   </body>

@@ -638,7 +638,7 @@ button {
   left: max(16px, calc((100vw - 358px) / 2));
   padding: 12px 16px;
   color: #fff;
-  background: var(--color-ink);
+  background: var(--control-fill);
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 650;

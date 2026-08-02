@@ -327,6 +327,10 @@ button {
   border-top: 1px solid var(--color-line);
 }
 
+.contact-card .checkout-row + .checkout-row {
+  border-top: 1px solid var(--color-line);
+}
+
 .address-panel {
   border-top: 1px solid var(--color-line);
 }
@@ -515,7 +519,7 @@ button {
 }
 
 .door-row input:checked + .switch {
-  background: var(--color-text);
+  background: var(--control-fill);
 }
 
 .door-row input:checked + .switch::after {
@@ -552,9 +556,10 @@ button {
 
 .payment-option__logo {
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
+  transform: scale(1.5);
 }
 
 .payment-option:active {
@@ -612,7 +617,7 @@ button {
 .promo-panel button {
   padding: 0 14px;
   color: #fff;
-  background: var(--color-text);
+  background: var(--control-fill);
   font-size: 13px;
   font-weight: 700;
 }
@@ -799,7 +804,7 @@ button {
   margin-top: 8px;
   place-items: center;
   color: #fff;
-  background: var(--color-text);
+  background: var(--control-fill);
   border-radius: 16px;
   font-weight: 700;
   text-decoration: none;
@@ -813,7 +818,7 @@ button {
   max-width: min(340px, calc(100vw - 32px));
   padding: 11px 15px;
   color: #fff;
-  background: var(--color-text);
+  background: var(--control-fill);
   border-radius: 999px;
   font-size: 13px;
   font-weight: 650;

@@ -1,8 +1,57 @@
 import { CATEGORIES, PRODUCTS } from './catalog-data.js';
 import { getProductsByCategory } from './catalog-state.js';
+import {
+  calculateProductPrice,
+  getProductDescription,
+  MEAT_LABELS,
+} from './product-config.js';
 
-export const getMenuProducts = (category) =>
-  getProductsByCategory(PRODUCTS, category);
+export const getMenuCategory = (categoryId) =>
+  CATEGORIES.find(({ id }) => id === categoryId) ?? null;
+
+export const getMenuProducts = (categoryId) => {
+  const category = getMenuCategory(categoryId);
+  if (!category || category.empty) return [];
+
+  const products = getProductsByCategory(
+    PRODUCTS,
+    category.baseCategory ?? category.id,
+  );
+
+  if (!category.selectedMeat) return products;
+
+  return products.map((product) => ({
+    ...product,
+    description: getProductDescription(product, category.selectedMeat),
+    price: calculateProductPrice(product.id, {
+      meat: category.selectedMeat,
+      size: 'standard',
+    }),
+    pricePrefix: '',
+    selectedMeat: category.selectedMeat,
+    lockMeat: true,
+  }));
+};
+
+export const resolveMenuProductLine = (
+  lines,
+  product,
+  preferredLine = null,
+) => {
+  if (!product?.id) return null;
+  const meatLabel = product.selectedMeat
+    ? MEAT_LABELS[product.selectedMeat]
+    : '';
+  const matches = (Array.isArray(lines) ? lines : []).filter(
+    (line) =>
+      line.productId === product.id &&
+      (!meatLabel || line.meat === meatLabel),
+  );
+  if (!matches.length) return null;
+  return matches.find(({ lineId }) => lineId === preferredLine?.lineId)
+    ?? matches.at(-1)
+    ?? null;
+};
 
 export const createCategoryTabs = (activeCategory) =>
   CATEGORIES.map(
@@ -15,12 +64,35 @@ export const createCategoryTabs = (activeCategory) =>
       ><span>${category.label}</span></button>`,
   ).join('');
 
+export const createDesktopCategoryLinks = (activeCategory) =>
+  CATEGORIES.map(
+    (category) => `
+      <a
+        href="#categories"
+        class="${category.id === activeCategory ? 'is-active' : ''}"
+        data-category="${category.id}"
+        ${category.id === activeCategory ? 'aria-current="true"' : ''}
+      >${category.shortLabel ?? category.label}</a>`,
+  ).join('');
+
+export const createEmptyCategoryState = (category) => `
+  <section class="menu-empty" aria-labelledby="menu-empty-title">
+    <span class="menu-empty__icon" aria-hidden="true">
+      <svg class="icon"><use href="#home-i-${category?.icon ?? 'leaf'}"></use></svg>
+    </span>
+    <h2 id="menu-empty-title">Скоро появится</h2>
+    <p>Мы готовим новые позиции</p>
+  </section>`;
+
 export const createProductQuantityControl = (
   product,
   quantity = 0,
   namespace = 'menu',
 ) => {
   const safeQuantity = Math.max(0, Number(quantity) || 0);
+  const variantData = product.selectedMeat
+    ? ` data-product-meat="${product.selectedMeat}" data-lock-meat="${Boolean(product.lockMeat)}"`
+    : '';
 
   if (safeQuantity === 0) {
     return `
@@ -31,6 +103,7 @@ export const createProductQuantityControl = (
         data-product-control="${product.id}"
         data-control-namespace="${namespace}"
         data-request-product="${product.id}"
+        ${variantData}
       >
         <svg class="icon"><use href="#home-i-plus"></use></svg>
       </button>`;
@@ -42,6 +115,7 @@ export const createProductQuantityControl = (
       data-product-control="${product.id}"
       data-control-namespace="${namespace}"
       data-quantity="${product.id}"
+      ${variantData}
     >
       <button type="button" aria-label="Уменьшить ${product.name}" data-product-id="${product.id}" data-quantity-change="-1">
         <svg class="icon"><use href="#home-i-minus"></use></svg>
@@ -64,8 +138,8 @@ export const createMenuProductCard = (product, quantity = 0) => {
   const price = `${product.pricePrefix ? `${product.pricePrefix} ` : ''}${product.price} ₽`;
 
   return `
-    <article class="menu-product" data-menu-product="${product.id}">
-      <button class="menu-product__link" type="button" data-open-product="${product.id}" aria-label="Открыть ${product.name}"></button>
+    <article class="menu-product" data-menu-product="${product.id}"${product.selectedMeat ? ` data-product-meat="${product.selectedMeat}"` : ''}>
+      <button class="menu-product__link" type="button" data-open-product="${product.id}"${product.selectedMeat ? ` data-product-meat="${product.selectedMeat}" data-lock-meat="true"` : ''} aria-label="Открыть ${product.name}"></button>
       <div class="menu-product__media">${media}${badge}</div>
       <div class="menu-product__content">
         <div>

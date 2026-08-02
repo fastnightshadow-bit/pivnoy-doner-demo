@@ -8,8 +8,10 @@
     />
     <meta name="theme-color" content="#ffffff" />
     <title>Статус заказа — Пивной Донер</title>
+    <script src="theme-preload.js"></script>
     <link rel="stylesheet" href="motion.css" />
     <link rel="stylesheet" href="order.css" />
+    <link rel="stylesheet" href="client-theme.css" />
   </head>
   <body>
     <svg class="order-sprite" aria-hidden="true">
@@ -104,6 +106,53 @@
 
         <section class="order-card order-context" data-order-context></section>
 
+        <section class="order-card order-review" data-order-review hidden>
+          <form class="order-review__form" data-review-form>
+            <div class="order-review__heading">
+              <span>Заказ завершён</span>
+              <h2>Как вам заказ?</h2>
+              <p>Оценка появится в отзывах на главной.</p>
+            </div>
+            <div
+              class="order-review__stars"
+              role="group"
+              aria-label="Оценка заказа"
+              data-review-stars
+            >
+              <button class="order-review__star" type="button" aria-label="Оценка 1 из 5" aria-pressed="false" data-review-rating="1">★</button>
+              <button class="order-review__star" type="button" aria-label="Оценка 2 из 5" aria-pressed="false" data-review-rating="2">★</button>
+              <button class="order-review__star" type="button" aria-label="Оценка 3 из 5" aria-pressed="false" data-review-rating="3">★</button>
+              <button class="order-review__star" type="button" aria-label="Оценка 4 из 5" aria-pressed="false" data-review-rating="4">★</button>
+              <button class="order-review__star" type="button" aria-label="Оценка 5 из 5" aria-pressed="false" data-review-rating="5">★</button>
+            </div>
+            <label class="order-review__comment">
+              <span>Комментарий <small>необязательно</small></span>
+              <textarea
+                rows="4"
+                maxlength="500"
+                placeholder="Расскажите, что понравилось или что можно улучшить"
+                data-review-comment
+              ></textarea>
+            </label>
+            <p class="order-review__error" role="alert" data-review-error hidden></p>
+            <button
+              class="order-review__submit"
+              type="submit"
+              data-review-submit
+              disabled
+            >
+              Отправить отзыв
+            </button>
+          </form>
+          <div class="order-review__success" data-review-success hidden>
+            <span aria-hidden="true">✓</span>
+            <div>
+              <h2>Спасибо за отзыв</h2>
+              <p>Он уже появился на главной странице.</p>
+            </div>
+          </div>
+        </section>
+
         <footer class="order-actions" data-order-actions hidden>
           <a
             class="order-button order-button--secondary"
@@ -147,6 +196,7 @@
 
     </div>
 
+    <script type="module" src="theme.js"></script>
     <script type="module" src="motion.js"></script>
     <script type="module" src="order.js"></script>
   </body>

@@ -9,6 +9,8 @@ import {
   loadActiveOrder,
   subscribeToActiveOrder,
 } from './order-storage.js';
+import { createReviewService } from './review-service.js';
+import { isReviewableOrder } from './review-state.js';
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -26,6 +28,21 @@ const createCheckIcon = () => `
     <use href="#order-i-check"></use>
   </svg>
 `;
+
+export const createRatingButtonsMarkup = (selectedRating = 0) =>
+  [1, 2, 3, 4, 5]
+    .map(
+      (rating) => `
+        <button
+          class="order-review__star"
+          type="button"
+          aria-label="Оценка ${rating} из 5"
+          data-review-rating="${rating}"
+          aria-pressed="${rating <= selectedRating}"
+        >★</button>
+      `,
+    )
+    .join('');
 
 export const getTechnicalStatus = (search = '') => {
   const value = new URLSearchParams(String(search)).get('state') || '';
@@ -177,6 +194,13 @@ const getRefs = (root) => ({
   retry: root.querySelector('[data-order-retry]'),
   confirmation: root.querySelector('.order-confirmation'),
   statusIcon: root.querySelector('[data-order-status-icon]'),
+  review: root.querySelector('[data-order-review]'),
+  reviewForm: root.querySelector('[data-review-form]'),
+  reviewStars: root.querySelector('[data-review-stars]'),
+  reviewComment: root.querySelector('[data-review-comment]'),
+  reviewSubmit: root.querySelector('[data-review-submit]'),
+  reviewSuccess: root.querySelector('[data-review-success]'),
+  reviewError: root.querySelector('[data-review-error]'),
 });
 
 const applyTechnicalStatus = (order, search) => {
@@ -232,6 +256,7 @@ export const renderOrder = (
   }
 
   refs.retry.hidden = !failed;
+  if (refs.review) refs.review.hidden = !isReviewableOrder(visibleOrder);
   root.querySelectorAll('[data-order-home]').forEach((link) => {
     if (link.closest('.order-actions')) link.hidden = failed;
   });
@@ -251,6 +276,28 @@ const initOrder = () => {
   if (!refs.screen) return;
 
   let currentOrder = loadActiveOrder(window.localStorage);
+  const reviewService = createReviewService({ storage: window.localStorage });
+  let selectedRating = 0;
+
+  const renderRating = (rating = 0) => {
+    selectedRating = rating;
+    refs.reviewStars.innerHTML = createRatingButtonsMarkup(rating);
+    refs.reviewSubmit.disabled = rating === 0;
+  };
+
+  const showReviewSuccess = (shown) => {
+    refs.reviewForm.hidden = shown;
+    refs.reviewSuccess.hidden = !shown;
+    refs.reviewError.hidden = true;
+  };
+
+  const syncReview = async (order) => {
+    if (!order || !isReviewableOrder(order)) return;
+    const existing = await reviewService.findByOrderId(order.id);
+    if (currentOrder?.id !== order.id) return;
+    showReviewSuccess(Boolean(existing));
+    if (!existing) renderRating(selectedRating);
+  };
 
   const update = (order, { animate = false } = {}) => {
     currentOrder = renderOrder(order, {
@@ -258,7 +305,43 @@ const initOrder = () => {
       search: window.location.search,
     });
     if (animate && currentOrder) pulseMotion(refs.title);
+    void syncReview(currentOrder);
   };
+
+  refs.reviewStars.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-review-rating]');
+    if (!button) return;
+    renderRating(Number(button.dataset.reviewRating));
+    pulseMotion(button);
+  });
+
+  refs.reviewForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!currentOrder || !selectedRating) return;
+
+    refs.reviewSubmit.disabled = true;
+    refs.reviewError.hidden = true;
+    try {
+      await reviewService.submit({
+        orderId: currentOrder.id,
+        rating: selectedRating,
+        authorName: currentOrder.customerName,
+        comment: refs.reviewComment.value,
+      });
+      showReviewSuccess(true);
+      revealMotion(refs.reviewSuccess);
+    } catch (error) {
+      if (String(error?.message).includes('already-reviewed')) {
+        showReviewSuccess(true);
+        return;
+      }
+      refs.reviewError.textContent =
+        'Не удалось отправить отзыв. Попробуйте ещё раз.';
+      refs.reviewError.hidden = false;
+      refs.reviewSubmit.disabled = false;
+      revealMotion(refs.reviewError);
+    }
+  });
 
   refs.detailsToggle.addEventListener('click', () => {
     const expanded =
