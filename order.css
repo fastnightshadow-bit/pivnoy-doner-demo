@@ -430,6 +430,33 @@ button {
   padding: 20px;
 }
 
+.order-demo-complete {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  color: var(--order-muted);
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px dashed var(--order-line);
+  border-radius: 14px;
+  background: var(--order-soft);
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.order-demo-complete:active {
+  transform: scale(0.98);
+}
+
+.order-demo-complete:focus-visible {
+  color: var(--order-ink);
+  border-color: var(--order-ink);
+  outline: 3px solid rgb(23 23 23 / 10%);
+  outline-offset: 2px;
+}
+
 .order-review__form,
 .order-review__heading,
 .order-review__comment {

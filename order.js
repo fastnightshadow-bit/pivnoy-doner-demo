@@ -7,6 +7,7 @@ import {
 } from './order-state.js';
 import {
   loadActiveOrder,
+  saveActiveOrder,
   subscribeToActiveOrder,
 } from './order-storage.js';
 import { createReviewService } from './review-service.js';
@@ -43,6 +44,11 @@ export const createRatingButtonsMarkup = (selectedRating = 0) =>
       `,
     )
     .join('');
+
+export const isLocalReviewDemoHost = (hostname = '') =>
+  ['localhost', '127.0.0.1', '0.0.0.0'].includes(
+    String(hostname).trim().toLowerCase(),
+  );
 
 export const getTechnicalStatus = (search = '') => {
   const value = new URLSearchParams(String(search)).get('state') || '';
@@ -201,6 +207,7 @@ const getRefs = (root) => ({
   reviewSubmit: root.querySelector('[data-review-submit]'),
   reviewSuccess: root.querySelector('[data-review-success]'),
   reviewError: root.querySelector('[data-review-error]'),
+  demoComplete: root.querySelector('[data-demo-complete-order]'),
 });
 
 const applyTechnicalStatus = (order, search) => {
@@ -304,9 +311,32 @@ const initOrder = () => {
       root,
       search: window.location.search,
     });
+    if (refs.demoComplete) {
+      refs.demoComplete.hidden =
+        !currentOrder ||
+        isReviewableOrder(currentOrder) ||
+        !isLocalReviewDemoHost(window.location.hostname);
+    }
     if (animate && currentOrder) pulseMotion(refs.title);
     void syncReview(currentOrder);
   };
+
+  refs.demoComplete?.addEventListener('click', () => {
+    if (
+      !currentOrder ||
+      isReviewableOrder(currentOrder) ||
+      !isLocalReviewDemoHost(window.location.hostname)
+    ) {
+      return;
+    }
+
+    const completedOrder = saveActiveOrder(window.localStorage, {
+      ...currentOrder,
+      status: 'completed',
+    });
+    update(completedOrder, { animate: true });
+    refs.review?.scrollIntoView({ block: 'start' });
+  });
 
   refs.reviewStars.addEventListener('click', (event) => {
     const button = event.target.closest('[data-review-rating]');
