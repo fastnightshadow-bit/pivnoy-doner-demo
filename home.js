@@ -2,10 +2,12 @@ import {
   createCategoryTabs,
   createDesktopCategoryLinks,
   createEmptyCategoryState,
+  createMeatSubgroupSwitch,
   createMenuProductCard,
   createProductQuantityControl,
   getMenuCategory,
   getMenuProducts,
+  normalizeMenuMeat,
   resolveMenuProductLine,
 } from './home-menu.js';
 import {
@@ -67,6 +69,8 @@ function initHomeScreen() {
   const categoriesSection = document.querySelector('#categories');
   const categoriesRoot = document.querySelector('[data-home-categories]');
   const menuRoot = document.querySelector('[data-home-menu]');
+  const menuTitleRoot = document.querySelector('[data-home-menu-title]');
+  const meatSwitchRoot = document.querySelector('[data-home-meat-switch]');
   const desktopNavRoot = document.querySelector('[data-home-desktop-nav]');
   const productSheetDialog = document.querySelector('[data-product-sheet]');
   const navigationTabs = [...document.querySelectorAll('[data-tab]')];
@@ -92,7 +96,11 @@ function initHomeScreen() {
   let preferredLines = loadPreferredProductLines(window.localStorage);
 
   const state = {
-    category: 'shawarma-chicken',
+    category: 'shawarma',
+    meatByCategory: {
+      shawarma: 'chicken',
+      doner: 'chicken',
+    },
     lines: storedLines,
     quantities: {},
   };
@@ -253,9 +261,19 @@ function initHomeScreen() {
     if (desktopNavRoot) {
       desktopNavRoot.innerHTML = createDesktopCategoryLinks(state.category);
     }
+    const category = getMenuCategory(state.category);
+    const selectedMeat = state.meatByCategory[state.category];
+    const meatMarkup = createMeatSubgroupSwitch(
+      state.category,
+      selectedMeat,
+    );
+    if (menuTitleRoot) menuTitleRoot.textContent = category?.label ?? '';
+    if (meatSwitchRoot) {
+      meatSwitchRoot.innerHTML = meatMarkup;
+      meatSwitchRoot.hidden = !meatMarkup;
+    }
     if (menuRoot) {
-      const category = getMenuCategory(state.category);
-      const products = getMenuProducts(state.category);
+      const products = getMenuProducts(state.category, selectedMeat);
       menuRoot.innerHTML = category?.empty
         ? createEmptyCategoryState(category)
         : products
@@ -365,6 +383,16 @@ function initHomeScreen() {
 
   document.addEventListener('click', (event) => {
     if (event.target.closest('[data-product-sheet]')) return;
+
+    const meatButton = event.target.closest('[data-menu-meat]');
+    if (meatButton) {
+      state.meatByCategory[state.category] = normalizeMenuMeat(
+        state.category,
+        meatButton.dataset.menuMeat,
+      );
+      renderHomeMenu();
+      return;
+    }
 
     const productTrigger = event.target.closest('[data-open-product]');
     if (productTrigger) {

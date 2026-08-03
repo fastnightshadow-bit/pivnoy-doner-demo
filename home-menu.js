@@ -9,28 +9,53 @@ import {
 export const getMenuCategory = (categoryId) =>
   CATEGORIES.find(({ id }) => id === categoryId) ?? null;
 
-export const getMenuProducts = (categoryId) => {
+export const MEAT_MENU_CATEGORIES = new Set(['shawarma', 'doner']);
+const MENU_MEATS = Object.freeze(['chicken', 'beef']);
+
+export const getMenuMeatOptions = (categoryId) =>
+  MEAT_MENU_CATEGORIES.has(categoryId) ? [...MENU_MEATS] : [];
+
+export const normalizeMenuMeat = (categoryId, meat = 'chicken') =>
+  getMenuMeatOptions(categoryId).includes(meat) ? meat : 'chicken';
+
+export const getMenuProducts = (categoryId, selectedMeat = 'chicken') => {
   const category = getMenuCategory(categoryId);
   if (!category || category.empty) return [];
 
-  const products = getProductsByCategory(
-    PRODUCTS,
-    category.baseCategory ?? category.id,
-  );
+  const products = getProductsByCategory(PRODUCTS, category.id);
 
-  if (!category.selectedMeat) return products;
+  if (!MEAT_MENU_CATEGORIES.has(category.id)) return products;
+
+  const meat = normalizeMenuMeat(category.id, selectedMeat);
 
   return products.map((product) => ({
     ...product,
-    description: getProductDescription(product, category.selectedMeat),
+    description: getProductDescription(product, meat),
     price: calculateProductPrice(product.id, {
-      meat: category.selectedMeat,
-      size: 'standard',
+      meat,
+      size: category.id === 'shawarma' ? 'standard' : 'single',
     }),
     pricePrefix: '',
-    selectedMeat: category.selectedMeat,
+    selectedMeat: meat,
     lockMeat: true,
   }));
+};
+
+export const createMeatSubgroupSwitch = (categoryId, selectedMeat) => {
+  const options = getMenuMeatOptions(categoryId);
+  if (!options.length) return '';
+  const activeMeat = normalizeMenuMeat(categoryId, selectedMeat);
+
+  return `
+    <div class="menu-meat-switch" role="group" aria-label="Выбор мяса">
+      ${options.map((meat) => `
+        <button
+          class="${meat === activeMeat ? 'is-active' : ''}"
+          type="button"
+          aria-pressed="${meat === activeMeat}"
+          data-menu-meat="${meat}"
+        >${MEAT_LABELS[meat]}</button>`).join('')}
+    </div>`;
 };
 
 export const resolveMenuProductLine = (
