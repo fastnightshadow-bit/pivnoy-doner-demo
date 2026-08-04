@@ -198,6 +198,19 @@
   line-height: 20px;
 }
 
+.product-sheet__section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-sheet__section-heading small {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 620;
+}
+
 .product-sheet__segments {
   display: grid;
   min-height: 48px;
@@ -272,6 +285,29 @@
 .product-sheet__addons {
   display: grid;
   gap: 8px;
+}
+
+.product-sheet__sauces {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.product-sheet__sauces button {
+  min-height: 46px;
+  padding: 10px 12px;
+  color: var(--control-ink);
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--control-border);
+  border-radius: 13px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.product-sheet__sauces button.is-active {
+  border-color: var(--control-ink);
+  box-shadow: inset 0 0 0 1px var(--control-ink);
 }
 
 .product-sheet__addons button {

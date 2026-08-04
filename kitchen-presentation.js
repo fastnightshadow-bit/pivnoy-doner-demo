@@ -1,5 +1,16 @@
 const TABLET_WIDTH = 768;
 
+export const getKitchenItemOptions = (item = {}) => {
+  const options = Array.isArray(item.options)
+    ? item.options.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+  const sauce = String(item.sauce || '').trim();
+  const sauceLabel = sauce ? `Соус: ${sauce}` : '';
+  return sauceLabel && !options.includes(sauceLabel)
+    ? [...options, sauceLabel]
+    : options;
+};
+
 export function getKitchenPresentation({ width, height }) {
   if (width < TABLET_WIDTH && height >= width) {
     return { mode: 'portrait-phone', scale: 1 };

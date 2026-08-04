@@ -145,7 +145,7 @@ export const PRODUCTS = Object.freeze([
     id: 'hotdog-danish',
     category: 'hotdogs',
     name: 'Хот-дог Датский',
-    description: 'Булочка, куриная сосиска, солёный огурец, лук фри, кетчуп и майонез',
+    description: 'Булочка, куриная сосиска, солёный огурец, жареный лук, кетчуп и майонез',
     price: 250,
     pricePrefix: '',
     badge: null,

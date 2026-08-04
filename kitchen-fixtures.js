@@ -36,6 +36,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
           name: 'Классическая шаурма',
           quantity: 2,
           options: ['Курица', 'Стандарт', 'Сыр'],
+          sauce: 'Тейсти',
           comment: 'Без лука',
         },
       ],

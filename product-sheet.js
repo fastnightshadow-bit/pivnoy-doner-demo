@@ -14,6 +14,7 @@ import {
   getSizeLabelWithWeight,
   MEAT_LABELS,
   PRODUCT_ADDONS,
+  PRODUCT_SAUCES,
   SIZE_LABELS,
   SIZE_WEIGHT_LABELS,
 } from './product-config.js';
@@ -46,10 +47,16 @@ const normalizeSelection = (productId, selection = {}) => {
   const allowedAddons = new Set(
     getProductConfiguration(productId)?.addons ?? [],
   );
+  const configuration = getProductConfiguration(productId);
+  const sauces = configuration?.sauces ?? [];
+  const sauce = sauces.includes(selection.sauce)
+    ? selection.sauce
+    : configuration?.defaultSauce ?? sauces[0] ?? '';
 
   return {
     meat,
     size,
+    sauce,
     addons: [
       ...new Set(
         (Array.isArray(selection.addons) ? selection.addons : []).filter(
@@ -59,6 +66,34 @@ const normalizeSelection = (productId, selection = {}) => {
     ],
     comment: String(selection.comment ?? ''),
   };
+};
+
+const createSauceMarkup = (productId, selection) => {
+  const sauceIds = getProductConfiguration(productId)?.sauces ?? [];
+  if (sauceIds.length === 0) return '';
+
+  return `
+    <section class="product-sheet__section" aria-labelledby="sheet-sauce-title">
+      <header class="product-sheet__section-heading">
+        <h3 id="sheet-sauce-title">Соус</h3>
+        <small>1 соус · Входит в стоимость</small>
+      </header>
+      <div class="product-sheet__sauces" role="radiogroup" aria-label="Выбор соуса">
+        ${sauceIds
+          .map((sauceId) => {
+            const active = sauceId === selection.sauce;
+            return `
+              <button
+                class="${active ? 'is-active' : ''}"
+                type="button"
+                role="radio"
+                aria-checked="${active}"
+                data-sheet-sauce="${sauceId}"
+              >${PRODUCT_SAUCES[sauceId]?.label ?? sauceId}</button>`;
+          })
+          .join('')}
+      </div>
+    </section>`;
 };
 
 const createMediaMarkup = (product) => {
@@ -224,6 +259,7 @@ export const createProductSheetMarkup = (
 
         ${lockMeat ? '' : createMeatMarkup(product.id, selection)}
         ${createSizeMarkup(product.id, selection)}
+        ${createSauceMarkup(product.id, selection)}
         ${createAddonMarkup(product.id, selection)}
 
         <section class="product-sheet__section product-sheet__comment">
@@ -248,6 +284,7 @@ const createSelectionCartLine = (product, selection) =>
     unitPrice: calculateProductPrice(product.id, selection),
     meat: MEAT_LABELS[selection.meat] ?? '',
     size: getSizeLabelWithWeight(selection.size),
+    sauce: PRODUCT_SAUCES[selection.sauce]?.label ?? selection.sauce,
     addons: selection.addons.map(
       (addon) => PRODUCT_ADDONS[addon]?.label ?? addon,
     ),
@@ -428,6 +465,12 @@ export const initProductSheet = ({
       return;
     }
 
+    const sauceButton = event.target.closest('[data-sheet-sauce]');
+    if (sauceButton) {
+      updateSelection({ sauce: sauceButton.dataset.sheetSauce });
+      return;
+    }
+
     if (event.target.closest('[data-sheet-add]')) {
       const comment =
         surface?.querySelector('[data-sheet-comment]')?.value ?? '';
@@ -568,6 +611,7 @@ export const initProductSheet = ({
     state.selection = normalizeSelection(product.id, {
       meat,
       size,
+      sauce: selection.sauce,
       addons: selection.addons ?? [],
       comment: selection.comment ?? '',
     });

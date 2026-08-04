@@ -9,7 +9,10 @@ import {
   getNextKitchenAction,
   groupKitchenOrders,
 } from './kitchen-model.js';
-import { initKitchenPresentation } from './kitchen-presentation.js';
+import {
+  getKitchenItemOptions,
+  initKitchenPresentation,
+} from './kitchen-presentation.js';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -85,9 +88,7 @@ const renderOrderItemsCompact = (items) => {
   return items
     .map((item) => {
       const quantity = Math.max(1, Number(item?.quantity) || 1);
-      const options = Array.isArray(item?.options)
-        ? item.options.filter(Boolean).join(' · ')
-        : '';
+      const options = getKitchenItemOptions(item).join(' · ');
       const optionText = options ? ` — ${options}` : '';
       return `<p class="order-card__item">${escapeKitchenHtml(
         quantity,
@@ -153,9 +154,7 @@ const renderDetailItems = (items) => {
   return items
     .map((item) => {
       const quantity = Math.max(1, Number(item?.quantity) || 1);
-      const options = Array.isArray(item?.options)
-        ? item.options.filter(Boolean)
-        : [];
+      const options = getKitchenItemOptions(item);
       const optionMarkup = options.length
         ? `<p>${options.map(escapeKitchenHtml).join(' · ')}</p>`
         : '';

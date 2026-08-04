@@ -90,6 +90,7 @@ const getItemParameters = (item = {}) =>
   [
     item.meat,
     item.size,
+    item.sauce && `Соус: ${item.sauce}`,
     ...(Array.isArray(item.addons) ? item.addons : []),
   ]
     .map((value) => String(value ?? '').trim())

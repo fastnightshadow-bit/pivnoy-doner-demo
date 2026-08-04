@@ -15,6 +15,7 @@ export const getLineSignature = ({
   productId = '',
   meat = '',
   size = '',
+  sauce = '',
   addons = [],
   comment = '',
 }) => {
@@ -22,6 +23,7 @@ export const getLineSignature = ({
     productId,
     meat,
     size,
+    sauce,
     normalizeAddons(addons).join(','),
     String(comment).trim(),
   ].join('|');
@@ -34,6 +36,7 @@ export const createCartLine = ({
   unitPrice,
   meat = '',
   size = '',
+  sauce = '',
   addons = [],
   comment = '',
   quantity = 1,
@@ -46,6 +49,7 @@ export const createCartLine = ({
     unitPrice: toNonNegativeNumber(unitPrice),
     meat: String(meat || ''),
     size: String(size || ''),
+    sauce: String(sauce || ''),
     addons: normalizeAddons(addons),
     comment: String(comment || '').trim(),
     quantity: Math.max(1, Math.floor(Number(quantity) || 1)),

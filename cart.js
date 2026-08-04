@@ -75,10 +75,11 @@ const createProductMedia = ({ image, icon, name }, className) =>
         <svg class="icon"><use href="#cart-i-${getIconName(icon)}"></use></svg>
       </span>`;
 
-const createParameterRows = ({ meat, size, addons, comment }) => {
+const createParameterRows = ({ meat, size, sauce, addons, comment }) => {
   const rows = [
     meat && `Мясо: ${escapeHtml(meat)}`,
     size && `Размер: ${escapeHtml(size)}`,
+    sauce && `Соус: ${escapeHtml(sauce)}`,
     addons?.length && `Добавки: ${escapeHtml(addons.join(', '))}`,
     comment && `Комментарий: ${escapeHtml(comment)}`,
   ].filter(Boolean);
