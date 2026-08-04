@@ -1,0 +1,14 @@
+{
+  "name": "pivnoy-doner-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.cjs",
+    "test": "node --test tests/*.test.mjs",
+    "build:icons": "node scripts/build-app-icons.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3"
+  }
+}
