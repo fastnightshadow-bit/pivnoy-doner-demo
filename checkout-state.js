@@ -1,5 +1,9 @@
 import { calculateCartSummary } from './cart-state.js';
 import { getPromoDiscount } from './promo-state.js';
+import {
+  getDeliveryFee,
+  getDeliveryMinimumRemaining,
+} from './delivery-policy.js';
 
 export const formatPhoneInput = (value) => {
   let digits = String(value ?? '').replace(/\D/g, '');
@@ -52,6 +56,13 @@ export const validateCheckout = (data = {}) => {
   if (data.timeMode === 'scheduled' && !data.selectedTime) {
     errors.selectedTime = 'Выберите время';
   }
+  const minimumRemaining = getDeliveryMinimumRemaining(
+    data.itemsTotal,
+    data.fulfillment,
+  );
+  if (minimumRemaining > 0) {
+    errors.order = `Добавьте блюда ещё на ${minimumRemaining.toLocaleString('ru-RU')} ₽`;
+  }
   return errors;
 };
 
@@ -79,11 +90,15 @@ export const createTimeSlots = (now = new Date(), count = 6) => {
   });
 };
 
-export const createCheckoutSummary = (lines, promoCode = '') => {
+export const createCheckoutSummary = (
+  lines,
+  promoCode = '',
+  fulfillment = 'pickup',
+) => {
   const baseSummary = calculateCartSummary(lines, 0, 0);
   return calculateCartSummary(
     lines,
-    0,
+    getDeliveryFee(baseSummary.items, fulfillment),
     getPromoDiscount(promoCode, baseSummary.items),
   );
 };

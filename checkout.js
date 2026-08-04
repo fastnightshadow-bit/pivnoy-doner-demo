@@ -19,6 +19,7 @@ import {
 } from './order-storage.js';
 import { loadPayment, savePayment } from './payment-storage.js';
 import { getPromoResult } from './promo-state.js';
+import { getDeliveryMinimumRemaining } from './delivery-policy.js';
 import {
   clearPromo,
   loadPromo,
@@ -194,6 +195,7 @@ const initCheckout = () => {
     phone: phoneInput.value,
     address: readDeliveryAddress(),
     selectedTime: timeSelect.value,
+    itemsTotal: createCheckoutSummary(lines).items,
   });
 
   const getControl = (name) => {
@@ -287,16 +289,26 @@ const initCheckout = () => {
   };
 
   const renderSummary = () => {
-    const summary = createCheckoutSummary(lines, promoCode);
+    const summary = createCheckoutSummary(
+      lines,
+      promoCode,
+      state.fulfillment,
+    );
+    const minimumRemaining = getDeliveryMinimumRemaining(
+      summary.items,
+      state.fulfillment,
+    );
     itemsTotal.textContent = formatCheckoutPrice(summary.items);
-    deliveryTotal.textContent =
-      state.fulfillment === 'delivery'
-        ? 'Рассчитаем по адресу'
-        : formatCheckoutPrice(summary.delivery);
+    deliveryTotal.textContent = formatCheckoutPrice(summary.delivery);
     discountRow.hidden = summary.discount === 0;
     discountTotal.textContent = `−${formatCheckoutPrice(summary.discount)}`;
     grandTotal.textContent = formatCheckoutPrice(summary.total);
     checkoutTotal.textContent = formatCheckoutPrice(summary.total);
+    confirmButton.disabled = minimumRemaining > 0;
+    confirmButton.querySelector('span').textContent =
+      minimumRemaining > 0
+        ? `Добавьте ещё ${minimumRemaining.toLocaleString('ru-RU')} ₽`
+        : 'Оплатить';
 
     pulseMotion(grandTotal);
     pulseMotion(checkoutTotal);
@@ -465,6 +477,10 @@ const initCheckout = () => {
       setFieldError(name, errors[name] || ''),
     );
     const firstError = order.find((name) => errors[name]);
+    if (errors.order) {
+      showToast(errors.order);
+      return;
+    }
     if (firstError) {
       if (firstError === 'address') {
         setAddressExpanded(true);
@@ -482,7 +498,11 @@ const initCheckout = () => {
       return;
     }
 
-    const summary = createCheckoutSummary(lines, promoCode);
+    const summary = createCheckoutSummary(
+      lines,
+      promoCode,
+      state.fulfillment,
+    );
     const activeOrder = createOrderSnapshot({
       lines,
       summary,

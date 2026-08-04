@@ -485,6 +485,19 @@ input:focus-visible {
   transform: scale(.98);
 }
 
+.cart-checkout a.is-disabled {
+  color: var(--color-muted);
+  background: var(--color-soft);
+  border-color: var(--color-line);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.cart-checkout a.is-disabled:active {
+  background: var(--color-soft);
+  transform: none;
+}
+
 .empty-cart {
   display: grid;
   min-height: calc(100vh - 104px);

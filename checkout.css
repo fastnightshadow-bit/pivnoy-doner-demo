@@ -318,6 +318,26 @@ button {
   line-height: 18px;
 }
 
+.delivery-policy {
+  display: grid;
+  gap: 3px;
+  margin: 0 14px 4px;
+  padding: 12px 14px;
+  color: var(--color-text);
+  background: var(--color-soft);
+  border-radius: 14px;
+}
+
+.delivery-policy strong {
+  font-size: 12px;
+}
+
+.delivery-policy small {
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 15px;
+}
+
 .time-options small {
   color: var(--color-muted);
   font-size: 12px;
@@ -747,6 +767,13 @@ button {
 .checkout-bar > button:active {
   transform: scale(.985);
   filter: brightness(.94);
+}
+
+.checkout-bar > button:disabled {
+  color: var(--color-muted);
+  background: var(--color-soft);
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 .checkout-bar > button.is-loading span {

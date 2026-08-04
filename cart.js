@@ -9,12 +9,18 @@ import {
 import { loadCart, saveCart } from './cart-storage.js';
 import { loadFulfillment } from './fulfillment-storage.js';
 import {
+  getDeliveryFee,
+  getDeliveryMinimumRemaining,
+} from './delivery-policy.js';
+import {
   pulseMotion,
   revealMotion,
   staggerMotion,
 } from './motion.js';
 import {
   getSizeLabelWithWeight,
+  getProductConfiguration,
+  PRODUCT_SAUCES,
   SIZE_LABELS,
 } from './product-config.js';
 
@@ -40,7 +46,10 @@ const escapeHtml = (value) =>
 export const formatCartPrice = (value) =>
   `${Math.max(0, Number(value) || 0).toLocaleString('ru-RU')}&nbsp;₽`;
 
-export const createCartSummary = (lines) => calculateCartSummary(lines);
+export const createCartSummary = (lines, fulfillment = 'pickup') => {
+  const items = calculateCartSummary(lines).items;
+  return calculateCartSummary(lines, getDeliveryFee(items, fulfillment));
+};
 
 export const hydrateCartLineMedia = (lines, products = PRODUCTS) => {
   const mediaByProduct = new Map(
@@ -169,10 +178,12 @@ const initCart = () => {
   const recommendationRoot = document.querySelector('[data-recommendations]');
   const itemsTotal = document.querySelector('[data-items-total]');
   const deliveryTotal = document.querySelector('[data-delivery-total]');
+  const deliveryLabel = document.querySelector('[data-delivery-label]');
   const grandTotal = document.querySelector('[data-grand-total]');
   const checkoutTotal = document.querySelector('[data-checkout-total]');
   const fulfillmentLabel = document.querySelector('[data-cart-fulfillment]');
   const toast = document.querySelector('[data-cart-toast]');
+  const checkoutLink = document.querySelector('[data-checkout]');
 
   const fulfillment = loadFulfillment(window.localStorage);
   if (fulfillmentLabel) {
@@ -209,8 +220,12 @@ const initCart = () => {
 
   const updateCartSummary = ({ pulseTotals = false } = {}) => {
     const itemCount = getCartItemCount(lines);
-    const summary = createCartSummary(lines);
+    const summary = createCartSummary(lines, fulfillment);
     const isEmpty = itemCount === 0;
+    const minimumRemaining = getDeliveryMinimumRemaining(
+      summary.items,
+      fulfillment,
+    );
 
     countLabel.textContent = `${itemCount} ${getItemWord(itemCount)}`;
     filledCart.hidden = isEmpty;
@@ -218,9 +233,24 @@ const initCart = () => {
     checkoutBar.hidden = isEmpty;
 
     itemsTotal.innerHTML = formatCartPrice(summary.items);
+    if (deliveryLabel) {
+      deliveryLabel.textContent =
+        fulfillment === 'delivery' ? 'Доставка' : 'Самовывоз';
+    }
     deliveryTotal.innerHTML = formatCartPrice(summary.delivery);
     grandTotal.innerHTML = formatCartPrice(summary.total);
     checkoutTotal.innerHTML = formatCartPrice(summary.total);
+
+    if (checkoutLink) {
+      const isBlocked = minimumRemaining > 0;
+      checkoutLink.classList.toggle('is-disabled', isBlocked);
+      checkoutLink.setAttribute('aria-disabled', String(isBlocked));
+      checkoutLink.textContent = isBlocked
+        ? `Добавьте ещё ${minimumRemaining.toLocaleString('ru-RU')} ₽`
+        : 'Перейти к оформлению';
+      if (isBlocked) checkoutLink.removeAttribute('href');
+      else checkoutLink.setAttribute('href', 'checkout.html');
+    }
 
     if (pulseTotals) {
       pulseMotion(grandTotal);
@@ -313,6 +343,9 @@ const initCart = () => {
       unitPrice: product.price,
       image: product.image,
       icon: product.icon,
+      sauce:
+        PRODUCT_SAUCES[getProductConfiguration(product.id)?.defaultSauce]
+          ?.label ?? '',
     });
     lines = addCartLine(lines, addedLine);
     persistCartUpdate({ lineId: addedLine.lineId, pulseTotals: true });
