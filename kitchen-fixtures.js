@@ -1,3 +1,5 @@
+import { createPreparationEta } from './preparation-time.js';
+
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 export const createDemoEmployees = () =>
@@ -20,7 +22,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
   const at = (offsetMinutes) =>
     new Date(referenceMs + offsetMinutes * 60000).toISOString();
 
-  return clone([
+  const orders = [
     {
       id: 'order-0464',
       number: '0464',
@@ -219,5 +221,24 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
         },
       ],
     },
-  ]);
+  ];
+
+  const activeStatuses = new Set(['new', 'accepted', 'cooking']);
+  const queuedItems = [];
+  const promisedById = new Map();
+
+  for (const order of [...orders]
+    .filter(({ status }) => activeStatuses.has(status))
+    .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))) {
+    const eta = createPreparationEta(order.items, queuedItems);
+    promisedById.set(order.id, at(eta.min));
+    queuedItems.push(...order.items);
+  }
+
+  return clone(
+    orders.map((order) => ({
+      ...order,
+      promisedAt: promisedById.get(order.id) || order.promisedAt,
+    })),
+  );
 };

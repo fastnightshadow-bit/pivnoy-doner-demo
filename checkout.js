@@ -20,6 +20,7 @@ import {
 import { loadPayment, savePayment } from './payment-storage.js';
 import { getPromoResult } from './promo-state.js';
 import { getDeliveryMinimumRemaining } from './delivery-policy.js';
+import { createPreparationEta } from './preparation-time.js';
 import {
   clearPromo,
   loadPromo,
@@ -514,6 +515,7 @@ const initCheckout = () => {
       comment: courierComment?.value || '',
       selectedTime:
         state.timeMode === 'scheduled' ? timeSelect.value : '',
+      eta: createPreparationEta(lines),
       previousOrder,
     });
     saveActiveOrder(window.localStorage, activeOrder);
