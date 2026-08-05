@@ -7,6 +7,7 @@ import {
   createDemoEmployees,
   createDemoOrders,
 } from './kitchen-fixtures.js';
+import { normalizeKitchenSettings } from './kitchen-settings.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const wait = (milliseconds) =>
@@ -76,6 +77,18 @@ export const createKitchenApi = ({
       return jsonRequest('/board', { method: 'GET' });
     },
 
+    getSettings() {
+      return jsonRequest('/settings', { method: 'GET' });
+    },
+
+    updateSettings(settings, operationId) {
+      return jsonRequest('/settings', {
+        method: 'PUT',
+        headers: { 'Idempotency-Key': operationId },
+        body: JSON.stringify(normalizeKitchenSettings(settings)),
+      });
+    },
+
     getHistory(filters = {}) {
       const search = new URLSearchParams();
       for (const [key, value] of Object.entries(filters)) {
@@ -128,6 +141,7 @@ export const createDemoKitchenApi = ({
   let activeOrders = createDemoOrders(now());
   let historyOrders = [];
   let session = null;
+  let settings = normalizeKitchenSettings();
   const operationResults = new Map();
   const listeners = new Set();
   const connectionListeners = new Set();
@@ -173,6 +187,22 @@ export const createDemoKitchenApi = ({
       requireSession();
       await delay();
       return { orders: clone(activeOrders), serverTime: serverTime() };
+    },
+
+    async getSettings() {
+      requireSession();
+      await delay();
+      return clone(settings);
+    },
+
+    updateSettings(nextSettings, operationId) {
+      requireSession();
+      return runOnce(operationId, async () => {
+        await delay();
+        settings = normalizeKitchenSettings(nextSettings);
+        emit({ type: 'settings.updated', settings });
+        return clone(settings);
+      });
     },
 
     async getHistory(filters = {}) {

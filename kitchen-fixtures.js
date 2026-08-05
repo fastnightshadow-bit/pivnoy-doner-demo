@@ -5,16 +5,10 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 export const createDemoEmployees = () =>
   clone([
     {
-      id: 'employee-anton',
-      name: 'Антон',
+      id: 'kitchen',
+      name: 'Кухня',
       pin: '2468',
-      shift: '10:00–22:00',
-    },
-    {
-      id: 'employee-maria',
-      name: 'Мария',
-      pin: '1357',
-      shift: '10:00–22:00',
+      shift: '2 повара',
     },
   ]);
 
@@ -91,7 +85,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
       createdAt: at(-15),
       promisedAt: at(10),
       acceptedAt: at(-12),
-      employee: 'Мария',
+      employee: 'Кухня',
       customer: { name: 'Ирина', phone: '+7 (900) 000-00-02' },
       items: [
         {
@@ -107,7 +101,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
         {
           from: 'new',
           to: 'accepted',
-          employee: 'Мария',
+          employee: 'Кухня',
           at: at(-12),
           reason: '',
         },
@@ -122,7 +116,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
       createdAt: at(-26),
       promisedAt: at(4),
       acceptedAt: at(-24),
-      employee: 'Антон',
+      employee: 'Кухня',
       customer: { name: 'Сергей', phone: '+7 (900) 000-00-03' },
       address: {
         street: 'Учебный проезд, 7',
@@ -145,14 +139,14 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
         {
           from: 'new',
           to: 'accepted',
-          employee: 'Антон',
+          employee: 'Кухня',
           at: at(-24),
           reason: '',
         },
         {
           from: 'accepted',
           to: 'cooking',
-          employee: 'Антон',
+          employee: 'Кухня',
           at: at(-21),
           reason: '',
         },
@@ -167,7 +161,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
       createdAt: at(-32),
       promisedAt: at(-2),
       acceptedAt: at(-30),
-      employee: 'Мария',
+      employee: 'Кухня',
       customer: { name: 'Дмитрий', phone: '+7 (900) 000-00-04' },
       items: [
         {
@@ -183,7 +177,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
         {
           from: 'cooking',
           to: 'ready',
-          employee: 'Мария',
+          employee: 'Кухня',
           at: at(-13),
           reason: '',
         },
@@ -198,7 +192,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
       createdAt: at(-21),
       promisedAt: at(9),
       acceptedAt: at(-20),
-      employee: 'Антон',
+      employee: 'Кухня',
       customer: { name: 'Елена', phone: '+7 (900) 000-00-05' },
       address: { street: 'Примерная улица, 10' },
       items: [
@@ -215,7 +209,7 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
         {
           from: 'cooking',
           to: 'ready',
-          employee: 'Антон',
+          employee: 'Кухня',
           at: at(-5),
           reason: '',
         },

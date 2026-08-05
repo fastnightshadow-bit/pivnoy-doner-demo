@@ -1014,6 +1014,85 @@ dialog input[type="radio"] {
   gap: 10px;
 }
 
+.settings-dialog {
+  width: min(94vw, 680px);
+}
+
+.settings-dialog form {
+  max-height: min(84svh, 720px);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.settings-dialog h2,
+.settings-dialog h3,
+.settings-dialog p {
+  margin: 0;
+}
+
+.accepting-control,
+.stop-list__item {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 12px 14px;
+  background: var(--kitchen-soft);
+  border: 1px solid var(--kitchen-line);
+  border-radius: 14px;
+}
+
+.accepting-control span,
+.stop-list__item span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.accepting-control small,
+.stop-list__item small,
+.settings-dialog__section-heading p {
+  color: var(--kitchen-muted);
+  font-size: 12px;
+}
+
+.accepting-control input,
+.stop-list__item input {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  accent-color: #171717;
+}
+
+.stop-list-section {
+  display: grid;
+  min-height: 0;
+  gap: 10px;
+}
+
+.settings-dialog__section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.stop-list {
+  display: grid;
+  min-height: 0;
+  gap: 8px;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.stop-list__item strong,
+.stop-list__item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .toast-region {
   position: fixed;
   z-index: 30;
@@ -1063,7 +1142,7 @@ dialog input[type="radio"] {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .kitchen-topbar {
     grid-template-columns: 64px 92px minmax(140px, 1fr) auto minmax(116px, auto);
   }

@@ -13,6 +13,11 @@ import {
   getKitchenItemOptions,
   initKitchenPresentation,
 } from './kitchen-presentation.js';
+import { PRODUCTS } from './catalog-data.js';
+import {
+  normalizeKitchenSettings,
+  toggleStoppedProduct,
+} from './kitchen-settings.js';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -426,6 +431,13 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     panelClose: root.querySelector('[data-order-panel-close]'),
     panelScrim: root.querySelector('[data-panel-scrim]'),
     soundToggle: root.querySelector('[data-sound-toggle]'),
+    settingsOpen: root.querySelector('[data-kitchen-settings-open]'),
+    settingsDialog: root.querySelector('[data-kitchen-settings-dialog]'),
+    settingsForm: root.querySelector('[data-kitchen-settings-form]'),
+    settingsClose: root.querySelectorAll('[data-kitchen-settings-close]'),
+    settingsSave: root.querySelector('[data-kitchen-settings-save]'),
+    acceptingOrders: root.querySelector('[data-accepting-orders]'),
+    stopList: root.querySelector('[data-stop-list]'),
     cancelDialog: root.querySelector('[data-cancel-dialog]'),
     cancelForm: root.querySelector('[data-cancel-form]'),
     cancelWarning: root.querySelector('[data-cancel-warning]'),
@@ -446,6 +458,8 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     urgency: 'all',
     connected: false,
     soundMuted: false,
+    settings: normalizeKitchenSettings(),
+    settingsPending: false,
     cancellingOrderId: '',
     pendingOperations: new Set(),
     failedOperations: new Map(),
@@ -522,6 +536,51 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     announce: (message) => showToast(message),
     isMuted: () => state.soundMuted,
   });
+
+  const renderKitchenSettings = () => {
+    const normalized = normalizeKitchenSettings(state.settings);
+    state.settings = normalized;
+    if (refs.acceptingOrders) {
+      refs.acceptingOrders.checked = normalized.acceptingOrders;
+      refs.acceptingOrders.disabled = state.settingsPending;
+    }
+    if (refs.settingsSave) refs.settingsSave.disabled = state.settingsPending;
+    if (!refs.stopList) return;
+
+    const stopped = new Set(normalized.stoppedProductIds);
+    refs.stopList.innerHTML = PRODUCTS.map(
+      (product) => `<label class="stop-list__item">
+        <span>
+          <strong>${escapeKitchenHtml(product.name)}</strong>
+          <small>${escapeKitchenHtml(product.description)}</small>
+        </span>
+        <input type="checkbox" data-stop-product="${escapeKitchenHtml(product.id)}" ${
+          stopped.has(product.id) ? 'checked' : ''
+        } ${state.settingsPending ? 'disabled' : ''} />
+      </label>`,
+    ).join('');
+  };
+
+  const loadKitchenSettings = async () => {
+    const response = await activeApi.getSettings();
+    state.settings = normalizeKitchenSettings(response);
+    renderKitchenSettings();
+  };
+
+  const openKitchenSettings = async () => {
+    if (!refs.settingsDialog || state.settingsPending) return;
+    state.settingsPending = true;
+    renderKitchenSettings();
+    try {
+      await loadKitchenSettings();
+      refs.settingsDialog.showModal();
+    } catch (error) {
+      showToast(error?.message || 'Не удалось загрузить настройки', 'error');
+    } finally {
+      state.settingsPending = false;
+      renderKitchenSettings();
+    }
+  };
 
   const updateClock = () => {
     if (!refs.currentTime) return;
@@ -728,6 +787,11 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   };
 
   const replaceOrderFromEvent = (event) => {
+    if (event?.type === 'settings.updated') {
+      state.settings = normalizeKitchenSettings(event.settings);
+      renderKitchenSettings();
+      return;
+    }
     const order = event?.order;
     const wasKnown = state.orders.some((item) => item.id === order?.id);
     replaceOrderFromServer(order, { animate: wasKnown });
@@ -782,7 +846,10 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     if (refs.shift) refs.shift.textContent = `Смена ${response.shift || 'активна'}`;
     setElementHidden(refs.loginView, true);
     setElementHidden(refs.boardView, false);
-    await loadBoard({ seedSounds: true });
+    await Promise.all([
+      loadBoard({ seedSounds: true }),
+      loadKitchenSettings(),
+    ]);
     stopSubscription = activeApi.subscribe(
       replaceOrderFromEvent,
       (connected) => void handleConnectionChange(connected),
@@ -804,6 +871,8 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     state.query = '';
     state.fulfillment = 'all';
     state.urgency = 'all';
+    state.settings = normalizeKitchenSettings();
+    state.settingsPending = false;
     state.cancellingOrderId = '';
     state.pendingOperations.clear();
     state.failedOperations.clear();
@@ -976,6 +1045,50 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   });
 
   refs.switchEmployee?.addEventListener('click', () => void endSession());
+  refs.settingsOpen?.addEventListener('click', () => void openKitchenSettings());
+  refs.settingsClose?.forEach((button) => {
+    button.addEventListener('click', () => refs.settingsDialog?.close());
+  });
+  refs.acceptingOrders?.addEventListener('change', () => {
+    state.settings = normalizeKitchenSettings({
+      ...state.settings,
+      acceptingOrders: refs.acceptingOrders.checked,
+    });
+    renderKitchenSettings();
+  });
+  refs.stopList?.addEventListener('change', (event) => {
+    const input = event.target.closest('[data-stop-product]');
+    if (!input) return;
+    state.settings = toggleStoppedProduct(
+      state.settings,
+      input.dataset.stopProduct,
+    );
+    renderKitchenSettings();
+  });
+  refs.settingsForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (state.settingsPending) return;
+    if (!state.connected) {
+      showToast('Нет соединения. Настройки не сохранены', 'error');
+      return;
+    }
+    state.settingsPending = true;
+    renderKitchenSettings();
+    try {
+      const result = await activeApi.updateSettings(
+        state.settings,
+        createOperationId('settings', 'update', windowRef.crypto),
+      );
+      state.settings = normalizeKitchenSettings(result);
+      refs.settingsDialog?.close();
+      showToast('Настройки кухни сохранены');
+    } catch (error) {
+      showToast(error?.message || 'Настройки не сохранены', 'error');
+    } finally {
+      state.settingsPending = false;
+      renderKitchenSettings();
+    }
+  });
   refs.search?.addEventListener('input', () => {
     state.query = refs.search.value.trim();
     if (state.mode === 'board') renderBoard();

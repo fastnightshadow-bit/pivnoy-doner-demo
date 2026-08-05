@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pivnoy-doner-kitchen-shell-v4';
+const CACHE_NAME = 'pivnoy-doner-kitchen-shell-v5';
 const SHELL_FILES = [
   'kitchen.html?demo=1',
   'kitchen.css',
@@ -7,6 +7,8 @@ const SHELL_FILES = [
   'kitchen-model.js',
   'kitchen-api.js',
   'kitchen-fixtures.js',
+  'kitchen-settings.js',
+  'catalog-data.js',
   'kitchen.webmanifest',
   'assets/mobile-home/logo-transparent.webp',
   'assets/kitchen/icon-192.png',

@@ -31,9 +31,9 @@
           />
           <p class="eyebrow">Пивной Донер</p>
           <h1 id="login-title">Вход на кухню</h1>
-          <p class="login-card__copy">Введите личный PIN сотрудника</p>
+          <p class="login-card__copy">Введите PIN кухни</p>
           <form class="pin-form" data-pin-form novalidate>
-            <label for="employee-pin">Личный PIN</label>
+            <label for="employee-pin">PIN кухни</label>
             <input
               id="employee-pin"
               name="pin"
@@ -50,7 +50,6 @@
               Начать смену
             </button>
           </form>
-          <p class="login-card__demo">Демо-PIN: 2468</p>
         </div>
       </section>
 
@@ -81,6 +80,10 @@
           </label>
 
           <div class="topbar-actions">
+            <button class="toolbar-button" type="button" data-kitchen-settings-open>
+              <svg aria-hidden="true"><use href="#kitchen-i-settings"></use></svg>
+              <span>Управление</span>
+            </button>
             <button class="icon-button" type="button" data-filters aria-label="Фильтры">
               <svg aria-hidden="true"><use href="#kitchen-i-filter"></use></svg>
               <span data-filter-count hidden></span>
@@ -106,7 +109,7 @@
               <strong data-employee></strong>
               <small data-shift></small>
             </span>
-            <button type="button" data-switch-employee>Сменить</button>
+            <button type="button" data-switch-employee>Выйти</button>
           </div>
         </header>
 
@@ -196,6 +199,41 @@
         </form>
       </dialog>
 
+      <dialog class="settings-dialog" data-kitchen-settings-dialog aria-labelledby="settings-title">
+        <form data-kitchen-settings-form>
+          <header>
+            <div>
+              <p class="eyebrow">Управление</p>
+              <h2 id="settings-title">Работа кухни</h2>
+            </div>
+            <button type="button" data-kitchen-settings-close aria-label="Закрыть">×</button>
+          </header>
+
+          <label class="accepting-control">
+            <span>
+              <strong>Приём заказов</strong>
+              <small>Выключите, если кухня временно не принимает новые заказы</small>
+            </span>
+            <input type="checkbox" data-accepting-orders />
+          </label>
+
+          <section class="stop-list-section" aria-labelledby="stop-list-title">
+            <div class="settings-dialog__section-heading">
+              <div>
+                <h3 id="stop-list-title">Стоп-лист</h3>
+                <p>Недоступные позиции сразу скрываются для заказа.</p>
+              </div>
+            </div>
+            <div class="stop-list" data-stop-list></div>
+          </section>
+
+          <div class="dialog-actions">
+            <button class="button button--secondary" type="button" data-kitchen-settings-close>Отмена</button>
+            <button class="button button--primary" type="submit" data-kitchen-settings-save>Сохранить</button>
+          </div>
+        </form>
+      </dialog>
+
       <dialog class="cancel-dialog" data-cancel-dialog aria-labelledby="cancel-title">
         <form method="dialog" data-cancel-form>
           <header><p class="eyebrow eyebrow--danger">Опасное действие</p><h2 id="cancel-title">Отменить заказ</h2></header>
@@ -232,6 +270,7 @@
     <svg class="svg-sprite" aria-hidden="true">
       <symbol id="kitchen-i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></symbol>
       <symbol id="kitchen-i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"></path></symbol>
+      <symbol id="kitchen-i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"></path></symbol>
       <symbol id="kitchen-i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8"></path><path d="M4 4v4h4M12 8v5l3 2"></path></symbol>
       <symbol id="kitchen-i-volume" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5zM18 9a4 4 0 0 1 0 6"></path></symbol>
       <symbol id="kitchen-i-offline" viewBox="0 0 24 24"><path d="M3 3l18 18M8.5 8.5A9 9 0 0 1 20 10M5 10a10 10 0 0 0-1 1M8 14a6 6 0 0 1 6.5-.5M12 18h.01"></path></symbol>
