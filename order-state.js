@@ -67,7 +67,18 @@ const normalizeItem = (item = {}) => ({
   unitPrice: toSafeNumber(item.unitPrice),
   meat: toSafeString(item.meat),
   size: toSafeString(item.size),
-  sauce: toSafeString(item.sauce),
+  sauces: [
+    ...new Set(
+      (Array.isArray(item.sauces)
+        ? item.sauces
+        : item.sauce
+          ? [item.sauce]
+          : []
+      )
+        .map(toSafeString)
+        .filter(Boolean),
+    ),
+  ].sort(),
   addons: Array.isArray(item.addons)
     ? item.addons.map(toSafeString).filter(Boolean)
     : [],

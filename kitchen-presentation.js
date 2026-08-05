@@ -4,8 +4,21 @@ export const getKitchenItemOptions = (item = {}) => {
   const options = Array.isArray(item.options)
     ? item.options.map((value) => String(value || '').trim()).filter(Boolean)
     : [];
-  const sauce = String(item.sauce || '').trim();
-  const sauceLabel = sauce ? `Соус: ${sauce}` : '';
+  const sauces = [
+    ...new Set(
+      (Array.isArray(item.sauces)
+        ? item.sauces
+        : item.sauce
+          ? [item.sauce]
+          : []
+      )
+        .map((value) => String(value || '').trim())
+        .filter(Boolean),
+    ),
+  ];
+  const sauceLabel = sauces.length
+    ? `${sauces.length === 1 ? 'Соус' : 'Соусы'}: ${sauces.join(', ')}`
+    : '';
   return sauceLabel && !options.includes(sauceLabel)
     ? [...options, sauceLabel]
     : options;

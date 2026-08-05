@@ -51,6 +51,7 @@
 - Modify: `tests/product-options.test.mjs`
 - Modify: `product-config.js`
 - Modify: `cart-state.js`
+- Modify: `cart-storage.js`
 - Modify: `order-state.js`
 - Modify: `kitchen-presentation.js`
 
@@ -65,8 +66,9 @@
 ```js
 test('каждый соус стоит 50 ₽ и по умолчанию ничего не выбрано', () => {
   assert.ok(Object.values(PRODUCT_SAUCES).every(({ price }) => price === 50));
-  assert.equal(calculateProductPrice('classic-shawarma', {}), 300);
-  assert.equal(calculateProductPrice('classic-shawarma', { sauces: ['tasty', 'chili'] }), 400);
+  const base = { meat: 'chicken', size: 'standard' };
+  assert.equal(calculateProductPrice('classic-shawarma', base), 300);
+  assert.equal(calculateProductPrice('classic-shawarma', { ...base, sauces: ['tasty', 'chili'] }), 400);
 });
 
 test('старая строка sauce преобразуется в sauces и участвует в подписи', () => {
@@ -129,7 +131,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit domain changes**
 
 ```bash
-git add product-config.js cart-state.js order-state.js kitchen-presentation.js tests/product-options.test.mjs
+git add product-config.js cart-state.js cart-storage.js order-state.js kitchen-presentation.js tests/product-options.test.mjs
 git commit -m "feat: support multiple paid sauces"
 ```
 

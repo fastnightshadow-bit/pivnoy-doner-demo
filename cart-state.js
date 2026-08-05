@@ -11,19 +11,35 @@ const hashString = (value) => {
 const normalizeAddons = (addons) =>
   [...new Set(Array.isArray(addons) ? addons.filter(Boolean) : [])].sort();
 
+const normalizeSauces = (sauces, legacySauce = '') =>
+  [
+    ...new Set(
+      (Array.isArray(sauces)
+        ? sauces
+        : legacySauce
+          ? [legacySauce]
+          : []
+      ).filter(Boolean),
+    ),
+  ]
+    .map(String)
+    .sort();
+
 export const getLineSignature = ({
   productId = '',
   meat = '',
   size = '',
+  sauces,
   sauce = '',
   addons = [],
   comment = '',
 }) => {
+  const normalizedSauces = normalizeSauces(sauces, sauce);
   const configuration = [
     productId,
     meat,
     size,
-    sauce,
+    normalizedSauces.join(','),
     normalizeAddons(addons).join(','),
     String(comment).trim(),
   ].join('|');
@@ -36,6 +52,7 @@ export const createCartLine = ({
   unitPrice,
   meat = '',
   size = '',
+  sauces,
   sauce = '',
   addons = [],
   comment = '',
@@ -49,7 +66,7 @@ export const createCartLine = ({
     unitPrice: toNonNegativeNumber(unitPrice),
     meat: String(meat || ''),
     size: String(size || ''),
-    sauce: String(sauce || ''),
+    sauces: normalizeSauces(sauces, sauce),
     addons: normalizeAddons(addons),
     comment: String(comment || '').trim(),
     quantity: Math.max(1, Math.floor(Number(quantity) || 1)),

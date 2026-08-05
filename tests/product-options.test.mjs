@@ -8,6 +8,7 @@ import {
   getProductConfiguration,
 } from '../product-config.js';
 import { createCartLine, getLineSignature } from '../cart-state.js';
+import { loadCart } from '../cart-storage.js';
 import { createProductSheetMarkup } from '../product-sheet.js';
 import { normalizeOrder } from '../order-state.js';
 import { getKitchenItemOptions } from '../kitchen-presentation.js';
@@ -34,30 +35,74 @@ test('в добавках используется жареный лук', () =>
   assert.equal(PRODUCT_ADDONS.onion.label, 'Жареный лук');
 });
 
-test('каждое блюдо получает один бесплатный соус по умолчанию', () => {
+test('каждый соус стоит 50 ₽ и по умолчанию ничего не выбрано', () => {
+  assert.ok(
+    Object.values(PRODUCT_SAUCES).every(({ price }) => price === 50),
+  );
+
   for (const product of PRODUCTS) {
     const config = getProductConfiguration(product.id);
     assert.deepEqual(config.sauces, Object.keys(PRODUCT_SAUCES), product.id);
-    assert.ok(config.sauces.includes(config.defaultSauce), product.id);
-    const priceWithoutSauce = calculateProductPrice(product.id, {});
-    const priceWithSauce = calculateProductPrice(product.id, {
-      sauce: config.defaultSauce,
-    });
-    assert.equal(priceWithSauce, priceWithoutSauce, product.id);
+    assert.equal(config.defaultSauce, undefined, product.id);
   }
+
+  const baseSelection = { meat: 'chicken', size: 'standard' };
+  assert.equal(
+    calculateProductPrice('classic-shawarma', baseSelection),
+    300,
+  );
+  assert.equal(
+    calculateProductPrice('classic-shawarma', {
+      ...baseSelection,
+      sauces: ['tasty', 'chili'],
+    }),
+    400,
+  );
 });
 
-test('соус входит в идентичность позиции корзины', () => {
+test('несколько соусов входят в идентичность позиции корзины', () => {
   const base = {
     productId: 'classic-shawarma',
     name: 'Классическая шаурма',
     unitPrice: 300,
   };
-  const tasty = createCartLine({ ...base, sauce: 'Тейсти' });
-  const chili = createCartLine({ ...base, sauce: 'Чили' });
-  assert.equal(tasty.sauce, 'Тейсти');
-  assert.notEqual(tasty.lineId, chili.lineId);
-  assert.equal(tasty.lineId, getLineSignature(tasty));
+  const tasty = createCartLine({ ...base, sauces: ['Тейсти'] });
+  const tastyAndChili = createCartLine({
+    ...base,
+    sauces: ['Чили', 'Тейсти'],
+  });
+  assert.deepEqual(tasty.sauces, ['Тейсти']);
+  assert.deepEqual(tastyAndChili.sauces, ['Тейсти', 'Чили']);
+  assert.notEqual(tasty.lineId, tastyAndChili.lineId);
+  assert.equal(tastyAndChili.lineId, getLineSignature(tastyAndChili));
+});
+
+test('старая строка sauce преобразуется в массив sauces', () => {
+  const base = {
+    productId: 'classic-shawarma',
+    name: 'Классическая шаурма',
+    unitPrice: 350,
+  };
+  const migrated = createCartLine({ ...base, sauce: 'Тейсти' });
+  const modern = createCartLine({ ...base, sauces: ['Тейсти'] });
+  assert.deepEqual(migrated.sauces, ['Тейсти']);
+  assert.equal(migrated.lineId, modern.lineId);
+});
+
+test('старая сохранённая корзина мигрирует при чтении', () => {
+  const storage = {
+    getItem: () =>
+      JSON.stringify([
+        {
+          productId: 'classic-shawarma',
+          name: 'Классическая шаурма',
+          unitPrice: 350,
+          sauce: 'Тейсти',
+          quantity: 2,
+        },
+      ]),
+  };
+  assert.deepEqual(loadCart(storage)[0].sauces, ['Тейсти']);
 });
 
 test('карточка блюда показывает выбор одного соуса', () => {
@@ -69,13 +114,21 @@ test('карточка блюда показывает выбор одного �
   assert.match(markup, /Входит в стоимость/);
 });
 
-test('соус сохраняется в заказе и показывается кухне', () => {
+test('несколько соусов сохраняются в заказе и показываются кухне', () => {
   const order = normalizeOrder({
     id: 'order-1',
     number: '0001',
     createdAt: '2026-08-05T10:00:00.000Z',
-    items: [{ name: 'Донер', quantity: 1, sauce: 'Барбекю' }],
+    items: [
+      {
+        name: 'Донер',
+        quantity: 1,
+        sauces: ['Барбекю', 'Чили'],
+      },
+    ],
   });
-  assert.equal(order.items[0].sauce, 'Барбекю');
-  assert.deepEqual(getKitchenItemOptions(order.items[0]), ['Соус: Барбекю']);
+  assert.deepEqual(order.items[0].sauces, ['Барбекю', 'Чили']);
+  assert.deepEqual(getKitchenItemOptions(order.items[0]), [
+    'Соусы: Барбекю, Чили',
+  ]);
 });

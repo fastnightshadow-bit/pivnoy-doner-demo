@@ -1,3 +1,5 @@
+import { createCartLine } from './cart-state.js';
+
 export const CART_STORAGE_KEY = 'pivnoy-doner-cart-v1';
 
 const getBrowserStorage = () =>
@@ -8,7 +10,7 @@ export const loadCart = (storage = getBrowserStorage()) => {
 
   try {
     const parsed = JSON.parse(storage.getItem(CART_STORAGE_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(createCartLine) : [];
   } catch {
     return [];
   }

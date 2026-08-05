@@ -30,16 +30,16 @@ export const PRODUCT_ADDONS = Object.freeze({
 });
 
 export const PRODUCT_SAUCES = Object.freeze({
-  tasty: Object.freeze({ label: 'Тейсти' }),
-  burger: Object.freeze({ label: 'Бургерный' }),
-  cheese: Object.freeze({ label: 'Сырный' }),
-  bbq: Object.freeze({ label: 'Барбекю' }),
-  truffle: Object.freeze({ label: 'Трюфель' }),
-  ketchup: Object.freeze({ label: 'Кетчуп' }),
-  curry: Object.freeze({ label: 'Карри' }),
-  blueCheese: Object.freeze({ label: 'Блю чиз' }),
-  mustard: Object.freeze({ label: 'Горчица' }),
-  chili: Object.freeze({ label: 'Чили' }),
+  tasty: Object.freeze({ label: 'Тейсти', price: 50 }),
+  burger: Object.freeze({ label: 'Бургерный', price: 50 }),
+  cheese: Object.freeze({ label: 'Сырный', price: 50 }),
+  bbq: Object.freeze({ label: 'Барбекю', price: 50 }),
+  truffle: Object.freeze({ label: 'Трюфель', price: 50 }),
+  ketchup: Object.freeze({ label: 'Кетчуп', price: 50 }),
+  curry: Object.freeze({ label: 'Карри', price: 50 }),
+  blueCheese: Object.freeze({ label: 'Блю чиз', price: 50 }),
+  mustard: Object.freeze({ label: 'Горчица', price: 50 }),
+  chili: Object.freeze({ label: 'Чили', price: 50 }),
 });
 
 const ALL_SAUCES = Object.freeze(Object.keys(PRODUCT_SAUCES));
@@ -49,7 +49,6 @@ const shawarma = (
   chickenGiant,
   beefStandard,
   beefGiant,
-  defaultSauce = 'tasty',
 ) =>
   Object.freeze({
     prices: Object.freeze({
@@ -64,17 +63,16 @@ const shawarma = (
     }),
     addons: Object.freeze(Object.keys(PRODUCT_ADDONS)),
     sauces: ALL_SAUCES,
-    defaultSauce,
   });
 
 const PRODUCT_CONFIGURATIONS = Object.freeze({
   'classic-shawarma': shawarma(300, 530, 400, 700),
-  'tasty-shawarma': shawarma(350, 630, 450, 800, 'tasty'),
-  'curry-shawarma': shawarma(350, 630, 450, 800, 'curry'),
-  'burger-shawarma': shawarma(350, 630, 450, 800, 'burger'),
-  'bbq-shawarma': shawarma(350, 630, 450, 800, 'bbq'),
-  'truffle-shawarma': shawarma(380, 680, 480, 830, 'truffle'),
-  'four-cheese-shawarma': shawarma(430, 700, 500, 850, 'blueCheese'),
+  'tasty-shawarma': shawarma(350, 630, 450, 800),
+  'curry-shawarma': shawarma(350, 630, 450, 800),
+  'burger-shawarma': shawarma(350, 630, 450, 800),
+  'bbq-shawarma': shawarma(350, 630, 450, 800),
+  'truffle-shawarma': shawarma(380, 680, 480, 830),
+  'four-cheese-shawarma': shawarma(430, 700, 500, 850),
   doner: Object.freeze({
     prices: Object.freeze({
       chicken: Object.freeze({ single: 350 }),
@@ -82,7 +80,6 @@ const PRODUCT_CONFIGURATIONS = Object.freeze({
     }),
     addons: Object.freeze([]),
     sauces: ALL_SAUCES,
-    defaultSauce: 'tasty',
   }),
   'doner-box': Object.freeze({
     prices: Object.freeze({
@@ -91,7 +88,6 @@ const PRODUCT_CONFIGURATIONS = Object.freeze({
     }),
     addons: Object.freeze([]),
     sauces: ALL_SAUCES,
-    defaultSauce: 'tasty',
   }),
 });
 
@@ -111,7 +107,6 @@ export const getProductConfiguration = (productId) => {
     },
     addons: [],
     sauces: ALL_SAUCES,
-    defaultSauce: product.category === 'hotdogs' ? 'ketchup' : 'tasty',
   };
 };
 
@@ -123,18 +118,25 @@ export const getAvailableSizes = (productId, meat) =>
 
 export const calculateProductPrice = (
   productId,
-  { meat = 'default', size = 'single', addons = [] } = {},
+  { meat = 'default', size = 'single', addons = [], sauces = [] } = {},
 ) => {
   const configuration = getProductConfiguration(productId);
   const basePrice = configuration?.prices?.[meat]?.[size];
   if (!Number.isFinite(basePrice)) return 0;
 
   const allowedAddons = new Set(configuration.addons);
-  return addons.reduce(
+  const addonTotal = [...new Set(addons)].reduce(
     (total, addon) =>
       total +
       (allowedAddons.has(addon) ? PRODUCT_ADDONS[addon]?.price ?? 0 : 0),
     basePrice,
+  );
+  const allowedSauces = new Set(configuration.sauces);
+  return [...new Set(sauces)].reduce(
+    (total, sauce) =>
+      total +
+      (allowedSauces.has(sauce) ? PRODUCT_SAUCES[sauce]?.price ?? 0 : 0),
+    addonTotal,
   );
 };
 
