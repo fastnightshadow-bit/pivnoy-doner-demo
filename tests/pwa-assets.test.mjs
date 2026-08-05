@@ -60,3 +60,13 @@ test('демонстрационный портал больше не испол
   const manifest = extractJson('demo.webmanifest');
   assert.equal(manifest.icons[0].src, 'assets/app/icon-192.png');
 });
+
+test('курьерский интерфейс устанавливается отдельным PWA', () => {
+  const html = readText('courier.html');
+  assert.match(html, /rel="manifest" href="courier\.webmanifest\?v=20260805"/);
+  assert.match(html, /assets\/courier\/icon-192\.png\?v=20260805/);
+  const manifest = extractJson('courier.webmanifest');
+  assert.equal(manifest.name, 'Пивной Донер — Курьер');
+  assert.equal(manifest.start_url, './courier.html?demo=1');
+  assert.equal(manifest.orientation, 'portrait');
+});
