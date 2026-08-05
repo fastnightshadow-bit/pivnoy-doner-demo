@@ -86,16 +86,22 @@ export const createProgressMarkup = (order = {}) => {
     .join('');
 };
 
-const getItemParameters = (item = {}) =>
-  [
+const getItemParameters = (item = {}) => {
+  const sauces = (
+    Array.isArray(item.sauces) ? item.sauces : item.sauce ? [item.sauce] : []
+  ).filter(Boolean);
+
+  return [
     item.meat,
     item.size,
-    item.sauce && `Соус: ${item.sauce}`,
+    sauces.length &&
+      `${sauces.length === 1 ? 'Соус' : 'Соусы'}: ${sauces.join(', ')}`,
     ...(Array.isArray(item.addons) ? item.addons : []),
   ]
     .map((value) => String(value ?? '').trim())
     .filter(Boolean)
     .join(' · ');
+};
 
 export const createOrderItemsMarkup = (items = []) =>
   (Array.isArray(items) ? items : [])

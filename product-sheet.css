@@ -294,7 +294,11 @@
 }
 
 .product-sheet__sauces button {
+  display: flex;
   min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 10px 12px;
   color: var(--control-ink);
   text-align: left;
@@ -303,6 +307,13 @@
   border-radius: 13px;
   font-size: 13px;
   font-weight: 700;
+}
+
+.product-sheet__sauces button small {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 620;
+  white-space: nowrap;
 }
 
 .product-sheet__sauces button.is-active {
@@ -455,7 +466,8 @@ html.sheet-open body {
 
 @media (hover: hover) and (pointer: fine) {
   .product-sheet__sizes button:hover,
-  .product-sheet__addons button:hover {
+  .product-sheet__addons button:hover,
+  .product-sheet__sauces button:hover {
     border-color: #b8b5af;
   }
 }

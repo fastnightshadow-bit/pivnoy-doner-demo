@@ -10,6 +10,8 @@ import {
 import { createCartLine, getLineSignature } from '../cart-state.js';
 import { loadCart } from '../cart-storage.js';
 import { createProductSheetMarkup } from '../product-sheet.js';
+import { createCartLineMarkup } from '../cart.js';
+import { createOrderItemsMarkup } from '../order.js';
 import { normalizeOrder } from '../order-state.js';
 import { getKitchenItemOptions } from '../kitchen-presentation.js';
 
@@ -105,13 +107,18 @@ test('старая сохранённая корзина мигрирует пр
   assert.deepEqual(loadCart(storage)[0].sauces, ['Тейсти']);
 });
 
-test('карточка блюда показывает выбор одного соуса', () => {
+test('карточка блюда показывает платный множественный выбор соусов', () => {
   const product = PRODUCTS.find(({ id }) => id === 'classic-shawarma');
-  const markup = createProductSheetMarkup(product, { sauce: 'chili' });
-  assert.match(markup, />Соус</);
+  const markup = createProductSheetMarkup(product, {
+    sauces: ['tasty', 'chili'],
+  });
+  assert.match(markup, />Соусы</);
+  assert.match(markup, /Можно выбрать несколько/);
   assert.match(markup, /data-sheet-sauce="chili"/);
-  assert.match(markup, /data-sheet-sauce="chili"[^>]*[\s\S]*?Чили/);
-  assert.match(markup, /Входит в стоимость/);
+  assert.match(markup, /role="checkbox"/);
+  assert.match(markup, /data-sheet-sauce="chili"[^>]*[\s\S]*?Чили[\s\S]*?\+50/);
+  assert.doesNotMatch(markup, /role="radio"/);
+  assert.doesNotMatch(markup, /Входит в стоимость/);
 });
 
 test('несколько соусов сохраняются в заказе и показываются кухне', () => {
@@ -131,4 +138,15 @@ test('несколько соусов сохраняются в заказе и 
   assert.deepEqual(getKitchenItemOptions(order.items[0]), [
     'Соусы: Барбекю, Чили',
   ]);
+});
+
+test('корзина и активный заказ показывают все выбранные соусы', () => {
+  const line = createCartLine({
+    productId: 'classic-shawarma',
+    name: 'Классическая шаурма',
+    unitPrice: 400,
+    sauces: ['Тейсти', 'Чили'],
+  });
+  assert.match(createCartLineMarkup(line), /Соусы: Тейсти, Чили/);
+  assert.match(createOrderItemsMarkup([line]), /Соусы: Тейсти, Чили/);
 });

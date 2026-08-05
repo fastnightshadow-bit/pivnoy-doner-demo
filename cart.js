@@ -19,8 +19,6 @@ import {
 } from './motion.js';
 import {
   getSizeLabelWithWeight,
-  getProductConfiguration,
-  PRODUCT_SAUCES,
   SIZE_LABELS,
 } from './product-config.js';
 
@@ -84,11 +82,17 @@ const createProductMedia = ({ image, icon, name }, className) =>
         <svg class="icon"><use href="#cart-i-${getIconName(icon)}"></use></svg>
       </span>`;
 
-const createParameterRows = ({ meat, size, sauce, addons, comment }) => {
+const createParameterRows = ({ meat, size, sauces, sauce, addons, comment }) => {
+  const normalizedSauces = Array.isArray(sauces)
+    ? sauces
+    : sauce
+      ? [sauce]
+      : [];
   const rows = [
     meat && `Мясо: ${escapeHtml(meat)}`,
     size && `Размер: ${escapeHtml(size)}`,
-    sauce && `Соус: ${escapeHtml(sauce)}`,
+    normalizedSauces.length &&
+      `${normalizedSauces.length === 1 ? 'Соус' : 'Соусы'}: ${escapeHtml(normalizedSauces.join(', '))}`,
     addons?.length && `Добавки: ${escapeHtml(addons.join(', '))}`,
     comment && `Комментарий: ${escapeHtml(comment)}`,
   ].filter(Boolean);
@@ -343,9 +347,6 @@ const initCart = () => {
       unitPrice: product.price,
       image: product.image,
       icon: product.icon,
-      sauce:
-        PRODUCT_SAUCES[getProductConfiguration(product.id)?.defaultSauce]
-          ?.label ?? '',
     });
     lines = addCartLine(lines, addedLine);
     persistCartUpdate({ lineId: addedLine.lineId, pulseTotals: true });

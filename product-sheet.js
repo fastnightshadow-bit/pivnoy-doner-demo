@@ -48,15 +48,19 @@ const normalizeSelection = (productId, selection = {}) => {
     getProductConfiguration(productId)?.addons ?? [],
   );
   const configuration = getProductConfiguration(productId);
-  const sauces = configuration?.sauces ?? [];
-  const sauce = sauces.includes(selection.sauce)
-    ? selection.sauce
-    : configuration?.defaultSauce ?? sauces[0] ?? '';
+  const allowedSauces = new Set(configuration?.sauces ?? []);
+  const selectedSauces = Array.isArray(selection.sauces)
+    ? selection.sauces
+    : selection.sauce
+      ? [selection.sauce]
+      : [];
 
   return {
     meat,
     size,
-    sauce,
+    sauces: [
+      ...new Set(selectedSauces.filter((sauce) => allowedSauces.has(sauce))),
+    ],
     addons: [
       ...new Set(
         (Array.isArray(selection.addons) ? selection.addons : []).filter(
@@ -75,21 +79,25 @@ const createSauceMarkup = (productId, selection) => {
   return `
     <section class="product-sheet__section" aria-labelledby="sheet-sauce-title">
       <header class="product-sheet__section-heading">
-        <h3 id="sheet-sauce-title">Соус</h3>
-        <small>1 соус · Входит в стоимость</small>
+        <h3 id="sheet-sauce-title">Соусы</h3>
+        <small>Можно выбрать несколько</small>
       </header>
-      <div class="product-sheet__sauces" role="radiogroup" aria-label="Выбор соуса">
+      <div class="product-sheet__sauces" aria-label="Выбор соусов">
         ${sauceIds
           .map((sauceId) => {
-            const active = sauceId === selection.sauce;
+            const sauce = PRODUCT_SAUCES[sauceId];
+            const active = selection.sauces.includes(sauceId);
             return `
               <button
                 class="${active ? 'is-active' : ''}"
                 type="button"
-                role="radio"
+                role="checkbox"
                 aria-checked="${active}"
                 data-sheet-sauce="${sauceId}"
-              >${PRODUCT_SAUCES[sauceId]?.label ?? sauceId}</button>`;
+              >
+                <span>${sauce?.label ?? sauceId}</span>
+                <small>+${formatPrice(sauce?.price ?? 0)}</small>
+              </button>`;
           })
           .join('')}
       </div>
@@ -284,7 +292,9 @@ const createSelectionCartLine = (product, selection) =>
     unitPrice: calculateProductPrice(product.id, selection),
     meat: MEAT_LABELS[selection.meat] ?? '',
     size: getSizeLabelWithWeight(selection.size),
-    sauce: PRODUCT_SAUCES[selection.sauce]?.label ?? selection.sauce,
+    sauces: selection.sauces.map(
+      (sauce) => PRODUCT_SAUCES[sauce]?.label ?? sauce,
+    ),
     addons: selection.addons.map(
       (addon) => PRODUCT_ADDONS[addon]?.label ?? addon,
     ),
@@ -467,7 +477,11 @@ export const initProductSheet = ({
 
     const sauceButton = event.target.closest('[data-sheet-sauce]');
     if (sauceButton) {
-      updateSelection({ sauce: sauceButton.dataset.sheetSauce });
+      const sauce = sauceButton.dataset.sheetSauce;
+      const sauces = new Set(state.selection.sauces);
+      if (sauces.has(sauce)) sauces.delete(sauce);
+      else sauces.add(sauce);
+      updateSelection({ sauces: [...sauces] });
       return;
     }
 
@@ -611,6 +625,7 @@ export const initProductSheet = ({
     state.selection = normalizeSelection(product.id, {
       meat,
       size,
+      sauces: selection.sauces,
       sauce: selection.sauce,
       addons: selection.addons ?? [],
       comment: selection.comment ?? '',
