@@ -46,11 +46,24 @@ test('фирменные PNG имеют системные квадратные 
     ['assets/app/icon-maskable-512.png', 512],
     ['assets/courier/icon-192.png', 192],
     ['assets/courier/icon-512.png', 512],
+    ['assets/kitchen/icon-192.png', 192],
+    ['assets/kitchen/icon-512.png', 512],
   ]);
 
   for (const [file, size] of expected) {
     assert.deepEqual(readPngDimensions(file), { width: size, height: size }, file);
   }
+});
+
+test('кухонный интерфейс устанавливается на планшет в альбомной ориентации', () => {
+  const html = readText('kitchen.html');
+  assert.match(html, /name="viewport"/);
+  assert.match(html, /rel="manifest" href="kitchen\.webmanifest"/);
+  assert.doesNotMatch(html, /Демо-PIN/);
+  const manifest = extractJson('kitchen.webmanifest');
+  assert.equal(manifest.name, 'Пивной Донер — Кухня');
+  assert.equal(manifest.start_url, './kitchen.html?demo=1');
+  assert.equal(manifest.orientation, 'landscape');
 });
 
 test('демонстрационный портал больше не использует кухонную иконку', () => {

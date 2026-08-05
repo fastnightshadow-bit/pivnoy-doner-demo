@@ -44,6 +44,7 @@ const initCourier = () => {
     pin: document.querySelector('[data-courier-pin]'),
     pinError: document.querySelector('[data-courier-pin-error]'),
     loginButton: document.querySelector('[data-courier-login-button]'),
+    courierName: document.querySelector('[data-courier-name]'),
     app: document.querySelector('[data-courier-app]'),
     orders: document.querySelector('[data-courier-orders]'),
     count: document.querySelector('[data-courier-count]'),
@@ -126,7 +127,10 @@ const initCourier = () => {
     refs.loginButton.disabled = true;
     refs.loginButton.textContent = 'Входим…';
     try {
-      await api.login(refs.pin.value);
+      const session = await api.login(refs.pin.value);
+      if (refs.courierName) {
+        refs.courierName.textContent = session?.courier?.name || 'Курьер';
+      }
       refs.login.hidden = true;
       refs.app.hidden = false;
       await loadOrders();

@@ -1,11 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDemoCourierApi } from '../courier-api.js';
+import { readText } from './helpers.mjs';
 
 test('демо-курьер входит только по своему PIN', async () => {
   const api = createDemoCourierApi({ delay: async () => {} });
   await assert.rejects(api.login('0000'), /Неверный PIN/);
-  assert.deepEqual(await api.login('5724'), { courier: { name: 'Курьер' } });
+  assert.deepEqual(await api.login('5724'), { courier: { name: 'Павел' } });
+});
+
+test('PIN курьера не написан на странице входа', () => {
+  const html = readText('courier.html');
+  assert.doesNotMatch(html, /5724|Демо-PIN/);
+  assert.match(html, /data-courier-name/);
 });
 
 test('API курьера отдаёт только подтверждённые доставки', async () => {

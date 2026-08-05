@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pivnoy-doner-courier-shell-v1';
+const CACHE_NAME = 'pivnoy-doner-courier-shell-v2';
 const SHELL_FILES = [
   'courier.html?demo=1',
   'courier.css',

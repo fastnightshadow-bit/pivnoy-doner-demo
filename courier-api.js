@@ -60,7 +60,7 @@ export const createDemoCourierApi = ({
         throw new CourierApiError('Неверный PIN', 401);
       }
       session = true;
-      return { courier: { name: 'Курьер' } };
+      return { courier: { name: 'Павел' } };
     },
     async logout() {
       session = false;
