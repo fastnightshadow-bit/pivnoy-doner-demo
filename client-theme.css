@@ -173,6 +173,7 @@ html[data-theme='dark'] .address-details,
 html[data-theme='dark'] .row-icon,
 html[data-theme='dark'] .product-sheet__segments,
 html[data-theme='dark'] .product-sheet__sizes,
+html[data-theme='dark'] .product-sheet__sauces,
 html[data-theme='dark'] .product-sheet__addons,
 html[data-theme='dark'] .product-sheet__quantity,
 html[data-theme='dark'] .purchase-quantity,
@@ -182,6 +183,7 @@ html[data-theme='dark'] .cart-quantity {
 }
 
 html[data-theme='dark'] .product-sheet__sizes button,
+html[data-theme='dark'] .product-sheet__sauces button,
 html[data-theme='dark'] .product-sheet__addons button {
   color: var(--client-text);
   background: var(--control-surface);
@@ -200,6 +202,7 @@ html[data-theme='dark'] .time-options button[aria-pressed='true'],
 html[data-theme='dark'] .payment-option[aria-pressed='true'],
 html[data-theme='dark'] .product-sheet__segments button.is-active,
 html[data-theme='dark'] .product-sheet__sizes button.is-active,
+html[data-theme='dark'] .product-sheet__sauces button.is-active,
 html[data-theme='dark'] .product-sheet__addons button.is-active,
 html[data-theme='dark'] .size-card.is-active {
   color: var(--client-text);
