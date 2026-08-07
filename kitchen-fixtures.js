@@ -7,7 +7,7 @@ export const createDemoEmployees = () =>
     {
       id: 'kitchen',
       name: 'Кухня',
-      pin: '2468',
+      pin: '0000',
       shift: '2 повара',
     },
   ]);
@@ -194,7 +194,13 @@ export const createDemoOrders = (referenceMs = Date.now()) => {
       acceptedAt: at(-20),
       employee: 'Кухня',
       customer: { name: 'Елена', phone: '+7 (900) 000-00-05' },
-      address: { street: 'Примерная улица, 10' },
+      address: {
+        street: 'Примерная улица, 10',
+        entrance: '3',
+        floor: '7',
+        apartment: '41',
+        intercom: '41',
+      },
       items: [
         {
           id: 'cheese-sticks',

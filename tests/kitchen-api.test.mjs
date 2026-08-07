@@ -8,8 +8,8 @@ const createApi = () =>
 
 test('демо-кухня использует один общий аккаунт для двух поваров', async () => {
   const api = createApi();
-  await assert.rejects(api.login('0000'), /Неверный PIN/);
-  assert.deepEqual(await api.login('2468'), {
+  await assert.rejects(api.login('2468'), /Неверный PIN/);
+  assert.deepEqual(await api.login('0000'), {
     employee: { id: 'kitchen', name: 'Кухня' },
     shift: '2 повара',
   });
@@ -17,7 +17,7 @@ test('демо-кухня использует один общий аккаун�
 
 test('изменение статуса записывается от имени кухни', async () => {
   const api = createApi();
-  await api.login('2468');
+  await api.login('0000');
   const { orders } = await api.getBoard();
   const order = orders.find(({ status }) => status === 'new');
   const { order: updated } = await api.changeStatus(
@@ -31,7 +31,7 @@ test('изменение статуса записывается от имени
 
 test('демо-API сохраняет приём заказов и стоп-лист', async () => {
   const api = createApi();
-  await api.login('2468');
+  await api.login('0000');
   assert.deepEqual(await api.getSettings(), {
     acceptingOrders: true,
     stoppedProductIds: [],
@@ -53,7 +53,9 @@ test('демо-API сохраняет приём заказов и стоп-ли
 
 test('экран кухни показывает общие настройки без публичного PIN', () => {
   const html = readText('kitchen.html');
-  assert.doesNotMatch(html, /Личный PIN|Демо-PIN/);
+  const portal = readText('index.html');
+  assert.doesNotMatch(html, /0000|Личный PIN|Демо-PIN/);
+  assert.doesNotMatch(portal, /0000|2468|PIN\s*\d{4}/);
   assert.match(html, /data-kitchen-settings-open/);
   assert.match(html, /data-accepting-orders/);
   assert.match(html, /data-stop-list/);

@@ -56,7 +56,7 @@ export const createDemoCourierApi = ({
   return {
     async login(pin) {
       await delay();
-      if (String(pin || '') !== '5724') {
+      if (String(pin || '') !== '0000') {
         throw new CourierApiError('Неверный PIN', 401);
       }
       session = true;
