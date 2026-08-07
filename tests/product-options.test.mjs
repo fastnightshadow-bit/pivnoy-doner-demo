@@ -237,3 +237,31 @@ test('корзина и активный заказ показывают все 
   assert.match(createCartLineMarkup(line), /Соусы: Тейсти, Чили/);
   assert.match(createOrderItemsMarkup([line]), /Соусы: Тейсти, Чили/);
 });
+
+test('карточка блюда показывает счётчик количества добавки', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'classic-shawarma');
+  const markup = createProductSheetMarkup(product, {
+    meat: 'chicken',
+    size: 'standard',
+    addons: { onion: 2 },
+  });
+
+  assert.match(markup, /data-sheet-addon-change="onion" data-delta="-1"/);
+  assert.match(markup, /data-sheet-addon-value="onion"[^>]*>2</);
+  assert.match(markup, /data-sheet-addon-change="onion" data-delta="1"/);
+});
+
+test('две порции добавки видны в корзине, заказе и на кухне', () => {
+  const line = createCartLine({
+    productId: 'classic-shawarma',
+    name: 'Классическая шаурма',
+    unitPrice: 400,
+    addons: { 'Жареный лук': 2 },
+  });
+
+  assert.match(createCartLineMarkup(line), /Добавки: Жареный лук ×2/);
+  assert.match(createOrderItemsMarkup([line]), /Жареный лук ×2/);
+  assert.deepEqual(getKitchenItemOptions(line), [
+    'Добавки: Жареный лук ×2',
+  ]);
+});

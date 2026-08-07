@@ -1,3 +1,5 @@
+import { normalizeOptionQuantities } from './option-quantities.js';
+
 export const ORDER_STATUSES = Object.freeze([
   'submitted',
   'accepted',
@@ -79,9 +81,7 @@ const normalizeItem = (item = {}) => ({
         .filter(Boolean),
     ),
   ].sort(),
-  addons: Array.isArray(item.addons)
-    ? item.addons.map(toSafeString).filter(Boolean)
-    : [],
+  addons: normalizeOptionQuantities(item.addons),
   comment: toSafeString(item.comment),
   image: toSafeString(item.image),
   icon: toSafeString(item.icon),

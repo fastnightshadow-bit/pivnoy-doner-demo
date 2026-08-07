@@ -19,6 +19,7 @@ import {
   SIZE_WEIGHT_LABELS,
 } from './product-config.js';
 import { pulseMotion } from './motion.js';
+import { normalizeOptionQuantities } from './option-quantities.js';
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -54,6 +55,11 @@ const normalizeSelection = (productId, selection = {}) => {
     : selection.sauce
       ? [selection.sauce]
       : [];
+  const selectedAddons = Object.fromEntries(
+    Object.entries(normalizeOptionQuantities(selection.addons)).filter(
+      ([addon]) => allowedAddons.has(addon),
+    ),
+  );
 
   return {
     meat,
@@ -61,13 +67,7 @@ const normalizeSelection = (productId, selection = {}) => {
     sauces: [
       ...new Set(selectedSauces.filter((sauce) => allowedSauces.has(sauce))),
     ],
-    addons: [
-      ...new Set(
-        (Array.isArray(selection.addons) ? selection.addons : []).filter(
-          (addon) => allowedAddons.has(addon),
-        ),
-      ),
-    ],
+    addons: selectedAddons,
     comment: String(selection.comment ?? ''),
   };
 };
@@ -151,7 +151,7 @@ const createSizeMarkup = (productId, selection) => {
             const price = calculateProductPrice(productId, {
               ...selection,
               size,
-              addons: [],
+              addons: {},
             });
             return `
               <button
@@ -180,18 +180,29 @@ const createAddonMarkup = (productId, selection) => {
         ${addonIds
           .map((addonId) => {
             const addon = PRODUCT_ADDONS[addonId];
-            const active = selection.addons.includes(addonId);
+            const quantity = selection.addons[addonId] ?? 0;
             return `
-              <button
-                class="${active ? 'is-active' : ''}"
-                type="button"
-                role="checkbox"
-                aria-checked="${active}"
-                data-sheet-addon="${addonId}"
-              >
-                <span>${addon.label}</span>
-                <small>+${formatPrice(addon.price)}</small>
-              </button>`;
+              <div class="product-sheet__addon ${quantity ? 'is-active' : ''}">
+                <span>
+                  <strong>${addon.label}</strong>
+                  <small>+${formatPrice(addon.price)} / порция</small>
+                </span>
+                <div class="product-sheet__addon-quantity" aria-label="Количество добавки ${addon.label}">
+                  <button
+                    type="button"
+                    aria-label="Уменьшить количество добавки ${addon.label}"
+                    data-sheet-addon-change="${addonId}" data-delta="-1"
+                    ${quantity === 0 ? 'disabled' : ''}
+                  >−</button>
+                  <output data-sheet-addon-value="${addonId}" aria-live="polite">${quantity}</output>
+                  <button
+                    type="button"
+                    aria-label="Увеличить количество добавки ${addon.label}"
+                    data-sheet-addon-change="${addonId}" data-delta="1"
+                    ${quantity >= 5 ? 'disabled' : ''}
+                  >+</button>
+                </div>
+              </div>`;
           })
           .join('')}
       </div>
@@ -295,8 +306,11 @@ const createSelectionCartLine = (product, selection) =>
     sauces: selection.sauces.map(
       (sauce) => PRODUCT_SAUCES[sauce]?.label ?? sauce,
     ),
-    addons: selection.addons.map(
-      (addon) => PRODUCT_ADDONS[addon]?.label ?? addon,
+    addons: Object.fromEntries(
+      Object.entries(selection.addons).map(([addon, quantity]) => [
+        PRODUCT_ADDONS[addon]?.label ?? addon,
+        quantity,
+      ]),
     ),
     comment: selection.comment,
     image: product.image,
@@ -465,13 +479,15 @@ export const initProductSheet = ({
       return;
     }
 
-    const addonButton = event.target.closest('[data-sheet-addon]');
+    const addonButton = event.target.closest('[data-sheet-addon-change]');
     if (addonButton) {
-      const addon = addonButton.dataset.sheetAddon;
-      const addons = new Set(state.selection.addons);
-      if (addons.has(addon)) addons.delete(addon);
-      else addons.add(addon);
-      updateSelection({ addons: [...addons] });
+      const addon = addonButton.dataset.sheetAddonChange;
+      const delta = Number(addonButton.dataset.delta) || 0;
+      const addons = { ...state.selection.addons };
+      const quantity = Math.min(5, Math.max(0, (addons[addon] ?? 0) + delta));
+      if (quantity > 0) addons[addon] = quantity;
+      else delete addons[addon];
+      updateSelection({ addons });
       return;
     }
 
@@ -627,7 +643,7 @@ export const initProductSheet = ({
       size,
       sauces: selection.sauces,
       sauce: selection.sauce,
-      addons: selection.addons ?? [],
+      addons: selection.addons ?? {},
       comment: selection.comment ?? '',
     });
     state.lockMeat = Boolean(lockMeat);

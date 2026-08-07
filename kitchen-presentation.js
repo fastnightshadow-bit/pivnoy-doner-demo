@@ -1,3 +1,5 @@
+import { formatOptionQuantities } from './option-quantities.js';
+
 const TABLET_WIDTH = 768;
 
 export const getKitchenItemOptions = (item = {}) => {
@@ -19,9 +21,15 @@ export const getKitchenItemOptions = (item = {}) => {
   const sauceLabel = sauces.length
     ? `${sauces.length === 1 ? 'Соус' : 'Соусы'}: ${sauces.join(', ')}`
     : '';
-  return sauceLabel && !options.includes(sauceLabel)
-    ? [...options, sauceLabel]
-    : options;
+  const addonLabels = formatOptionQuantities(item.addons);
+  const addonLabel = addonLabels.length
+    ? `Добавки: ${addonLabels.join(', ')}`
+    : '';
+  return [
+    ...options,
+    ...(sauceLabel && !options.includes(sauceLabel) ? [sauceLabel] : []),
+    ...(addonLabel && !options.includes(addonLabel) ? [addonLabel] : []),
+  ];
 };
 
 export function getKitchenPresentation({ width, height }) {

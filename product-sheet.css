@@ -245,7 +245,7 @@
 }
 
 .product-sheet__sizes button,
-.product-sheet__addons button {
+.product-sheet__addon {
   display: flex;
   min-height: 58px;
   align-items: center;
@@ -264,19 +264,19 @@
 }
 
 .product-sheet__sizes button.is-active,
-.product-sheet__addons button.is-active {
+.product-sheet__addon.is-active {
   border-color: var(--control-ink);
   box-shadow: inset 0 0 0 1px var(--control-ink);
 }
 
 .product-sheet__sizes span,
-.product-sheet__addons span {
+.product-sheet__addon > span {
   font-size: 13px;
   font-weight: 700;
 }
 
 .product-sheet__sizes small,
-.product-sheet__addons small {
+.product-sheet__addon small {
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 620;
@@ -321,8 +321,46 @@
   box-shadow: inset 0 0 0 1px var(--control-ink);
 }
 
-.product-sheet__addons button {
+.product-sheet__addon {
   min-height: 52px;
+}
+
+.product-sheet__addon > span {
+  display: grid;
+  gap: 3px;
+}
+
+.product-sheet__addon-quantity {
+  display: grid;
+  grid-template-columns: 40px 28px 40px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.product-sheet__addon-quantity button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  color: var(--control-ink);
+  background: var(--control-surface);
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.product-sheet__addon-quantity button:disabled {
+  color: var(--color-muted);
+  opacity: 0.45;
+}
+
+.product-sheet__addon-quantity output {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .product-sheet__comment textarea {
@@ -466,7 +504,7 @@ html.sheet-open body {
 
 @media (hover: hover) and (pointer: fine) {
   .product-sheet__sizes button:hover,
-  .product-sheet__addons button:hover,
+  .product-sheet__addon:hover,
   .product-sheet__sauces button:hover {
     border-color: #b8b5af;
   }

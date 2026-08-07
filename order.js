@@ -12,6 +12,7 @@ import {
 } from './order-storage.js';
 import { createReviewService } from './review-service.js';
 import { isReviewableOrder } from './review-state.js';
+import { formatOptionQuantities } from './option-quantities.js';
 import {
   canUseReviewDemo,
   ensureReviewDemoOrder,
@@ -90,13 +91,14 @@ const getItemParameters = (item = {}) => {
   const sauces = (
     Array.isArray(item.sauces) ? item.sauces : item.sauce ? [item.sauce] : []
   ).filter(Boolean);
+  const addons = formatOptionQuantities(item.addons);
 
   return [
     item.meat,
     item.size,
     sauces.length &&
       `${sauces.length === 1 ? 'Соус' : 'Соусы'}: ${sauces.join(', ')}`,
-    ...(Array.isArray(item.addons) ? item.addons : []),
+    ...addons,
   ]
     .map((value) => String(value ?? '').trim())
     .filter(Boolean)

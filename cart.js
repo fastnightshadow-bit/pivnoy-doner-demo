@@ -8,6 +8,7 @@ import {
 } from './cart-state.js';
 import { loadCart, saveCart } from './cart-storage.js';
 import { loadFulfillment } from './fulfillment-storage.js';
+import { formatOptionQuantities } from './option-quantities.js';
 import {
   getDeliveryFee,
   getDeliveryMinimumRemaining,
@@ -88,12 +89,14 @@ const createParameterRows = ({ meat, size, sauces, sauce, addons, comment }) => 
     : sauce
       ? [sauce]
       : [];
+  const normalizedAddons = formatOptionQuantities(addons);
   const rows = [
     meat && `Мясо: ${escapeHtml(meat)}`,
     size && `Размер: ${escapeHtml(size)}`,
     normalizedSauces.length &&
       `${normalizedSauces.length === 1 ? 'Соус' : 'Соусы'}: ${escapeHtml(normalizedSauces.join(', '))}`,
-    addons?.length && `Добавки: ${escapeHtml(addons.join(', '))}`,
+    normalizedAddons.length &&
+      `Добавки: ${escapeHtml(normalizedAddons.join(', '))}`,
     comment && `Комментарий: ${escapeHtml(comment)}`,
   ].filter(Boolean);
 
