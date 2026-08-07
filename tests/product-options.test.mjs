@@ -37,6 +37,56 @@ test('в добавках используется жареный лук', () =>
   assert.equal(PRODUCT_ADDONS.onion.label, 'Жареный лук');
 });
 
+test('две порции жареного лука увеличивают цену на 100 ₽', () => {
+  assert.equal(
+    calculateProductPrice('classic-shawarma', {
+      meat: 'chicken',
+      size: 'standard',
+      addons: { onion: 2 },
+    }),
+    400,
+  );
+});
+
+test('количество добавок входит в идентичность позиции корзины', () => {
+  const base = {
+    productId: 'classic-shawarma',
+    name: 'Классическая шаурма',
+  };
+  const one = createCartLine({
+    ...base,
+    unitPrice: 350,
+    addons: { 'Жареный лук': 1 },
+  });
+  const two = createCartLine({
+    ...base,
+    unitPrice: 400,
+    addons: { 'Жареный лук': 2 },
+  });
+
+  assert.deepEqual(two.addons, { 'Жареный лук': 2 });
+  assert.notEqual(one.lineId, two.lineId);
+});
+
+test('старый массив добавок мигрирует как одна порция', () => {
+  const storage = {
+    getItem: () =>
+      JSON.stringify([
+        {
+          productId: 'classic-shawarma',
+          name: 'Классическая шаурма',
+          unitPrice: 450,
+          addons: ['Сыр', 'Жареный лук'],
+        },
+      ]),
+  };
+
+  assert.deepEqual(loadCart(storage)[0].addons, {
+    'Жареный лук': 1,
+    Сыр: 1,
+  });
+});
+
 test('каждый соус стоит 50 ₽ и по умолчанию ничего не выбрано', () => {
   assert.ok(
     Object.values(PRODUCT_SAUCES).every(({ price }) => price === 50),

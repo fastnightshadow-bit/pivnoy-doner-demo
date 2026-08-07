@@ -1,3 +1,8 @@
+import {
+  normalizeOptionQuantities,
+  serializeOptionQuantities,
+} from './option-quantities.js';
+
 const toNonNegativeNumber = (value) => Math.max(0, Number(value) || 0);
 
 const hashString = (value) => {
@@ -7,9 +12,6 @@ const hashString = (value) => {
   }
   return (hash >>> 0).toString(36);
 };
-
-const normalizeAddons = (addons) =>
-  [...new Set(Array.isArray(addons) ? addons.filter(Boolean) : [])].sort();
 
 const normalizeSauces = (sauces, legacySauce = '') =>
   [
@@ -40,7 +42,7 @@ export const getLineSignature = ({
     meat,
     size,
     normalizedSauces.join(','),
-    normalizeAddons(addons).join(','),
+    serializeOptionQuantities(addons),
     String(comment).trim(),
   ].join('|');
   return `${productId || 'item'}-${hashString(configuration)}`;
@@ -67,7 +69,7 @@ export const createCartLine = ({
     meat: String(meat || ''),
     size: String(size || ''),
     sauces: normalizeSauces(sauces, sauce),
-    addons: normalizeAddons(addons),
+    addons: normalizeOptionQuantities(addons),
     comment: String(comment || '').trim(),
     quantity: Math.max(1, Math.floor(Number(quantity) || 1)),
     image: image || null,

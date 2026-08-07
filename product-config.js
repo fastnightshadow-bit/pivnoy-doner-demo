@@ -1,4 +1,5 @@
 import { PRODUCTS } from './catalog-data.js';
+import { normalizeOptionQuantities } from './option-quantities.js';
 
 export const MEAT_LABELS = Object.freeze({
   chicken: 'Курица',
@@ -118,17 +119,19 @@ export const getAvailableSizes = (productId, meat) =>
 
 export const calculateProductPrice = (
   productId,
-  { meat = 'default', size = 'single', addons = [], sauces = [] } = {},
+  { meat = 'default', size = 'single', addons = {}, sauces = [] } = {},
 ) => {
   const configuration = getProductConfiguration(productId);
   const basePrice = configuration?.prices?.[meat]?.[size];
   if (!Number.isFinite(basePrice)) return 0;
 
   const allowedAddons = new Set(configuration.addons);
-  const addonTotal = [...new Set(addons)].reduce(
-    (total, addon) =>
+  const addonTotal = Object.entries(normalizeOptionQuantities(addons)).reduce(
+    (total, [addon, quantity]) =>
       total +
-      (allowedAddons.has(addon) ? PRODUCT_ADDONS[addon]?.price ?? 0 : 0),
+      (allowedAddons.has(addon)
+        ? (PRODUCT_ADDONS[addon]?.price ?? 0) * quantity
+        : 0),
     basePrice,
   );
   const allowedSauces = new Set(configuration.sauces);
