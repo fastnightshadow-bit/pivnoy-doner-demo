@@ -120,6 +120,9 @@ export const createProductQuantityControl = (
     : '';
 
   if (safeQuantity === 0) {
+    const requestAttribute = product.quickAdd
+      ? `data-quick-add="${product.id}"`
+      : `data-request-product="${product.id}"`;
     return `
       <button
         class="${namespace}-add"
@@ -127,7 +130,7 @@ export const createProductQuantityControl = (
         aria-label="Настроить ${product.name}"
         data-product-control="${product.id}"
         data-control-namespace="${namespace}"
-        data-request-product="${product.id}"
+        ${requestAttribute}
         ${variantData}
       >
         <svg class="icon"><use href="#home-i-plus"></use></svg>
@@ -153,6 +156,20 @@ export const createProductQuantityControl = (
 };
 
 export const createMenuProductCard = (product, quantity = 0) => {
+  if (product.textOnly) {
+    const control = createProductQuantityControl(product, quantity, 'menu');
+    return `
+      <article class="menu-product menu-product--text" data-menu-product="${product.id}">
+        <div class="menu-product__content">
+          <div><h3>${product.name}</h3></div>
+          <footer${quantity > 0 ? ' class="has-quantity"' : ''}>
+            <strong>${product.price} ₽</strong>
+            ${control}
+          </footer>
+        </div>
+      </article>`;
+  }
+
   const media = product.image
     ? `<img src="${product.image}" alt="${product.name}" loading="lazy" decoding="async" />`
     : `<span class="menu-product__placeholder" aria-hidden="true"><svg class="icon"><use href="#home-i-${product.icon}"></use></svg></span>`;

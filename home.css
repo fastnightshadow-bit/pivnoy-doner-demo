@@ -610,6 +610,26 @@ a:focus-visible {
   gap: 12px;
 }
 
+.menu-list--text {
+  grid-template-columns: 1fr;
+}
+
+.menu-product--text {
+  min-height: 76px;
+  grid-template-rows: 1fr;
+  box-shadow: none;
+}
+
+.menu-product--text .menu-product__content {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.menu-product--text .menu-product__content footer {
+  min-width: 154px;
+}
+
 .menu-product {
   position: relative;
   display: grid;

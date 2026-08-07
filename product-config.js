@@ -63,7 +63,7 @@ const shawarma = (
       }),
     }),
     addons: Object.freeze(Object.keys(PRODUCT_ADDONS)),
-    sauces: ALL_SAUCES,
+    sauces: Object.freeze([]),
   });
 
 const PRODUCT_CONFIGURATIONS = Object.freeze({
@@ -80,7 +80,7 @@ const PRODUCT_CONFIGURATIONS = Object.freeze({
       beef: Object.freeze({ single: 450 }),
     }),
     addons: Object.freeze([]),
-    sauces: ALL_SAUCES,
+    sauces: Object.freeze([]),
   }),
   'doner-box': Object.freeze({
     prices: Object.freeze({
@@ -88,7 +88,7 @@ const PRODUCT_CONFIGURATIONS = Object.freeze({
       beef: Object.freeze({ single: 750 }),
     }),
     addons: Object.freeze([]),
-    sauces: ALL_SAUCES,
+    sauces: Object.freeze([]),
   }),
 });
 
@@ -107,7 +107,7 @@ export const getProductConfiguration = (productId) => {
       },
     },
     addons: [],
-    sauces: ALL_SAUCES,
+    sauces: product.category === 'snacks' ? ALL_SAUCES : [],
   };
 };
 

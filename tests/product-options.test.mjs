@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PRODUCTS } from '../catalog-data.js';
+import { CATEGORIES, PRODUCTS } from '../catalog-data.js';
 import {
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
@@ -10,6 +10,7 @@ import {
 import { createCartLine, getLineSignature } from '../cart-state.js';
 import { loadCart } from '../cart-storage.js';
 import { createProductSheetMarkup } from '../product-sheet.js';
+import { createMenuProductCard } from '../home-menu.js';
 import { createCartLineMarkup } from '../cart.js';
 import { createOrderItemsMarkup } from '../order.js';
 import { normalizeOrder } from '../order-state.js';
@@ -92,11 +93,13 @@ test('каждый соус стоит 50 ₽ и по умолчанию нич�
     Object.values(PRODUCT_SAUCES).every(({ price }) => price === 50),
   );
 
-  for (const product of PRODUCTS) {
-    const config = getProductConfiguration(product.id);
-    assert.deepEqual(config.sauces, Object.keys(PRODUCT_SAUCES), product.id);
-    assert.equal(config.defaultSauce, undefined, product.id);
-  }
+  assert.deepEqual(
+    getProductConfiguration('nuggets').sauces,
+    Object.keys(PRODUCT_SAUCES),
+  );
+  assert.deepEqual(getProductConfiguration('classic-shawarma').sauces, []);
+  assert.deepEqual(getProductConfiguration('doner').sauces, []);
+  assert.deepEqual(getProductConfiguration('burger-standard').sauces, []);
 
   const baseSelection = { meat: 'chicken', size: 'standard' };
   assert.equal(
@@ -108,8 +111,34 @@ test('каждый соус стоит 50 ₽ и по умолчанию нич�
       ...baseSelection,
       sauces: ['tasty', 'chili'],
     }),
-    400,
+    300,
   );
+});
+
+test('каталог содержит отдельную текстовую категорию соусов', () => {
+  assert.ok(CATEGORIES.some(({ id }) => id === 'sauces'));
+  const sauces = PRODUCTS.filter(({ category }) => category === 'sauces');
+
+  assert.equal(sauces.length, Object.keys(PRODUCT_SAUCES).length);
+  assert.deepEqual(
+    sauces.map(({ name }) => name),
+    Object.values(PRODUCT_SAUCES).map(({ label }) => label),
+  );
+  assert.ok(
+    sauces.every(
+      ({ image, price, textOnly, quickAdd }) =>
+        !image && price === 50 && textOnly === true && quickAdd === true,
+    ),
+  );
+});
+
+test('соус в каталоге отображается строкой без фотографии', () => {
+  const sauce = PRODUCTS.find(({ id }) => id === 'sauce-tasty');
+  const markup = createMenuProductCard(sauce, 0);
+
+  assert.match(markup, /menu-product--text/);
+  assert.match(markup, /data-quick-add="sauce-tasty"/);
+  assert.doesNotMatch(markup, /<img/);
 });
 
 test('несколько соусов входят в идентичность позиции корзины', () => {
@@ -157,8 +186,8 @@ test('старая сохранённая корзина мигрирует пр
   assert.deepEqual(loadCart(storage)[0].sauces, ['Тейсти']);
 });
 
-test('карточка блюда показывает платный множественный выбор соусов', () => {
-  const product = PRODUCTS.find(({ id }) => id === 'classic-shawarma');
+test('карточка закуски показывает платный множественный выбор соусов', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'nuggets');
   const markup = createProductSheetMarkup(product, {
     sauces: ['tasty', 'chili'],
   });
@@ -169,6 +198,14 @@ test('карточка блюда показывает платный множе
   assert.match(markup, /data-sheet-sauce="chili"[^>]*[\s\S]*?Чили[\s\S]*?\+50/);
   assert.doesNotMatch(markup, /role="radio"/);
   assert.doesNotMatch(markup, /Входит в стоимость/);
+});
+
+test('карточки вне закусок не показывают выбор соуса', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'classic-shawarma');
+  const markup = createProductSheetMarkup(product);
+
+  assert.doesNotMatch(markup, />Соусы</);
+  assert.doesNotMatch(markup, /data-sheet-sauce=/);
 });
 
 test('несколько соусов сохраняются в заказе и показываются кухне', () => {

@@ -11,7 +11,9 @@ import {
   resolveMenuProductLine,
 } from './home-menu.js';
 import {
+  addCartLine,
   changeCartLineQuantity,
+  createCartLine,
 } from './cart-state.js';
 import { loadCart, saveCart } from './cart-storage.js';
 import { PRODUCTS } from './catalog-data.js';
@@ -274,6 +276,7 @@ function initHomeScreen() {
     }
     if (menuRoot) {
       const products = getMenuProducts(state.category, selectedMeat);
+      menuRoot.classList.toggle('menu-list--text', state.category === 'sauces');
       menuRoot.innerHTML = category?.empty
         ? createEmptyCategoryState(category)
         : products
@@ -449,6 +452,33 @@ function initHomeScreen() {
       }
       updatePreferredQuantity(preferred, 1);
       pulseMotion(requestButton);
+      return;
+    }
+
+    const quickAddButton = event.target.closest('[data-quick-add]');
+    if (quickAddButton) {
+      const product = PRODUCTS.find(
+        ({ id }) => id === quickAddButton.dataset.quickAdd,
+      );
+      if (!product?.quickAdd) return;
+      const line = createCartLine({
+        productId: product.id,
+        name: product.name,
+        unitPrice: product.price,
+        image: null,
+        icon: product.icon,
+      });
+      state.lines = addCartLine(state.lines, line);
+      saveCart(window.localStorage, state.lines);
+      preferredLines = savePreferredProductLine(
+        window.localStorage,
+        product.id,
+        line.lineId,
+      );
+      updateProductControls(product.id);
+      updateCart(true);
+      pulseMotion(quickAddButton);
+      showToast('Добавлено в корзину');
       return;
     }
 
