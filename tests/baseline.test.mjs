@@ -28,3 +28,21 @@ test('переключатель курицы и говядины стоит о�
   assert.match(css, /\.menu-section__heading\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*1fr;/s);
   assert.match(css, /\[data-home-meat-switch\]\s*\{[^}]*width:\s*100%;/s);
 });
+
+test('текстовая карточка соуса остаётся компактной на компьютере', () => {
+  const css = readText('home.css');
+
+  assert.match(
+    css,
+    /@media \(min-width:\s*1024px\)[\s\S]*?\.menu-product--text\s*\{[^}]*min-height:\s*76px;/s,
+  );
+});
+
+test('добавки в тёмной теме используют тёмную поверхность', () => {
+  const css = readText('client-theme.css');
+
+  assert.match(
+    css,
+    /html\[data-theme='dark'\]\s+\.product-sheet__addon\s*\{[^}]*background:\s*var\(--control-surface\);/s,
+  );
+});

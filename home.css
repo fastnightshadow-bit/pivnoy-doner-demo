@@ -1598,6 +1598,10 @@ a:focus-visible {
     box-shadow: 0 6px 20px rgb(35 25 18 / 5%);
   }
 
+  .menu-product--text {
+    min-height: 76px;
+  }
+
   .menu-product__media {
     aspect-ratio: 4 / 3;
   }
