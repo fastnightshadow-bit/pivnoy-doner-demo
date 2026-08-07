@@ -27,7 +27,7 @@
 
 html,
 body {
-  min-width: 720px;
+  min-width: 0;
   min-height: 100%;
   margin: 0;
 }
@@ -1014,6 +1014,10 @@ dialog input[type="radio"] {
   gap: 10px;
 }
 
+.kitchen-mobile-columns {
+  display: none;
+}
+
 .settings-dialog {
   width: min(94vw, 680px);
 }
@@ -1229,6 +1233,197 @@ dialog input[type="radio"] {
 
   .employee-control {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .kitchen-app,
+  .board-view {
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  .board-view {
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  }
+
+  .kitchen-topbar {
+    grid-template-areas:
+      "brand employee"
+      "status status"
+      "search actions";
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .kitchen-brand {
+    grid-area: brand;
+  }
+
+  .kitchen-brand span {
+    display: grid;
+  }
+
+  .kitchen-brand img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .topbar-status {
+    display: flex;
+    grid-area: status;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    padding-inline: 2px;
+  }
+
+  .kitchen-search {
+    grid-area: search;
+    min-width: 0;
+  }
+
+  .kitchen-search input {
+    width: 100%;
+  }
+
+  .topbar-actions {
+    grid-area: actions;
+    gap: 4px;
+  }
+
+  .topbar-actions .icon-button,
+  .topbar-actions .toolbar-button {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .employee-control {
+    grid-area: employee;
+    grid-template-columns: auto;
+  }
+
+  .employee-control__copy,
+  .employee-avatar {
+    display: none;
+  }
+
+  .employee-control button {
+    min-height: 40px;
+    padding-inline: 12px;
+    background: var(--kitchen-soft);
+  }
+
+  .kitchen-mobile-columns {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(82px, 1fr));
+    gap: 4px;
+    min-height: 54px;
+    padding: 5px 8px;
+    overflow-x: auto;
+    background: var(--kitchen-surface);
+    border-bottom: 1px solid var(--kitchen-line);
+    scrollbar-width: none;
+  }
+
+  .kitchen-mobile-columns::-webkit-scrollbar {
+    display: none;
+  }
+
+  .kitchen-mobile-columns button {
+    display: flex;
+    min-width: 82px;
+    min-height: 44px;
+    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    color: var(--kitchen-muted);
+    background: var(--kitchen-soft);
+    border: 1px solid transparent;
+    border-radius: 11px;
+    font-size: 11px;
+    font-weight: 750;
+  }
+
+  .kitchen-mobile-columns button.is-active {
+    color: var(--kitchen-text);
+    background: var(--kitchen-surface);
+    border-color: var(--kitchen-text);
+  }
+
+  .kitchen-mobile-columns b {
+    display: grid;
+    min-width: 20px;
+    height: 20px;
+    place-items: center;
+    background: var(--kitchen-surface);
+    border: 1px solid var(--kitchen-line);
+    border-radius: 999px;
+    font-size: 10px;
+  }
+
+  .kitchen-board {
+    display: block;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .kanban-column {
+    height: 100%;
+  }
+
+  .kanban-column:not(.is-current) {
+    display: none;
+  }
+
+  .kanban-column__header {
+    min-height: 48px;
+  }
+
+  .kanban-column__list {
+    padding: 8px;
+  }
+
+  .order-card__open {
+    padding: 12px 12px 8px;
+  }
+
+  .order-card__footer {
+    grid-template-columns: auto minmax(136px, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 0 12px 12px;
+  }
+
+  .order-card__action {
+    width: 100%;
+  }
+
+  .order-panel {
+    width: 100vw;
+    height: 100dvh;
+    border-left: 0;
+  }
+
+  dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .settings-dialog form {
+    max-height: calc(100dvh - 20px);
+  }
+
+  .toast-region {
+    right: 10px;
+    bottom: 10px;
+    width: calc(100vw - 20px);
   }
 }
 

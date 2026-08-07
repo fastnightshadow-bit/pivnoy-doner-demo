@@ -421,6 +421,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     filterForm: root.querySelector('[data-filter-form]'),
     filterReset: root.querySelector('[data-filter-reset]'),
     filterChips: root.querySelector('[data-filter-chips]'),
+    mobileColumns: root.querySelector('[data-mobile-columns]'),
     historyOpen: root.querySelector('[data-history-open]'),
     historyClose: root.querySelector('[data-history-close]'),
     historyView: root.querySelector('[data-history-view]'),
@@ -456,6 +457,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     query: '',
     fulfillment: 'all',
     urgency: 'all',
+    activeMobileColumn: 'new',
     connected: false,
     soundMuted: false,
     settings: normalizeKitchenSettings(),
@@ -650,7 +652,21 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       const list = column.querySelector('[data-column-list]');
       const count = column.querySelector('[data-column-count]');
       const orders = groups[definition.id] || [];
+      column.classList.toggle(
+        'is-current',
+        definition.id === state.activeMobileColumn,
+      );
       if (count) count.textContent = String(orders.length);
+      const mobileButton = refs.mobileColumns?.querySelector(
+        `[data-mobile-column="${definition.id}"]`,
+      );
+      if (mobileButton) {
+        const active = definition.id === state.activeMobileColumn;
+        mobileButton.classList.toggle('is-active', active);
+        mobileButton.setAttribute('aria-pressed', String(active));
+        const mobileCount = mobileButton.querySelector('[data-mobile-column-count]');
+        if (mobileCount) mobileCount.textContent = String(orders.length);
+      }
       if (list) {
         list.innerHTML = orders.length
           ? orders.map(createOrderCardMarkup).join('')
@@ -1119,6 +1135,14 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     if (key === 'fulfillment' || key === 'urgency') state[key] = 'all';
     const input = refs.filterForm?.querySelector(`[name="${key}"][value="all"]`);
     if (input) input.checked = true;
+    renderBoard();
+  });
+  refs.mobileColumns?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-mobile-column]');
+    if (!button) return;
+    const columnId = button.dataset.mobileColumn;
+    if (!KITCHEN_COLUMNS.some(({ id }) => id === columnId)) return;
+    state.activeMobileColumn = columnId;
     renderBoard();
   });
   refs.historyOpen?.addEventListener('click', () => void showHistoryMode());

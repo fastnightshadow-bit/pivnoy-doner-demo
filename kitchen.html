@@ -120,8 +120,23 @@
 
         <div class="filter-chips" data-filter-chips hidden></div>
 
+        <nav class="kitchen-mobile-columns" data-mobile-columns aria-label="Статусы заказов">
+          <button class="is-active" type="button" aria-pressed="true" data-mobile-column="new">
+            <span>Новые</span><b data-mobile-column-count="new">0</b>
+          </button>
+          <button type="button" aria-pressed="false" data-mobile-column="accepted">
+            <span>Приняты</span><b data-mobile-column-count="accepted">0</b>
+          </button>
+          <button type="button" aria-pressed="false" data-mobile-column="cooking">
+            <span>Готовятся</span><b data-mobile-column-count="cooking">0</b>
+          </button>
+          <button type="button" aria-pressed="false" data-mobile-column="ready">
+            <span>Готовы</span><b data-mobile-column-count="ready">0</b>
+          </button>
+        </nav>
+
         <section class="kitchen-board" data-board aria-label="Активные заказы кухни">
-          <section class="kanban-column" data-column="new">
+          <section class="kanban-column is-current" data-column="new">
             <header class="kanban-column__header">
               <span class="column-dot column-dot--new" aria-hidden="true"></span>
               <h2>Новые</h2>

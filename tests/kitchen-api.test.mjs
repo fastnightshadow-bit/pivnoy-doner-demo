@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDemoKitchenApi } from '../kitchen-api.js';
+import { getKitchenPresentation } from '../kitchen-presentation.js';
 import { readText } from './helpers.mjs';
 
 const createApi = () =>
@@ -60,4 +61,18 @@ test('экран кухни показывает общие настройки �
   assert.match(html, /data-accepting-orders/);
   assert.match(html, /data-stop-list/);
   assert.match(html, />Выйти</);
+});
+
+test('кухня на телефоне показывает одну рабочую колонку и переключатель статусов', () => {
+  const html = readText('kitchen.html');
+  const css = readText('kitchen.css');
+
+  assert.deepEqual(getKitchenPresentation({ width: 390, height: 844 }), {
+    mode: 'phone',
+    scale: 1,
+  });
+  assert.match(html, /data-mobile-columns/);
+  assert.equal((html.match(/data-mobile-column="/g) || []).length, 4);
+  assert.match(css, /@media\s*\(max-width:\s*640px\)/);
+  assert.match(css, /\.kanban-column:not\(\.is-current\)\s*\{\s*display:\s*none;/s);
 });

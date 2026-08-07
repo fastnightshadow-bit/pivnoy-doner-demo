@@ -33,13 +33,7 @@ export const getKitchenItemOptions = (item = {}) => {
 };
 
 export function getKitchenPresentation({ width, height }) {
-  if (width < TABLET_WIDTH && height >= width) {
-    return { mode: 'portrait-phone', scale: 1 };
-  }
-
-  if (width < TABLET_WIDTH) {
-    return { mode: 'scaled-landscape-phone', scale: width / TABLET_WIDTH };
-  }
+  if (width < TABLET_WIDTH) return { mode: 'phone', scale: 1 };
 
   return { mode: 'tablet', scale: 1 };
 }
@@ -56,19 +50,14 @@ export function initKitchenPresentation({ windowRef, documentRef } = {}) {
       width: windowRef.innerWidth,
       height: windowRef.innerHeight,
     });
-    const virtualHeight = presentation.mode === 'scaled-landscape-phone'
-      ? windowRef.innerHeight / presentation.scale
-      : windowRef.innerHeight;
-
     body.dataset.kitchenPresentation = presentation.mode;
     documentElement.dataset.kitchenPresentation = presentation.mode;
     body.style.setProperty('--kitchen-demo-scale', String(presentation.scale));
-    body.style.setProperty('--kitchen-demo-height', `${virtualHeight}px`);
+    body.style.setProperty('--kitchen-demo-height', `${windowRef.innerHeight}px`);
 
     if (guide) {
-      const isVisible = presentation.mode === 'portrait-phone';
-      guide.hidden = !isVisible;
-      guide.setAttribute('aria-hidden', String(!isVisible));
+      guide.hidden = true;
+      guide.setAttribute('aria-hidden', 'true');
     }
   };
 
