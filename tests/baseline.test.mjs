@@ -18,3 +18,13 @@ test('свежая демонстрационная версия содержи�
     assert.match(readText(page), /<!doctype html>/i, page);
   }
 });
+
+test('переключатель курицы и говядины стоит отдельной строкой под заголовком шаурмы', () => {
+  const html = readText('home.html');
+  const css = readText('home.css');
+  const heading = html.match(/<div class="menu-section__heading">([\s\S]*?)<\/div>\s*<div class="menu-list"/)?.[1] ?? '';
+
+  assert.ok(heading.indexOf('data-home-menu-title') < heading.indexOf('data-home-meat-switch'));
+  assert.match(css, /\.menu-section__heading\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*1fr;/s);
+  assert.match(css, /\[data-home-meat-switch\]\s*\{[^}]*width:\s*100%;/s);
+});

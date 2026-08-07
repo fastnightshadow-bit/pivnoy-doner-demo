@@ -564,10 +564,10 @@ a:focus-visible {
 }
 
 .menu-section__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 10px;
   margin-bottom: 14px;
 }
 
@@ -579,6 +579,7 @@ a:focus-visible {
 
 .menu-meat-switch {
   display: grid;
+  width: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 3px;
   background: var(--color-soft);
@@ -608,6 +609,14 @@ a:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+[data-home-meat-switch] {
+  width: 100%;
+}
+
+[data-home-meat-switch][hidden] {
+  display: none;
 }
 
 .menu-list--text {
@@ -1380,11 +1389,6 @@ a:focus-visible {
 }
 
 @media (max-width: 380px) {
-  .menu-section__heading {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .menu-meat-switch button {
     min-width: 0;
   }
