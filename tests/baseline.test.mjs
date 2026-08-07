@@ -30,8 +30,14 @@ test('переключатель курицы и говядины стоит о�
 });
 
 test('текстовая карточка соуса остаётся компактной на компьютере', () => {
+  const html = readText('home.html');
   const css = readText('home.css');
 
+  assert.match(html, /href="home\.css\?v=20260807"/);
+  assert.match(
+    css,
+    /\.menu-product\.menu-product--text\s*\{[^}]*min-height:\s*76px;/s,
+  );
   assert.match(
     css,
     /@media \(min-width:\s*1024px\)[\s\S]*?\.menu-product--text\s*\{[^}]*min-height:\s*76px;/s,

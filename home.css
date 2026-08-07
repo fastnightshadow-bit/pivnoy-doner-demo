@@ -623,7 +623,7 @@ a:focus-visible {
   grid-template-columns: 1fr;
 }
 
-.menu-product--text {
+.menu-product.menu-product--text {
   min-height: 76px;
   grid-template-rows: 1fr;
   box-shadow: none;
