@@ -52,3 +52,10 @@ test('добавки в тёмной теме используют тёмную 
     /html\[data-theme='dark'\]\s+\.product-sheet__addon\s*\{[^}]*background:\s*var\(--control-surface\);/s,
   );
 });
+
+test('бренд в шапке кухни является статичным и не открывает страницу', () => {
+  const html = readText('kitchen.html');
+
+  assert.doesNotMatch(html, /<a\s+class="kitchen-brand"/);
+  assert.match(html, /<div\s+class="kitchen-brand">/);
+});
