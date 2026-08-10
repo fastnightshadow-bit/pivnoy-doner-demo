@@ -1,6 +1,7 @@
 import { normalizeOrder } from './order-state.js';
 
 export const ACTIVE_ORDER_STORAGE_KEY = 'pivnoy-doner-active-order-v1';
+export const ACTIVE_ORDER_ID_STORAGE_KEY = 'pivnoy-doner-active-order-id-v1';
 
 const getBrowserStorage = () =>
   typeof window !== 'undefined' ? window.localStorage : null;
@@ -30,6 +31,22 @@ export const saveActiveOrder = (
     return normalized;
   }
 
+  return normalized;
+};
+
+export const loadActiveOrderId = (storage = getBrowserStorage()) => {
+  if (!storage?.getItem) return '';
+  return String(storage.getItem(ACTIVE_ORDER_ID_STORAGE_KEY) || '').trim();
+};
+
+export const saveActiveOrderId = (
+  storage = getBrowserStorage(),
+  orderId = '',
+) => {
+  const normalized = String(orderId || '').trim();
+  if (!storage?.setItem) return normalized;
+  if (normalized) storage.setItem(ACTIVE_ORDER_ID_STORAGE_KEY, normalized);
+  else storage.removeItem?.(ACTIVE_ORDER_ID_STORAGE_KEY);
   return normalized;
 };
 

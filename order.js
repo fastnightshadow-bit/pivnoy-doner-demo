@@ -7,6 +7,7 @@ import {
 } from './order-state.js';
 import {
   loadActiveOrder,
+  loadActiveOrderId,
   saveActiveOrder,
   subscribeToActiveOrder,
 } from './order-storage.js';
@@ -17,6 +18,8 @@ import {
   canUseReviewDemo,
   ensureReviewDemoOrder,
 } from './order-demo.js';
+import { clientApi } from './client-api.js';
+import { useProductionApi } from './runtime-mode.js';
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -293,12 +296,18 @@ const initOrder = () => {
   const refs = getRefs(root);
   if (!refs.screen) return;
 
-  let currentOrder = ensureReviewDemoOrder({
+  const productionApi = useProductionApi();
+  let currentOrder = productionApi
+    ? null
+    : ensureReviewDemoOrder({
+        storage: window.localStorage,
+        hostname: window.location.hostname,
+        search: window.location.search,
+      });
+  const reviewService = createReviewService({
     storage: window.localStorage,
-    hostname: window.location.hostname,
-    search: window.location.search,
+    api: productionApi ? clientApi : null,
   });
-  const reviewService = createReviewService({ storage: window.localStorage });
   let selectedRating = 0;
 
   const renderRating = (rating = 0) => {
@@ -382,7 +391,10 @@ const initOrder = () => {
       showReviewSuccess(true);
       revealMotion(refs.reviewSuccess);
     } catch (error) {
-      if (String(error?.message).includes('already-reviewed')) {
+      if (
+        error?.code === 'ALREADY_REVIEWED' ||
+        String(error?.message).includes('already-reviewed')
+      ) {
         showReviewSuccess(true);
         return;
       }
@@ -410,18 +422,41 @@ const initOrder = () => {
     )}`;
   });
 
-  const unsubscribe = subscribeToActiveOrder(window, (order) => {
-    update(order, { animate: true });
-  });
+  const activeOrderId = productionApi
+    ? loadActiveOrderId(window.localStorage)
+    : '';
+  const refreshOrder = async ({ animate = false } = {}) => {
+    if (!productionApi || !activeOrderId) return;
+    try {
+      update(await clientApi.getOrder(activeOrderId), { animate });
+    } catch (error) {
+      if (error?.status === 404) update(null);
+    }
+  };
+  const unsubscribe = productionApi
+    ? activeOrderId
+      ? clientApi.subscribeToOrder(activeOrderId, {
+          onUpdate: () => void refreshOrder({ animate: true }),
+        })
+      : () => {}
+    : subscribeToActiveOrder(window, (order) => {
+        update(order, { animate: true });
+      });
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      update(loadActiveOrder(window.localStorage), { animate: true });
+      if (productionApi) void refreshOrder({ animate: true });
+      else update(loadActiveOrder(window.localStorage), { animate: true });
     }
   });
   window.addEventListener('pagehide', unsubscribe, { once: true });
 
-  update(currentOrder);
+  if (productionApi) {
+    update(null);
+    void refreshOrder();
+  } else {
+    update(currentOrder);
+  }
 };
 
 if (typeof document !== 'undefined') {

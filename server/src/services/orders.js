@@ -7,6 +7,7 @@ export const createOrderService = ({
   createId = randomUUID,
   now = () => new Date(),
 }) => ({
+  get: (id) => orders.findById(id),
   create: async (input, idempotencyKey) => {
     const existing = await orders.findByIdempotencyKey(idempotencyKey);
     if (existing) return { order: existing, created: false };

@@ -7,12 +7,21 @@ import {
 
 export const createReviewService = ({
   storage = globalThis.localStorage,
+  api = null,
 } = {}) => ({
-  list: async () => loadReviews(storage),
-  findByOrderId: async (orderId) => findReviewByOrderId(storage, orderId),
+  list: async () => (api ? api.listReviews() : loadReviews(storage)),
+  findByOrderId: async (orderId) =>
+    api ? api.findReviewByOrderId(orderId) : findReviewByOrderId(storage, orderId),
   submit: async (draft) => {
     const review = createReview(draft);
     if (!review) throw new Error('invalid-review');
+    if (api) {
+      return api.submitReview(review.orderId, {
+        rating: review.rating,
+        authorName: review.authorName,
+        comment: review.comment,
+      });
+    }
     return saveReview(storage, review);
   },
 });

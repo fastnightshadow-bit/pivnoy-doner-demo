@@ -8,6 +8,8 @@ const mapOrder = (row) => ({
   customerName: row.customer_name,
   phone: row.phone,
   address: row.address,
+  comment: row.customer_comment,
+  courierComment: row.courier_comment,
   itemsTotal: row.items_total,
   deliveryTotal: row.delivery_total,
   discountTotal: row.discount_total,
@@ -15,9 +17,35 @@ const mapOrder = (row) => ({
   eta: { min: row.eta_min, max: row.eta_max },
   version: row.version,
   createdAt: row.created_at,
+  items: Array.isArray(row.items)
+    ? row.items.map((item) => ({
+        lineId: item.id,
+        productId: item.product_id,
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        ...(item.configuration || {}),
+      }))
+    : undefined,
 });
 
 export const createOrdersRepository = (pool) => ({
+  findById: async (id) => {
+    const result = await pool.query(
+      `select o.*,
+        coalesce(
+          json_agg(oi order by oi.id) filter (where oi.id is not null),
+          '[]'
+        ) as items
+       from orders o
+       left join order_items oi on oi.order_id = o.id
+       where o.id = $1
+       group by o.id`,
+      [id],
+    );
+    return result.rows[0] ? mapOrder(result.rows[0]) : null;
+  },
+
   findByIdempotencyKey: async (key) => {
     const result = await pool.query(
       'select * from orders where idempotency_key = $1',

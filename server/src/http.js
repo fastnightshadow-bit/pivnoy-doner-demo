@@ -10,6 +10,8 @@ import { createAuthService } from './auth/session.js';
 import { createStaffOrdersRepository } from './repositories/staff-orders.js';
 import { createEventsRepository } from './repositories/events.js';
 import { createStatusService } from './services/statuses.js';
+import { createReviewsRepository } from './repositories/reviews.js';
+import { createReviewsService } from './services/reviews.js';
 
 const config = loadConfig();
 
@@ -28,6 +30,9 @@ const authService = createAuthService({ repository: createAuthRepository(db) });
 const staffOrders = createStaffOrdersRepository(db);
 const statusService = createStatusService({ orders: staffOrders });
 const events = createEventsRepository(db);
+const reviewsService = createReviewsService({
+  reviews: createReviewsRepository(db),
+});
 
 const server = createApp({
   db,
@@ -36,6 +41,7 @@ const server = createApp({
   staffOrders,
   statusService,
   events,
+  reviewsService,
   nodeEnv: config.nodeEnv,
 }).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);

@@ -6,6 +6,7 @@ import { createOrdersRouter } from './routes/orders.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createStaffOrdersRouter } from './routes/staff-orders.js';
 import { createEventsRouter } from './routes/events.js';
+import { createReviewsRouter } from './routes/reviews.js';
 
 export const createApp = ({
   db,
@@ -14,6 +15,7 @@ export const createApp = ({
   staffOrders = null,
   statusService = null,
   events = null,
+  reviewsService = null,
   nodeEnv = 'development',
 }) => {
   const app = express();
@@ -37,7 +39,15 @@ export const createApp = ({
     );
   }
   if (events) app.use('/api/events', createEventsRouter({ events }));
-  if (orderService) app.use('/api/orders', createOrdersRouter({ orderService }));
+  if (reviewsService) {
+    app.use('/api/reviews', createReviewsRouter({ reviews: reviewsService }));
+  }
+  if (orderService) {
+    app.use(
+      '/api/orders',
+      createOrdersRouter({ orderService, reviewsService }),
+    );
+  }
 
   app.use('/api', (_request, response) => {
     response.status(404).json({ error: 'NOT_FOUND' });

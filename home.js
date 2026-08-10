@@ -30,6 +30,7 @@ import {
 import { getOrderPresentation } from './order-state.js';
 import {
   loadActiveOrder,
+  loadActiveOrderId,
   subscribeToActiveOrder,
 } from './order-storage.js';
 import {
@@ -40,6 +41,8 @@ import {
 import { initProductSheet } from './product-sheet.js';
 import { createReviewService } from './review-service.js';
 import { createReviewsSectionMarkup } from './review-view.js';
+import { clientApi } from './client-api.js';
+import { useProductionApi } from './runtime-mode.js';
 
 export function selectCategory(labels, activeIndex) {
   return labels.map((label, index) => ({ label, active: index === activeIndex }));
@@ -93,6 +96,7 @@ function initHomeScreen() {
   );
   const reviewsRoot = document.querySelector('[data-home-reviews]');
   const savedFulfillment = loadFulfillment(window.localStorage);
+  const productionApi = useProductionApi();
 
   const storedLines = loadInitialHomeCart(window.localStorage);
   let preferredLines = loadPreferredProductLines(window.localStorage);
@@ -111,7 +115,10 @@ function initHomeScreen() {
 
   const renderReviews = async () => {
     if (!reviewsRoot) return;
-    const reviewService = createReviewService({ storage: window.localStorage });
+    const reviewService = createReviewService({
+      storage: window.localStorage,
+      api: productionApi ? clientApi : null,
+    });
     try {
       reviewsRoot.innerHTML = createReviewsSectionMarkup(
         await reviewService.list(),
@@ -134,11 +141,31 @@ function initHomeScreen() {
     }`;
   };
 
-  renderActiveOrder(loadActiveOrder(window.localStorage));
-  const unsubscribeActiveOrder = subscribeToActiveOrder(
-    window,
-    renderActiveOrder,
-  );
+  const activeOrderId = productionApi
+    ? loadActiveOrderId(window.localStorage)
+    : '';
+  const refreshActiveOrder = async () => {
+    if (!activeOrderId) {
+      renderActiveOrder(null);
+      return;
+    }
+    try {
+      renderActiveOrder(await clientApi.getOrder(activeOrderId));
+    } catch (error) {
+      if (error?.status === 404) renderActiveOrder(null);
+    }
+  };
+
+  if (productionApi) void refreshActiveOrder();
+  else renderActiveOrder(loadActiveOrder(window.localStorage));
+
+  const unsubscribeActiveOrder = productionApi
+    ? activeOrderId
+      ? clientApi.subscribeToOrder(activeOrderId, {
+          onUpdate: () => void refreshActiveOrder(),
+        })
+      : () => {}
+    : subscribeToActiveOrder(window, renderActiveOrder);
   window.addEventListener('pagehide', unsubscribeActiveOrder, {
     once: true,
   });

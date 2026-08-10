@@ -28,8 +28,46 @@ const orderSchema = z.object({
     .max(50),
 });
 
-export const createOrdersRouter = ({ orderService }) => {
+const reviewSchema = z.object({
+  rating: z.coerce.number().int().min(1).max(5),
+  authorName: z.string().max(80).optional(),
+  comment: z.string().max(500).optional(),
+});
+
+export const createOrdersRouter = ({ orderService, reviewsService = null }) => {
   const router = Router();
+
+  if (typeof orderService.get === 'function') {
+    router.get('/:id', async (request, response) => {
+      const order = await orderService.get(String(request.params.id));
+      if (!order) return response.status(404).json({ error: 'ORDER_NOT_FOUND' });
+      return response.json(order);
+    });
+  }
+
+  if (reviewsService) {
+    router.get('/:id/review', async (request, response) => {
+      const review = await reviewsService.findByOrderId(String(request.params.id));
+      if (!review) return response.status(404).json({ error: 'REVIEW_NOT_FOUND' });
+      return response.json(review);
+    });
+
+    router.post('/:id/review', async (request, response) => {
+      try {
+        const draft = reviewSchema.parse(request.body);
+        const review = await reviewsService.submit(String(request.params.id), draft);
+        return response.status(201).json(review);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return response.status(400).json({ error: 'INVALID_REVIEW' });
+        }
+        if (error?.status) {
+          return response.status(error.status).json({ error: error.code });
+        }
+        throw error;
+      }
+    });
+  }
 
   router.post('/', async (request, response) => {
     const idempotencyKey = String(request.get('Idempotency-Key') ?? '').trim();

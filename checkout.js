@@ -16,6 +16,7 @@ import { createOrderSnapshot } from './order-state.js';
 import {
   loadActiveOrder,
   saveActiveOrder,
+  saveActiveOrderId,
 } from './order-storage.js';
 import { loadPayment, savePayment } from './payment-storage.js';
 import { getPromoResult } from './promo-state.js';
@@ -26,6 +27,67 @@ import {
   loadPromo,
   savePromo,
 } from './promo-storage.js';
+import { clientApi } from './client-api.js';
+import { useProductionApi } from './runtime-mode.js';
+
+const CHECKOUT_ATTEMPT_STORAGE_KEY = 'pivnoy-doner-checkout-attempt-v1';
+
+export const createCheckoutOrderPayload = ({
+  lines = [],
+  fulfillment = 'pickup',
+  customerName = '',
+  phone = '',
+  address = {},
+  courierComment = '',
+} = {}) => ({
+  fulfillment: fulfillment === 'delivery' ? 'delivery' : 'pickup',
+  customer: {
+    name: String(customerName || '').trim(),
+    phone: String(phone || '').trim(),
+  },
+  ...(fulfillment === 'delivery' ? { address } : {}),
+  courierComment: String(courierComment || '').trim(),
+  items: (Array.isArray(lines) ? lines : []).map((line) => ({
+    productId: String(line.productId || ''),
+    quantity: Math.max(1, Number(line.quantity) || 1),
+    meat: String(line.meat || ''),
+    size: String(line.size || ''),
+    addons: line.addons || {},
+    sauces: line.sauces || {},
+  })),
+});
+
+export const getCheckoutAttemptKey = (
+  storage,
+  payload,
+  {
+    randomUUID = globalThis.crypto?.randomUUID?.bind(globalThis.crypto),
+    now = Date.now,
+  } = {},
+) => {
+  const fingerprint = JSON.stringify(payload);
+  try {
+    const saved = JSON.parse(
+      storage?.getItem?.(CHECKOUT_ATTEMPT_STORAGE_KEY) || 'null',
+    );
+    if (saved?.fingerprint === fingerprint && saved?.key) return saved.key;
+  } catch {
+    // A damaged retry marker is replaced below.
+  }
+  const suffix =
+    typeof randomUUID === 'function'
+      ? randomUUID()
+      : `${now()}-${Math.random().toString(36).slice(2)}`;
+  const key = `checkout-${suffix}`;
+  storage?.setItem?.(
+    CHECKOUT_ATTEMPT_STORAGE_KEY,
+    JSON.stringify({ fingerprint, key }),
+  );
+  return key;
+};
+
+const clearCheckoutAttempt = (storage) =>
+  storage?.removeItem?.(CHECKOUT_ATTEMPT_STORAGE_KEY);
 
 export const formatCheckoutPrice = (value) =>
   `${Math.max(0, Number(value) || 0).toLocaleString('ru-RU')}\u00a0₽`;
@@ -466,7 +528,7 @@ const initCheckout = () => {
     });
   });
 
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const errors = validateCheckout(getCheckoutData());
     const order = getCheckoutFieldOrder(
@@ -504,7 +566,7 @@ const initCheckout = () => {
       promoCode,
       state.fulfillment,
     );
-    const activeOrder = createOrderSnapshot({
+    const snapshotInput = {
       lines,
       summary,
       fulfillment: state.fulfillment,
@@ -517,15 +579,50 @@ const initCheckout = () => {
         state.timeMode === 'scheduled' ? timeSelect.value : '',
       eta: createPreparationEta(lines),
       previousOrder,
-    });
-    saveActiveOrder(window.localStorage, activeOrder);
-    saveCart(window.localStorage, []);
+    };
 
     confirmButton.classList.add('is-loading');
     confirmButton.disabled = true;
-    window.setTimeout(() => {
+    if (!useProductionApi()) {
+      const activeOrder = createOrderSnapshot(snapshotInput);
+      saveActiveOrder(window.localStorage, activeOrder);
+      saveCart(window.localStorage, []);
+      window.setTimeout(() => {
+        window.location.href = 'order.html';
+      }, 220);
+      return;
+    }
+
+    const payload = createCheckoutOrderPayload({
+      lines,
+      fulfillment: state.fulfillment,
+      customerName: customerNameInput?.value || '',
+      phone: phoneInput.value,
+      address: readDeliveryAddress(),
+      courierComment: courierComment?.value || '',
+    });
+    const attemptKey = getCheckoutAttemptKey(
+      window.sessionStorage,
+      payload,
+    );
+
+    try {
+      const order = await clientApi.createOrder(payload, attemptKey);
+      saveActiveOrderId(window.localStorage, order.id);
+      saveCart(window.localStorage, []);
+      clearCheckoutAttempt(window.sessionStorage);
       window.location.href = 'order.html';
-    }, 220);
+    } catch (error) {
+      confirmButton.classList.remove('is-loading');
+      confirmButton.disabled = false;
+      if (error?.code === 'MINIMUM_ORDER') {
+        showToast('Минимальная сумма доставки — 300 ₽');
+      } else if (error?.code === 'PRODUCT_NOT_SALEABLE') {
+        showToast('Один из товаров временно недоступен');
+      } else {
+        showToast('Не удалось оформить заказ. Проверьте интернет и повторите.');
+      }
+    }
   });
 };
 
