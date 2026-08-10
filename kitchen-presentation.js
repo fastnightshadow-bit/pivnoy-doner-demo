@@ -6,18 +6,9 @@ export const getKitchenItemOptions = (item = {}) => {
   const options = Array.isArray(item.options)
     ? item.options.map((value) => String(value || '').trim()).filter(Boolean)
     : [];
-  const sauces = [
-    ...new Set(
-      (Array.isArray(item.sauces)
-        ? item.sauces
-        : item.sauce
-          ? [item.sauce]
-          : []
-      )
-        .map((value) => String(value || '').trim())
-        .filter(Boolean),
-    ),
-  ];
+  const sauces = formatOptionQuantities(
+    item.sauces ?? (item.sauce ? { [item.sauce]: 1 } : {}),
+  );
   const sauceLabel = sauces.length
     ? `${sauces.length === 1 ? 'Соус' : 'Соусы'}: ${sauces.join(', ')}`
     : '';

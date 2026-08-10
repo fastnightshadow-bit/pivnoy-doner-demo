@@ -84,11 +84,9 @@ const createProductMedia = ({ image, icon, name }, className) =>
       </span>`;
 
 const createParameterRows = ({ meat, size, sauces, sauce, addons, comment }) => {
-  const normalizedSauces = Array.isArray(sauces)
-    ? sauces
-    : sauce
-      ? [sauce]
-      : [];
+  const normalizedSauces = formatOptionQuantities(
+    sauces ?? (sauce ? { [sauce]: 1 } : {}),
+  );
   const normalizedAddons = formatOptionQuantities(addons);
   const rows = [
     meat && `Мясо: ${escapeHtml(meat)}`,

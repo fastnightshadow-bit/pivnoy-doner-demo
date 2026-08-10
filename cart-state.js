@@ -14,18 +14,13 @@ const hashString = (value) => {
 };
 
 const normalizeSauces = (sauces, legacySauce = '') =>
-  [
-    ...new Set(
-      (Array.isArray(sauces)
-        ? sauces
-        : legacySauce
-          ? [legacySauce]
-          : []
-      ).filter(Boolean),
-    ),
-  ]
-    .map(String)
-    .sort();
+  normalizeOptionQuantities(
+    sauces && (Array.isArray(sauces) || typeof sauces === 'object')
+      ? sauces
+      : legacySauce
+        ? { [legacySauce]: 1 }
+        : {},
+  );
 
 export const getLineSignature = ({
   productId = '',
@@ -41,7 +36,7 @@ export const getLineSignature = ({
     productId,
     meat,
     size,
-    normalizedSauces.join(','),
+    serializeOptionQuantities(normalizedSauces),
     serializeOptionQuantities(addons),
     String(comment).trim(),
   ].join('|');

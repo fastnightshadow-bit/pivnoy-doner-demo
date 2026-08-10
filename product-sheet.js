@@ -50,11 +50,9 @@ const normalizeSelection = (productId, selection = {}) => {
   );
   const configuration = getProductConfiguration(productId);
   const allowedSauces = new Set(configuration?.sauces ?? []);
-  const selectedSauces = Array.isArray(selection.sauces)
-    ? selection.sauces
-    : selection.sauce
-      ? [selection.sauce]
-      : [];
+  const selectedSauces = normalizeOptionQuantities(
+    selection.sauces ?? (selection.sauce ? { [selection.sauce]: 1 } : {}),
+  );
   const selectedAddons = Object.fromEntries(
     Object.entries(normalizeOptionQuantities(selection.addons)).filter(
       ([addon]) => allowedAddons.has(addon),
@@ -64,9 +62,11 @@ const normalizeSelection = (productId, selection = {}) => {
   return {
     meat,
     size,
-    sauces: [
-      ...new Set(selectedSauces.filter((sauce) => allowedSauces.has(sauce))),
-    ],
+    sauces: Object.fromEntries(
+      Object.entries(selectedSauces).filter(([sauce]) =>
+        allowedSauces.has(sauce),
+      ),
+    ),
     addons: selectedAddons,
     comment: String(selection.comment ?? ''),
   };
@@ -80,24 +80,35 @@ const createSauceMarkup = (productId, selection) => {
     <section class="product-sheet__section" aria-labelledby="sheet-sauce-title">
       <header class="product-sheet__section-heading">
         <h3 id="sheet-sauce-title">Соусы</h3>
-        <small>Можно выбрать несколько</small>
+        <small>До 5 порций каждого</small>
       </header>
       <div class="product-sheet__sauces" aria-label="Выбор соусов">
         ${sauceIds
           .map((sauceId) => {
             const sauce = PRODUCT_SAUCES[sauceId];
-            const active = selection.sauces.includes(sauceId);
+            const quantity = selection.sauces[sauceId] ?? 0;
             return `
-              <button
-                class="${active ? 'is-active' : ''}"
-                type="button"
-                role="checkbox"
-                aria-checked="${active}"
-                data-sheet-sauce="${sauceId}"
-              >
-                <span>${sauce?.label ?? sauceId}</span>
-                <small>+${formatPrice(sauce?.price ?? 0)}</small>
-              </button>`;
+              <div class="product-sheet__sauce ${quantity ? 'is-active' : ''}">
+                <span>
+                  <strong>${sauce?.label ?? sauceId}</strong>
+                  <small>+${formatPrice(sauce?.price ?? 0)} / порция</small>
+                </span>
+                <div class="product-sheet__addon-quantity" aria-label="Количество соуса ${sauce?.label ?? sauceId}">
+                  <button
+                    type="button"
+                    aria-label="Уменьшить количество соуса ${sauce?.label ?? sauceId}"
+                    data-sheet-sauce-change="${sauceId}" data-delta="-1"
+                    ${quantity === 0 ? 'disabled' : ''}
+                  >−</button>
+                  <output data-sheet-sauce-value="${sauceId}" aria-live="polite">${quantity}</output>
+                  <button
+                    type="button"
+                    aria-label="Увеличить количество соуса ${sauce?.label ?? sauceId}"
+                    data-sheet-sauce-change="${sauceId}" data-delta="1"
+                    ${quantity >= 5 ? 'disabled' : ''}
+                  >+</button>
+                </div>
+              </div>`;
           })
           .join('')}
       </div>
@@ -303,8 +314,11 @@ const createSelectionCartLine = (product, selection) =>
     unitPrice: calculateProductPrice(product.id, selection),
     meat: MEAT_LABELS[selection.meat] ?? '',
     size: getSizeLabelWithWeight(selection.size),
-    sauces: selection.sauces.map(
-      (sauce) => PRODUCT_SAUCES[sauce]?.label ?? sauce,
+    sauces: Object.fromEntries(
+      Object.entries(selection.sauces).map(([sauce, quantity]) => [
+        PRODUCT_SAUCES[sauce]?.label ?? sauce,
+        quantity,
+      ]),
     ),
     addons: Object.fromEntries(
       Object.entries(selection.addons).map(([addon, quantity]) => [
@@ -491,13 +505,15 @@ export const initProductSheet = ({
       return;
     }
 
-    const sauceButton = event.target.closest('[data-sheet-sauce]');
+    const sauceButton = event.target.closest('[data-sheet-sauce-change]');
     if (sauceButton) {
-      const sauce = sauceButton.dataset.sheetSauce;
-      const sauces = new Set(state.selection.sauces);
-      if (sauces.has(sauce)) sauces.delete(sauce);
-      else sauces.add(sauce);
-      updateSelection({ sauces: [...sauces] });
+      const sauce = sauceButton.dataset.sheetSauceChange;
+      const delta = Number(sauceButton.dataset.delta) || 0;
+      const sauces = { ...state.selection.sauces };
+      const quantity = Math.min(5, Math.max(0, (sauces[sauce] ?? 0) + delta));
+      if (quantity > 0) sauces[sauce] = quantity;
+      else delete sauces[sauce];
+      updateSelection({ sauces });
       return;
     }
 

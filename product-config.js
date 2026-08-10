@@ -119,7 +119,7 @@ export const getAvailableSizes = (productId, meat) =>
 
 export const calculateProductPrice = (
   productId,
-  { meat = 'default', size = 'single', addons = {}, sauces = [] } = {},
+  { meat = 'default', size = 'single', addons = {}, sauces = {} } = {},
 ) => {
   const configuration = getProductConfiguration(productId);
   const basePrice = configuration?.prices?.[meat]?.[size];
@@ -135,10 +135,12 @@ export const calculateProductPrice = (
     basePrice,
   );
   const allowedSauces = new Set(configuration.sauces);
-  return [...new Set(sauces)].reduce(
-    (total, sauce) =>
+  return Object.entries(normalizeOptionQuantities(sauces)).reduce(
+    (total, [sauce, quantity]) =>
       total +
-      (allowedSauces.has(sauce) ? PRODUCT_SAUCES[sauce]?.price ?? 0 : 0),
+      (allowedSauces.has(sauce)
+        ? (PRODUCT_SAUCES[sauce]?.price ?? 0) * quantity
+        : 0),
     addonTotal,
   );
 };

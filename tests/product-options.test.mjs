@@ -147,18 +147,18 @@ test('несколько соусов входят в идентичность �
     name: 'Классическая шаурма',
     unitPrice: 300,
   };
-  const tasty = createCartLine({ ...base, sauces: ['Тейсти'] });
+  const tasty = createCartLine({ ...base, sauces: { Тейсти: 1 } });
   const tastyAndChili = createCartLine({
     ...base,
-    sauces: ['Чили', 'Тейсти'],
+    sauces: { Чили: 1, Тейсти: 2 },
   });
-  assert.deepEqual(tasty.sauces, ['Тейсти']);
-  assert.deepEqual(tastyAndChili.sauces, ['Тейсти', 'Чили']);
+  assert.deepEqual(tasty.sauces, { Тейсти: 1 });
+  assert.deepEqual(tastyAndChili.sauces, { Тейсти: 2, Чили: 1 });
   assert.notEqual(tasty.lineId, tastyAndChili.lineId);
   assert.equal(tastyAndChili.lineId, getLineSignature(tastyAndChili));
 });
 
-test('старая строка sauce преобразуется в массив sauces', () => {
+test('старая строка sauce преобразуется в количество sauces', () => {
   const base = {
     productId: 'classic-shawarma',
     name: 'Классическая шаурма',
@@ -166,7 +166,7 @@ test('старая строка sauce преобразуется в массив
   };
   const migrated = createCartLine({ ...base, sauce: 'Тейсти' });
   const modern = createCartLine({ ...base, sauces: ['Тейсти'] });
-  assert.deepEqual(migrated.sauces, ['Тейсти']);
+  assert.deepEqual(migrated.sauces, { Тейсти: 1 });
   assert.equal(migrated.lineId, modern.lineId);
 });
 
@@ -183,21 +183,19 @@ test('старая сохранённая корзина мигрирует пр
         },
       ]),
   };
-  assert.deepEqual(loadCart(storage)[0].sauces, ['Тейсти']);
+  assert.deepEqual(loadCart(storage)[0].sauces, { Тейсти: 1 });
 });
 
-test('карточка закуски показывает платный множественный выбор соусов', () => {
+test('карточка закуски показывает количественный выбор соусов', () => {
   const product = PRODUCTS.find(({ id }) => id === 'nuggets');
   const markup = createProductSheetMarkup(product, {
-    sauces: ['tasty', 'chili'],
+    sauces: { tasty: 2, chili: 1 },
   });
   assert.match(markup, />Соусы</);
-  assert.match(markup, /Можно выбрать несколько/);
-  assert.match(markup, /data-sheet-sauce="chili"/);
-  assert.match(markup, /role="checkbox"/);
-  assert.match(markup, /data-sheet-sauce="chili"[^>]*[\s\S]*?Чили[\s\S]*?\+50/);
-  assert.doesNotMatch(markup, /role="radio"/);
-  assert.doesNotMatch(markup, /Входит в стоимость/);
+  assert.match(markup, /data-sheet-sauce-change="tasty" data-delta="-1"/);
+  assert.match(markup, /data-sheet-sauce-value="tasty"[^>]*>2</);
+  assert.match(markup, /data-sheet-sauce-change="tasty" data-delta="1"/);
+  assert.match(markup, /Тейсти[\s\S]*?\+50/);
 });
 
 test('карточки вне закусок не показывают выбор соуса', () => {
@@ -208,7 +206,7 @@ test('карточки вне закусок не показывают выбо�
   assert.doesNotMatch(markup, /data-sheet-sauce=/);
 });
 
-test('несколько соусов сохраняются в заказе и показываются кухне', () => {
+test('количества соусов сохраняются в заказе и показываются кухне', () => {
   const order = normalizeOrder({
     id: 'order-1',
     number: '0001',
@@ -217,13 +215,13 @@ test('несколько соусов сохраняются в заказе и 
       {
         name: 'Донер',
         quantity: 1,
-        sauces: ['Барбекю', 'Чили'],
+        sauces: { Барбекю: 2, Чили: 1 },
       },
     ],
   });
-  assert.deepEqual(order.items[0].sauces, ['Барбекю', 'Чили']);
+  assert.deepEqual(order.items[0].sauces, { Барбекю: 2, Чили: 1 });
   assert.deepEqual(getKitchenItemOptions(order.items[0]), [
-    'Соусы: Барбекю, Чили',
+    'Соусы: Барбекю ×2, Чили',
   ]);
 });
 
@@ -232,10 +230,14 @@ test('корзина и активный заказ показывают все 
     productId: 'classic-shawarma',
     name: 'Классическая шаурма',
     unitPrice: 400,
-    sauces: ['Тейсти', 'Чили'],
+    sauces: { Тейсти: 2, Чили: 1 },
   });
-  assert.match(createCartLineMarkup(line), /Соусы: Тейсти, Чили/);
-  assert.match(createOrderItemsMarkup([line]), /Соусы: Тейсти, Чили/);
+  assert.match(createCartLineMarkup(line), /Соусы: Тейсти ×2, Чили/);
+  assert.match(createOrderItemsMarkup([line]), /Соусы: Тейсти ×2, Чили/);
+});
+
+test('две порции соуса увеличивают цену закуски на 100 ₽', () => {
+  assert.equal(calculateProductPrice('nuggets', { sauces: { tasty: 2 } }), 300);
 });
 
 test('карточка блюда показывает счётчик количества добавки', () => {

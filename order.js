@@ -88,9 +88,9 @@ export const createProgressMarkup = (order = {}) => {
 };
 
 const getItemParameters = (item = {}) => {
-  const sauces = (
-    Array.isArray(item.sauces) ? item.sauces : item.sauce ? [item.sauce] : []
-  ).filter(Boolean);
+  const sauces = formatOptionQuantities(
+    item.sauces ?? (item.sauce ? { [item.sauce]: 1 } : {}),
+  );
   const addons = formatOptionQuantities(item.addons);
 
   return [
