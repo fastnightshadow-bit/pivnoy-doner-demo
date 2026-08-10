@@ -9,6 +9,7 @@ import { createEventsRouter } from './routes/events.js';
 import { createReviewsRouter } from './routes/reviews.js';
 import { createCatalogRouter, createSettingsRouter } from './routes/settings.js';
 import { createOwnerRouter } from './routes/owner.js';
+import { createPaymentsRouter } from './routes/payments.js';
 
 export const createApp = ({
   db,
@@ -20,6 +21,7 @@ export const createApp = ({
   reviewsService = null,
   settingsService = null,
   dashboardService = null,
+  paymentService = null,
   nodeEnv = 'development',
 }) => {
   const app = express();
@@ -68,10 +70,13 @@ export const createApp = ({
   if (reviewsService) {
     app.use('/api/reviews', createReviewsRouter({ reviews: reviewsService }));
   }
+  if (paymentService) {
+    app.use('/api/payments', createPaymentsRouter({ paymentService }));
+  }
   if (orderService) {
     app.use(
       '/api/orders',
-      createOrdersRouter({ orderService, reviewsService }),
+      createOrdersRouter({ orderService, reviewsService, paymentService }),
     );
   }
 

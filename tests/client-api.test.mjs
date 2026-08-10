@@ -129,3 +129,23 @@ test('серверный заказ приводится к формату эк�
   assert.equal(order.discount, 50);
   assert.deepEqual(order.items[0].sauces, { tasty: 2 });
 });
+
+test('payment retry uses a separate idempotency key', async () => {
+  const calls = [];
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      return jsonResponse({
+        id: 'pay-2',
+        confirmationUrl: 'https://yookassa.test/pay-2',
+      }, 201);
+    },
+  });
+
+  const payment = await api.createPayment('order/1', 'retry-payment-1');
+
+  assert.equal(payment.id, 'pay-2');
+  assert.equal(calls[0].url, '/api/payments');
+  assert.equal(calls[0].options.headers['Idempotency-Key'], 'retry-payment-1');
+  assert.deepEqual(JSON.parse(calls[0].options.body), { orderId: 'order/1' });
+});

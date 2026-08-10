@@ -611,7 +611,8 @@ const initCheckout = () => {
       saveActiveOrderId(window.localStorage, order.id);
       saveCart(window.localStorage, []);
       clearCheckoutAttempt(window.sessionStorage);
-      window.location.href = 'order.html';
+      window.location.href =
+        order.payment?.confirmationUrl || 'order.html';
     } catch (error) {
       confirmButton.classList.remove('is-loading');
       confirmButton.disabled = false;

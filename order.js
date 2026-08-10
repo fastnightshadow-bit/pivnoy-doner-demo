@@ -414,8 +414,23 @@ const initOrder = () => {
     if (expanded) revealMotion(refs.details);
   });
 
-  refs.retry.addEventListener('click', () => {
+  refs.retry.addEventListener('click', async (event) => {
     if (!currentOrder) return;
+    if (productionApi) {
+      event.preventDefault();
+      if (refs.retry.getAttribute('aria-busy') === 'true') return;
+      refs.retry.setAttribute('aria-busy', 'true');
+      const key = `retry-${globalThis.crypto?.randomUUID?.() || Date.now()}`;
+      try {
+        const payment = await clientApi.createPayment(currentOrder.id, key);
+        if (!payment.confirmationUrl) throw new Error('confirmation-unavailable');
+        window.location.href = payment.confirmationUrl;
+      } catch {
+        refs.retry.removeAttribute('aria-busy');
+        refs.retry.textContent = 'Попробовать ещё раз';
+      }
+      return;
+    }
     saveCart(window.localStorage, currentOrder.items);
     refs.retry.href = `checkout.html?retry=${encodeURIComponent(
       currentOrder.id,

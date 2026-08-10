@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 const mapOrder = (row) => ({
   id: row.id,
   number: String(row.public_number),

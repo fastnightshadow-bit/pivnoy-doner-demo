@@ -81,6 +81,13 @@ export const createClientApi = (options = {}) => {
         body: JSON.stringify(payload),
       }),
 
+    createPayment: (orderId, idempotencyKey) =>
+      fetchJson('/api/payments', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': String(idempotencyKey || '') },
+        body: JSON.stringify({ orderId: String(orderId || '') }),
+      }),
+
     getOrder: async (id) =>
       normalizeClientOrderResponse(
         await fetchJson(`/api/orders/${encodeURIComponent(String(id || ''))}`),

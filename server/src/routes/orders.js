@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { DomainError } from '../domain/errors.js';
+import { PaymentProviderError } from '../payments/provider.js';
 
 const quantitiesSchema = z.record(z.string().min(1), z.coerce.number().int().min(0).max(5));
 const orderSchema = z.object({
@@ -34,7 +35,11 @@ const reviewSchema = z.object({
   comment: z.string().max(500).optional(),
 });
 
-export const createOrdersRouter = ({ orderService, reviewsService = null }) => {
+export const createOrdersRouter = ({
+  orderService,
+  reviewsService = null,
+  paymentService = null,
+}) => {
   const router = Router();
 
   if (typeof orderService.get === 'function') {
@@ -78,7 +83,13 @@ export const createOrdersRouter = ({ orderService, reviewsService = null }) => {
     try {
       const input = orderSchema.parse(request.body);
       const result = await orderService.create(input, idempotencyKey);
-      return response.status(result.created ? 201 : 200).json(result.order);
+      const payment = paymentService
+        ? await paymentService.create(result.order.id, result.order.id)
+        : null;
+      return response.status(result.created ? 201 : 200).json({
+        ...result.order,
+        ...(payment ? { payment } : {}),
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return response.status(400).json({ error: 'INVALID_ORDER' });
@@ -87,6 +98,12 @@ export const createOrdersRouter = ({ orderService, reviewsService = null }) => {
         return response.status(422).json({
           error: error.code,
           details: error.details,
+        });
+      }
+      if (error instanceof PaymentProviderError) {
+        return response.status(error.status).json({
+          error: error.code,
+          ...(error.details ? { details: error.details } : {}),
         });
       }
       throw error;
