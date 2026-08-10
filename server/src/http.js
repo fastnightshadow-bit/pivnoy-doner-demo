@@ -12,6 +12,10 @@ import { createEventsRepository } from './repositories/events.js';
 import { createStatusService } from './services/statuses.js';
 import { createReviewsRepository } from './repositories/reviews.js';
 import { createReviewsService } from './services/reviews.js';
+import { createSettingsRepository } from './repositories/settings.js';
+import { createSettingsService } from './services/settings.js';
+import { createDashboardRepository } from './repositories/dashboard.js';
+import { createDashboardService } from './services/dashboard.js';
 
 const config = loadConfig();
 
@@ -33,6 +37,13 @@ const events = createEventsRepository(db);
 const reviewsService = createReviewsService({
   reviews: createReviewsRepository(db),
 });
+const settingsService = createSettingsService({
+  settings: createSettingsRepository(db),
+});
+const dashboardService = createDashboardService({
+  dashboard: createDashboardRepository(db),
+  settings: settingsService,
+});
 
 const server = createApp({
   db,
@@ -42,6 +53,8 @@ const server = createApp({
   statusService,
   events,
   reviewsService,
+  settingsService,
+  dashboardService,
   nodeEnv: config.nodeEnv,
 }).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);

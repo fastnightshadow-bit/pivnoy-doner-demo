@@ -5,6 +5,7 @@ import {
   getLastEventId,
   replayEvents,
 } from '../src/realtime/order-events.js';
+import { canSubscribeToStaffEvents } from '../src/routes/events.js';
 
 test('SSE восстанавливает только события после Last-Event-ID', async () => {
   const events = {
@@ -28,4 +29,12 @@ test('Last-Event-ID имеет приоритет над query-параметр�
   };
 
   assert.equal(getLastEventId(request), 17);
+});
+
+test('общая лента событий доступна только сотрудникам', () => {
+  assert.equal(canSubscribeToStaffEvents(null), false);
+  assert.equal(canSubscribeToStaffEvents({ role: 'courier' }), true);
+  assert.equal(canSubscribeToStaffEvents({ role: 'kitchen' }), true);
+  assert.equal(canSubscribeToStaffEvents({ role: 'owner' }), true);
+  assert.equal(canSubscribeToStaffEvents({ role: 'customer' }), false);
 });

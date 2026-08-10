@@ -8,6 +8,14 @@ import {
   createDemoOrders,
 } from './kitchen-fixtures.js';
 import { normalizeKitchenSettings } from './kitchen-settings.js';
+import { PRODUCTS } from './catalog-data.js';
+import {
+  MEAT_LABELS,
+  PRODUCT_ADDONS,
+  PRODUCT_SAUCES,
+  SIZE_LABELS,
+} from './product-config.js';
+import { normalizeOptionQuantities } from './option-quantities.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const wait = (milliseconds) =>
@@ -53,8 +61,83 @@ const requestJson = async (fetchImpl, url, options = {}) => {
 const joinUrl = (baseUrl, path) =>
   `${String(baseUrl).replace(/\/$/, '')}/${String(path).replace(/^\//, '')}`;
 
+const createPromisedAt = (order) => {
+  const createdAt = Date.parse(order.createdAt || order.created_at || '');
+  const etaMax = Number(order.eta?.max ?? order.eta_max) || 12;
+  return Number.isFinite(createdAt)
+    ? new Date(createdAt + etaMax * 60000).toISOString()
+    : '';
+};
+
+const toOptions = (item = {}) => {
+  const configuration = item.configuration || {};
+  const labels = [
+    MEAT_LABELS[configuration.meat || item.meat],
+    SIZE_LABELS[configuration.size || item.size],
+  ].filter(Boolean);
+  for (const [id, quantity] of Object.entries(
+    normalizeOptionQuantities(configuration.addons || item.addons),
+  )) {
+    const label = PRODUCT_ADDONS[id]?.label || id;
+    labels.push(quantity > 1 ? `${label} ×${quantity}` : label);
+  }
+  for (const [id, quantity] of Object.entries(
+    normalizeOptionQuantities(configuration.sauces || item.sauces),
+  )) {
+    const label = PRODUCT_SAUCES[id]?.label || id;
+    labels.push(quantity > 1 ? `${label} ×${quantity}` : label);
+  }
+  return labels;
+};
+
+export const normalizeProductionKitchenOrder = (order = {}) => {
+  const status =
+    order.status === 'submitted'
+      ? 'new'
+      : order.status === 'completed'
+        ? 'issued'
+        : order.status === 'courier'
+          ? 'handed_to_courier'
+          : order.status;
+  return {
+    id: order.id,
+    number: String(order.number ?? order.public_number ?? ''),
+    status,
+    version: Number(order.version) || 1,
+    paymentStatus:
+      (order.paymentStatus ?? order.payment_status) === 'paid'
+        ? 'succeeded'
+        : order.paymentStatus ?? order.payment_status,
+    fulfillment: order.fulfillment,
+    createdAt: order.createdAt ?? order.created_at,
+    promisedAt: order.promisedAt || createPromisedAt(order),
+    customer: {
+      name: order.customerName ?? order.customer_name ?? '',
+      phone: order.phone || '',
+    },
+    address: order.address || null,
+    items: (Array.isArray(order.items) ? order.items : []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      options: toOptions(item),
+      comment: item.comment || '',
+    })),
+    comment: order.comment ?? order.customer_comment ?? '',
+    total: Number(order.total) || 0,
+    employee: order.employee || '',
+    history: (Array.isArray(order.history) ? order.history : []).map((entry) => ({
+      from: entry.from ?? entry.previous_status ?? '',
+      to: entry.to ?? entry.new_status ?? '',
+      employee: entry.employee ?? entry.actor_name ?? '',
+      at: entry.at ?? entry.created_at ?? '',
+      reason: entry.reason || '',
+    })),
+  };
+};
+
 export const createKitchenApi = ({
-  baseUrl = '/api/kitchen',
+  baseUrl = '/api',
   fetchImpl = globalThis.fetch,
   eventSourceFactory = (url) => new EventSource(url),
 } = {}) => {
@@ -62,31 +145,53 @@ export const createKitchenApi = ({
     requestJson(fetchImpl, joinUrl(baseUrl, path), options);
 
   return {
-    login(pin) {
-      return jsonRequest('/session', {
+    async login(pin) {
+      await jsonRequest('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ pin: String(pin || '') }),
+        body: JSON.stringify({ role: 'kitchen', pin: String(pin || '') }),
       });
+      const session = await jsonRequest('/auth/session', { method: 'GET' });
+      return {
+        employee: {
+          id: session.account?.id,
+          name: session.account?.displayName || 'Кухня',
+        },
+        shift: '2 повара',
+      };
     },
 
     logout() {
-      return jsonRequest('/session', { method: 'DELETE' });
+      return jsonRequest('/auth/logout', { method: 'POST' });
     },
 
-    getBoard() {
-      return jsonRequest('/board', { method: 'GET' });
+    async getBoard() {
+      const response = await jsonRequest('/staff/orders', { method: 'GET' });
+      return {
+        orders: (response.orders || []).map(normalizeProductionKitchenOrder),
+        serverTime: new Date().toISOString(),
+      };
     },
 
     getSettings() {
       return jsonRequest('/settings', { method: 'GET' });
     },
 
-    updateSettings(settings, operationId) {
-      return jsonRequest('/settings', {
-        method: 'PUT',
-        headers: { 'Idempotency-Key': operationId },
-        body: JSON.stringify(normalizeKitchenSettings(settings)),
+    async updateSettings(settings) {
+      const normalized = normalizeKitchenSettings(settings);
+      await jsonRequest('/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ acceptingOrders: normalized.acceptingOrders }),
       });
+      const stopped = new Set(normalized.stoppedProductIds);
+      await Promise.all(
+        PRODUCTS.map((product) =>
+          jsonRequest(`/catalog/${encodeURIComponent(product.id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ available: !stopped.has(product.id) }),
+          }),
+        ),
+      );
+      return jsonRequest('/settings', { method: 'GET' });
     },
 
     getHistory(filters = {}) {
@@ -98,27 +203,39 @@ export const createKitchenApi = ({
       return jsonRequest(`/history${suffix}`, { method: 'GET' });
     },
 
-    changeStatus(orderId, status, operationId) {
-      return jsonRequest(`/orders/${encodeURIComponent(orderId)}/status`, {
-        method: 'POST',
-        headers: { 'Idempotency-Key': operationId },
-        body: JSON.stringify({ status }),
-      });
+    async changeStatus(orderId, status, version) {
+      const serverStatus =
+        status === 'issued'
+          ? 'completed'
+          : status === 'handed_to_courier'
+            ? 'courier'
+            : status;
+      const order = await jsonRequest(
+        `/staff/orders/${encodeURIComponent(orderId)}/status`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ status: serverStatus, version }),
+        },
+      );
+      return { order: normalizeProductionKitchenOrder(order) };
     },
 
-    cancelOrder(orderId, payload, operationId) {
-      return jsonRequest(`/orders/${encodeURIComponent(orderId)}/cancel`, {
-        method: 'POST',
-        headers: { 'Idempotency-Key': operationId },
+    async cancelOrder(orderId, payload, version) {
+      const order = await jsonRequest(
+        `/staff/orders/${encodeURIComponent(orderId)}/status`,
+        {
+        method: 'PATCH',
         body: JSON.stringify({
-          reasonId: String(payload?.reasonId || ''),
-          comment: String(payload?.comment || '').trim(),
+          status: 'cancelled',
+          version,
+          reason: String(payload?.comment || payload?.reasonId || '').trim(),
         }),
       });
+      return { order: normalizeProductionKitchenOrder(order) };
     },
 
     subscribe(onEvent, onConnection = () => {}) {
-      const source = eventSourceFactory(joinUrl(baseUrl, '/events'));
+      const source = eventSourceFactory(joinUrl(baseUrl, '/events?scope=staff'));
       source.onopen = () => onConnection(true);
       source.onerror = () => onConnection(false);
       source.onmessage = (event) => {
@@ -128,6 +245,17 @@ export const createKitchenApi = ({
           onConnection(false);
         }
       };
+      ['order.created', 'order.updated', 'order.cancelled', 'settings.updated'].forEach(
+        (type) =>
+          source.addEventListener?.(type, (event) => {
+            try {
+              const payload = JSON.parse(event.data);
+              onEvent({ type: 'sync.required', sourceType: type, payload });
+            } catch {
+              onConnection(false);
+            }
+          }),
+      );
       return () => source.close();
     },
   };
@@ -218,7 +346,12 @@ export const createDemoKitchenApi = ({
       return { orders: clone(orders), serverTime: serverTime() };
     },
 
-    changeStatus(orderId, nextStatus, operationId) {
+    changeStatus(
+      orderId,
+      nextStatus,
+      versionOrOperationId,
+      operationId = versionOrOperationId,
+    ) {
       requireSession();
       return runOnce(operationId, async () => {
         await delay();
@@ -259,7 +392,12 @@ export const createDemoKitchenApi = ({
       });
     },
 
-    cancelOrder(orderId, payload, operationId) {
+    cancelOrder(
+      orderId,
+      payload,
+      versionOrOperationId,
+      operationId = versionOrOperationId,
+    ) {
       requireSession();
       return runOnce(operationId, async () => {
         const reasonId = String(payload?.reasonId || '');

@@ -1,11 +1,31 @@
 import { Router } from 'express';
 import { formatSseEvent, getLastEventId, replayEvents } from '../realtime/order-events.js';
+import { SESSION_COOKIE } from '../auth/session.js';
 
-export const createEventsRouter = ({ events, pollMs = 1000, heartbeatMs = 20_000 }) => {
+export const canSubscribeToStaffEvents = (account) =>
+  ['owner', 'kitchen', 'courier'].includes(account?.role);
+
+export const createEventsRouter = ({
+  events,
+  authService = null,
+  pollMs = 1000,
+  heartbeatMs = 20_000,
+}) => {
   const router = Router();
   router.get('/', async (request, response) => {
     const orderId = String(request.query.orderId ?? '').trim();
-    if (!orderId) return response.status(400).json({ error: 'ORDER_ID_REQUIRED' });
+    const staffScope = request.query.scope === 'staff';
+    if (staffScope) {
+      const account = await authService?.authenticate(
+        request.cookies?.[SESSION_COOKIE],
+      );
+      if (!account) return response.status(401).json({ error: 'UNAUTHORIZED' });
+      if (!canSubscribeToStaffEvents(account)) {
+        return response.status(403).json({ error: 'FORBIDDEN' });
+      }
+    } else if (!orderId) {
+      return response.status(400).json({ error: 'ORDER_ID_REQUIRED' });
+    }
 
     response.status(200);
     response.set({
@@ -19,7 +39,11 @@ export const createEventsRouter = ({ events, pollMs = 1000, heartbeatMs = 20_000
 
     const sendPending = async () => {
       if (closed) return;
-      const pending = await replayEvents(events, cursor, { orderId });
+      const pending = await replayEvents(
+        events,
+        cursor,
+        staffScope ? {} : { orderId },
+      );
       for (const event of pending) {
         response.write(formatSseEvent(event));
         cursor = Math.max(cursor, Number(event.id) || 0);

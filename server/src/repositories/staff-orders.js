@@ -4,12 +4,25 @@ export const createStaffOrdersRepository = (pool) => ({
   listActive: async () => {
     const result = await pool.query(
       `select o.*,
-        coalesce(json_agg(oi order by oi.id) filter (where oi.id is not null), '[]') as items
+        coalesce((
+          select json_agg(oi order by oi.id)
+          from order_items oi
+          where oi.order_id = o.id
+        ), '[]') as items,
+        coalesce((
+          select json_agg(json_build_object(
+            'from', sh.previous_status,
+            'to', sh.new_status,
+            'employee', sh.actor_name,
+            'at', sh.created_at,
+            'reason', sh.reason
+          ) order by sh.created_at)
+          from status_history sh
+          where sh.order_id = o.id
+        ), '[]') as history
        from orders o
-       left join order_items oi on oi.order_id = o.id
        where o.payment_status = 'paid'
          and o.status not in ('completed', 'cancelled')
-       group by o.id
        order by o.created_at`,
     );
     return result.rows;

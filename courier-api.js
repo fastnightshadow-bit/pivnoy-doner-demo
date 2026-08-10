@@ -29,21 +29,63 @@ const requestJson = async (fetchImpl, url, options = {}) => {
   return payload;
 };
 
+export const normalizeProductionCourierOrder = (order = {}) => {
+  const createdAt = Date.parse(order.createdAt ?? order.created_at ?? '');
+  const etaMax = Number(order.eta?.max ?? order.eta_max) || 12;
+  return {
+    id: order.id,
+    number: String(order.number ?? order.public_number ?? ''),
+    fulfillment: order.fulfillment,
+    paymentStatus:
+      (order.paymentStatus ?? order.payment_status) === 'paid'
+        ? 'succeeded'
+        : order.paymentStatus ?? order.payment_status,
+    status: order.status === 'courier' ? 'handed_to_courier' : order.status,
+    promisedAt: Number.isFinite(createdAt)
+      ? new Date(createdAt + etaMax * 60000).toISOString()
+      : '',
+    phone: order.phone || '',
+    customer: {
+      phone: order.phone || '',
+    },
+    address: order.address || {},
+    version: Number(order.version) || 1,
+  };
+};
+
 export const createCourierApi = ({
-  baseUrl = '/api/courier',
+  baseUrl = '/api',
   fetchImpl = globalThis.fetch,
 } = {}) => ({
-  login(pin) {
-    return requestJson(fetchImpl, `${baseUrl}/session`, {
+  async login(pin) {
+    await requestJson(fetchImpl, `${baseUrl}/auth/login`, {
       method: 'POST',
-      body: JSON.stringify({ pin: String(pin || '') }),
+      body: JSON.stringify({ role: 'courier', pin: String(pin || '') }),
     });
+    const session = await requestJson(fetchImpl, `${baseUrl}/auth/session`);
+    return { courier: { name: session.account?.displayName || 'Курьер' } };
   },
   logout() {
-    return requestJson(fetchImpl, `${baseUrl}/session`, { method: 'DELETE' });
+    return requestJson(fetchImpl, `${baseUrl}/auth/logout`, { method: 'POST' });
   },
-  getOrders() {
-    return requestJson(fetchImpl, `${baseUrl}/orders`, { method: 'GET' });
+  async getOrders() {
+    const response = await requestJson(fetchImpl, `${baseUrl}/staff/orders`, {
+      method: 'GET',
+    });
+    return {
+      orders: (response.orders || []).map(normalizeProductionCourierOrder),
+      serverTime: new Date().toISOString(),
+    };
+  },
+  changeStatus(orderId, status, version) {
+    return requestJson(
+      fetchImpl,
+      `${baseUrl}/staff/orders/${encodeURIComponent(orderId)}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status, version }),
+      },
+    );
   },
 });
 

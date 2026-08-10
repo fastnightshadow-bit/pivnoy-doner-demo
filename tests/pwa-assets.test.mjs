@@ -83,3 +83,16 @@ test('курьерский интерфейс устанавливается о�
   assert.equal(manifest.start_url, './courier.html?demo=1');
   assert.equal(manifest.orientation, 'portrait');
 });
+
+test('owner interface is installable as a separate protected PWA', () => {
+  const html = readText('owner.html');
+  assert.match(html, /name="robots" content="noindex, nofollow, noarchive"/);
+  assert.match(html, /rel="manifest" href="owner\.webmanifest"/);
+  assert.match(html, /assets\/app\/apple-touch-icon\.png/);
+
+  const manifest = extractJson('owner.webmanifest');
+  assert.equal(manifest.start_url, './owner.html');
+  assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.icons[0].src, 'assets/app/icon-192.png');
+  assert.equal(manifest.icons[1].src, 'assets/app/icon-512.png');
+});

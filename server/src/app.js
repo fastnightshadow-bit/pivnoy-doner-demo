@@ -7,6 +7,8 @@ import { createAuthRouter } from './routes/auth.js';
 import { createStaffOrdersRouter } from './routes/staff-orders.js';
 import { createEventsRouter } from './routes/events.js';
 import { createReviewsRouter } from './routes/reviews.js';
+import { createCatalogRouter, createSettingsRouter } from './routes/settings.js';
+import { createOwnerRouter } from './routes/owner.js';
 
 export const createApp = ({
   db,
@@ -16,6 +18,8 @@ export const createApp = ({
   statusService = null,
   events = null,
   reviewsService = null,
+  settingsService = null,
+  dashboardService = null,
   nodeEnv = 'development',
 }) => {
   const app = express();
@@ -38,7 +42,29 @@ export const createApp = ({
       }),
     );
   }
-  if (events) app.use('/api/events', createEventsRouter({ events }));
+  if (events) {
+    app.use('/api/events', createEventsRouter({ events, authService }));
+  }
+  if (authService && settingsService) {
+    app.use(
+      '/api/settings',
+      createSettingsRouter({ authService, settings: settingsService }),
+    );
+    app.use(
+      '/api/catalog',
+      createCatalogRouter({ authService, settings: settingsService }),
+    );
+  }
+  if (authService && dashboardService) {
+    app.use(
+      '/api/owner',
+      createOwnerRouter({
+        authService,
+        dashboard: dashboardService,
+        settings: settingsService,
+      }),
+    );
+  }
   if (reviewsService) {
     app.use('/api/reviews', createReviewsRouter({ reviews: reviewsService }));
   }

@@ -803,6 +803,10 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   };
 
   const replaceOrderFromEvent = (event) => {
+    if (event?.type === 'sync.required') {
+      void Promise.all([loadBoard(), loadKitchenSettings()]);
+      return;
+    }
     if (event?.type === 'settings.updated') {
       state.settings = normalizeKitchenSettings(event.settings);
       renderKitchenSettings();
@@ -815,10 +819,15 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   };
 
   const loadBoard = async ({ seedSounds = false } = {}) => {
+    const knownIds = new Set(state.orders.map((order) => order.id));
     const response = await activeApi.getBoard();
     state.orders = Array.isArray(response?.orders) ? response.orders : [];
     if (seedSounds) {
       newOrderNotifier.markSeen(state.orders.map((order) => order.id));
+    } else {
+      state.orders
+        .filter((order) => !knownIds.has(order.id))
+        .forEach((order) => newOrderNotifier.notify(order));
     }
     renderBoard();
   };
@@ -925,6 +934,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       const result = await activeApi.changeStatus(
         orderId,
         nextStatus,
+        currentOrder.version || 1,
         operationId,
       );
       replaceOrderFromServer(result?.order, { animate: true });
@@ -993,6 +1003,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       const result = await activeApi.cancelOrder(
         order.id,
         { reasonId, comment },
+        order.version || 1,
         operationId,
       );
       if (result?.order) {
