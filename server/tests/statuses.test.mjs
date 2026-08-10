@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canTransition } from '../src/domain/status-machine.js';
 import { calculateEta } from '../src/domain/eta.js';
+import { createStatusService } from '../src/services/statuses.js';
 
 test('новый заказ нельзя сразу сделать готовым', () => {
   assert.equal(canTransition('submitted', 'ready', 'kitchen'), false);
@@ -32,4 +33,22 @@ test('прочие блюда добавляют своё время к очер
     min: 10,
     max: 12,
   });
+});
+
+test('конфликт версии не подтверждает изменение статуса', async () => {
+  const service = createStatusService({
+    orders: {
+      transitionStatus: async () => ({ conflict: true, currentVersion: 4 }),
+    },
+  });
+
+  await assert.rejects(
+    service.change({
+      orderId: 'order-1',
+      status: 'accepted',
+      version: 3,
+      account: { id: 'kitchen-1', displayName: 'Кухня', role: 'kitchen' },
+    }),
+    (error) => error.code === 'STATUS_CONFLICT' && error.details.version === 4,
+  );
 });

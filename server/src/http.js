@@ -7,6 +7,9 @@ import { createOrderService } from './services/orders.js';
 import { DEFAULT_ORDER_SETTINGS } from './domain/delivery.js';
 import { createAuthRepository } from './repositories/auth.js';
 import { createAuthService } from './auth/session.js';
+import { createStaffOrdersRepository } from './repositories/staff-orders.js';
+import { createEventsRepository } from './repositories/events.js';
+import { createStatusService } from './services/statuses.js';
 
 const config = loadConfig();
 
@@ -22,11 +25,17 @@ const orderService = createOrderService({
   settings: DEFAULT_ORDER_SETTINGS,
 });
 const authService = createAuthService({ repository: createAuthRepository(db) });
+const staffOrders = createStaffOrdersRepository(db);
+const statusService = createStatusService({ orders: staffOrders });
+const events = createEventsRepository(db);
 
 const server = createApp({
   db,
   orderService,
   authService,
+  staffOrders,
+  statusService,
+  events,
   nodeEnv: config.nodeEnv,
 }).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);
