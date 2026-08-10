@@ -1,0 +1,28 @@
+(pivdoner_app) {
+  handle /api/* {
+    reverse_proxy pivdoner-api:3001
+  }
+  handle {
+    reverse_proxy pivdoner-web:8080
+  }
+}
+
+pivdoner.ru, www.pivdoner.ru {
+  import pivdoner_app
+}
+
+kitchen.pivdoner.ru {
+  import pivdoner_app
+}
+
+courier.pivdoner.ru {
+  import pivdoner_app
+}
+
+owner.pivdoner.ru {
+  import pivdoner_app
+}
+
+stage.pivdoner.ru {
+  import pivdoner_app
+}

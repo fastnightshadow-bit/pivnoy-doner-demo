@@ -1,0 +1,15 @@
+.git
+.worktrees
+.agents
+.codex
+node_modules
+server
+deploy/*
+!deploy/nginx.conf
+docs
+scripts
+tests
+*.md
+package.json
+pnpm-lock.yaml
+Dockerfile*
