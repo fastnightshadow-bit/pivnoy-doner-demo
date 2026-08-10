@@ -5,6 +5,8 @@ import { runMigrations } from './db/migrate.js';
 import { createOrdersRepository } from './repositories/orders.js';
 import { createOrderService } from './services/orders.js';
 import { DEFAULT_ORDER_SETTINGS } from './domain/delivery.js';
+import { createAuthRepository } from './repositories/auth.js';
+import { createAuthService } from './auth/session.js';
 
 const config = loadConfig();
 
@@ -19,8 +21,14 @@ const orderService = createOrderService({
   orders,
   settings: DEFAULT_ORDER_SETTINGS,
 });
+const authService = createAuthService({ repository: createAuthRepository(db) });
 
-const server = createApp({ db, orderService }).listen(config.port, '0.0.0.0', () => {
+const server = createApp({
+  db,
+  orderService,
+  authService,
+  nodeEnv: config.nodeEnv,
+}).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);
 });
 
