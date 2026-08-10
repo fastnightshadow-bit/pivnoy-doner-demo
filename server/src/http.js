@@ -2,6 +2,9 @@ import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createPool } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
+import { createOrdersRepository } from './repositories/orders.js';
+import { createOrderService } from './services/orders.js';
+import { DEFAULT_ORDER_SETTINGS } from './domain/delivery.js';
 
 const config = loadConfig();
 
@@ -11,8 +14,13 @@ if (!config.databaseUrl) {
 
 const db = createPool(config.databaseUrl);
 await runMigrations(db);
+const orders = createOrdersRepository(db);
+const orderService = createOrderService({
+  orders,
+  settings: DEFAULT_ORDER_SETTINGS,
+});
 
-const server = createApp({ db }).listen(config.port, '0.0.0.0', () => {
+const server = createApp({ db, orderService }).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);
 });
 
