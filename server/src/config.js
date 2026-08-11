@@ -21,6 +21,18 @@ const configSchema = z.object({
       message: 'ORDER_ACCESS_SECRET must be at least 32 characters in production',
     });
   }
+
+  if (
+    config.NODE_ENV === 'production' &&
+    config.ORDER_ACCESS_SECRET.length >= 32 &&
+    config.ORDER_ACCESS_SECRET === config.SESSION_SECRET
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['ORDER_ACCESS_SECRET'],
+      message: 'ORDER_ACCESS_SECRET must differ from SESSION_SECRET in production',
+    });
+  }
 });
 
 export const loadConfig = (env = process.env) => {

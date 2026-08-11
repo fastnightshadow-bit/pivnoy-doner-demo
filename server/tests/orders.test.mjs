@@ -86,6 +86,45 @@ test('production access token config fails closed below 32 characters', () => {
   assert.equal(loadConfig({ NODE_ENV: 'test' }).orderAccessSecret, '');
 });
 
+test('production access token config rejects a reused session secret', () => {
+  const sharedSecret = 'shared-production-secret-value-123';
+
+  assert.throws(
+    () =>
+      loadConfig({
+        NODE_ENV: 'production',
+        SESSION_SECRET: sharedSecret,
+        ORDER_ACCESS_SECRET: sharedSecret,
+      }),
+    (error) => {
+      assert.match(
+        error.message,
+        /ORDER_ACCESS_SECRET must differ from SESSION_SECRET in production/,
+      );
+      assert.doesNotMatch(error.message, new RegExp(sharedSecret));
+      return true;
+    },
+  );
+
+  const production = loadConfig({
+    NODE_ENV: 'production',
+    SESSION_SECRET: sharedSecret,
+    ORDER_ACCESS_SECRET: 'distinct-order-access-secret-value',
+  });
+  assert.equal(
+    production.orderAccessSecret,
+    'distinct-order-access-secret-value',
+  );
+
+  assert.doesNotThrow(() =>
+    loadConfig({
+      NODE_ENV: 'development',
+      SESSION_SECRET: sharedSecret,
+      ORDER_ACCESS_SECRET: sharedSecret,
+    }),
+  );
+});
+
 const createRepository = () => {
   const byKey = new Map();
   return {
