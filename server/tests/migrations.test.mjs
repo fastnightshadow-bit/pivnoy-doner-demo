@@ -69,3 +69,57 @@ test('review consent and retention migration stores publication proof and order 
   }
   assert.match(sql, /alter table orders add column closed_at timestamptz/i);
 });
+
+test('review retention migration backfills terminal closed_at without overwriting known closure time', async () => {
+  const sql = await readFile(
+    new URL(
+      '../src/db/migrations/003_review_consent_retention.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const backfill =
+    sql.match(/update\s+orders[\s\S]*?;/i)?.[0] ?? '';
+
+  assert.match(
+    backfill,
+    /set\s+closed_at\s*=\s*coalesce\(\s*updated_at\s*,\s*created_at\s*\)/i,
+  );
+  assert.match(backfill, /where\s+closed_at\s+is\s+null/i);
+  assert.match(
+    backfill,
+    /status\s+in\s*\(\s*'completed'\s*,\s*'cancelled'\s*\)/i,
+  );
+  assert.ok(
+    sql.indexOf('add column closed_at') < sql.indexOf(backfill),
+    'closed_at must exist before the backfill runs',
+  );
+});
+
+test('review retention migration unpublishes legacy reviews without consent proof', async () => {
+  const sql = await readFile(
+    new URL(
+      '../src/db/migrations/003_review_consent_retention.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const reconciliation =
+    sql.match(/update\s+reviews[\s\S]*?;/i)?.[0] ?? '';
+
+  assert.match(reconciliation, /set\s+published\s*=\s*false/i);
+  assert.match(reconciliation, /where\s+published\s*=\s*true/i);
+  assert.match(
+    reconciliation,
+    /publication_consent_at\s+is\s+null/i,
+  );
+  assert.doesNotMatch(
+    reconciliation.match(/set[\s\S]*?where/i)?.[0] ?? '',
+    /publication_(?:consent|revoked)_(?:at|version)\s*=/i,
+  );
+  assert.ok(
+    sql.indexOf('add column publication_consent_at') <
+      sql.indexOf(reconciliation),
+    'publication consent columns must exist before reconciliation',
+  );
+});

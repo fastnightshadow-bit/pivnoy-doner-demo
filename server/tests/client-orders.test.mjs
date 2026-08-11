@@ -486,12 +486,15 @@ test('reviews repository public list excludes unpublished rows', async () => {
       created_at: '2026-08-12T09:10:11.000Z',
     },
     {
-      id: 'private-review',
+      id: 'legacy-unconsented-review',
       order_id: 'order-2',
-      customer_name: 'Private customer',
+      customer_name: 'Legacy customer',
       rating: 4,
-      comment: 'Private',
+      comment: 'Legacy publication without proof',
       published: false,
+      publication_consent_at: null,
+      publication_consent_version: null,
+      publication_revoked_at: null,
       created_at: '2026-08-12T09:10:10.000Z',
     },
   ];

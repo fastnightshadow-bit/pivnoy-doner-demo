@@ -160,6 +160,7 @@ test('retention preview counts every inclusive cutoff without issuing mutations'
   );
   assert.match(actors.sql, /previous_status is not null/i);
   assert.match(actors.sql, /closed_at is not null/i);
+  assert.match(actors.sql, /actor_name <> 'Сотрудник'/u);
 
   const payloads = calls.find(({ sql }) => /from payments/.test(sql));
   assert.match(payloads.sql, /status in \('paid', 'failed', 'refunded'\)/i);
@@ -274,7 +275,7 @@ test('retention apply runs parameterized idempotent mutations in one transaction
     /^update status_history\b/i.test(sql),
   );
   assert.match(actorUpdate.sql, /set actor_id = null/i);
-  assert.match(actorUpdate.sql, /actor_name = 'Сотрудник'/i);
+  assert.match(actorUpdate.sql, /actor_name = 'Сотрудник'/u);
   assert.match(actorUpdate.sql, /previous_status is not null/i);
   assert.match(actorUpdate.sql, /closed_at is not null/i);
   assert.doesNotMatch(actorUpdate.sql, /delete/i);
