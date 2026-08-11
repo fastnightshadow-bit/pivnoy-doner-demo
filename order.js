@@ -11,14 +11,14 @@ import {
   saveActiveOrder,
   subscribeToActiveOrder,
 } from './order-storage.js?v=20260811';
-import { createReviewService } from './review-service.js';
+import { createReviewService } from './review-service.js?v=20260812';
 import { isReviewableOrder } from './review-state.js';
 import { formatOptionQuantities } from './option-quantities.js';
 import {
   canUseReviewDemo,
   ensureReviewDemoOrder,
 } from './order-demo.js?v=20260811';
-import { clientApi } from './client-api.js';
+import { clientApi } from './client-api.js?v=20260812';
 import { useProductionApi } from './runtime-mode.js';
 
 const escapeHtml = (value) =>

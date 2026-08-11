@@ -65,7 +65,7 @@ test('web container maps each host to its own PWA entry point', async () => {
   assert.match(nginx, /default\s+\/home\.html/);
 });
 
-test('client pages version only their changed immutable checkout assets', async () => {
+test('client pages version their changed immutable assets', async () => {
   const nginx = await read('deploy/nginx.conf');
   const checkoutHtml = await read('checkout.html');
   const homeHtml = await read('home.html');
@@ -90,8 +90,9 @@ test('client pages version only their changed immutable checkout assets', async 
   );
   assert.match(
     orderHtml,
-    /<script\s+type="module"\s+src="order\.js\?v=20260811"><\/script>/,
+    /<script\s+type="module"\s+src="order\.js\?v=20260812"><\/script>/,
   );
+  assert.doesNotMatch(orderHtml, /order\.js\?v=20260811/);
 
   const getVersionedImports = (source) => [
     ...source.matchAll(/\bfrom\s+['"]([^'"]+\?v=[^'"]+)['"]/g),
@@ -109,8 +110,14 @@ test('client pages version only their changed immutable checkout assets', async 
   ]);
   assert.deepEqual(getVersionedImports(orderSource), [
     './order-storage.js?v=20260811',
+    './review-service.js?v=20260812',
     './order-demo.js?v=20260811',
+    './client-api.js?v=20260812',
   ]);
+  assert.doesNotMatch(
+    orderSource,
+    /(?:review-service|client-api)\.js\?v=20260811/,
+  );
   assert.deepEqual(getVersionedImports(orderDemoSource), [
     './order-storage.js?v=20260811',
   ]);
