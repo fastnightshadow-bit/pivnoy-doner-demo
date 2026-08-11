@@ -13,6 +13,15 @@ for (const page of ['home.html', 'cart.html', 'checkout.html', 'order.html']) {
   });
 }
 
+test('legal footer keeps fixed-bar clearance until the desktop breakpoint', async () => {
+  const css = await read('client-theme.css');
+  const breakpoint = css.match(
+    /@media \(min-width: (\d+)px\) \{\s*\.client-footer > \.client-footer__legal,\s*\.client-footer__legal \{\s*padding-bottom: 24px;\s*\}\s*\}/,
+  );
+
+  assert.equal(breakpoint?.[1], '1024');
+});
+
 test('legal versions and operator details are canonical and shared with the server image', async () => {
   const { LEGAL_OPERATOR, LEGAL_VERSIONS } = await import('../shared/legal.js');
 

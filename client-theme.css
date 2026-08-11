@@ -333,7 +333,7 @@ html[data-theme='dark'] .row-control input {
   --client-legal-bar-height: var(--checkout-bar-height);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .client-footer > .client-footer__legal,
   .client-footer__legal {
     padding-bottom: 24px;
