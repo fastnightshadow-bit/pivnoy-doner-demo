@@ -95,6 +95,36 @@ const createPublicOrderApp = () =>
     }),
   });
 
+const createProtectedReviewApp = ({ submit } = {}) => {
+  const calls = [];
+  return {
+    calls,
+    app: createApp({
+      db,
+      orderService: createOrderService({
+        orders: {
+          findById: async (id) =>
+            id === internalOrder.id ? internalOrder : null,
+        },
+        settings: {},
+      }),
+      reviewsService: {
+        submit:
+          submit ??
+          (async (orderId, draft) => {
+            calls.push({ operation: 'submit', orderId, draft });
+            return { id: 'review-1', orderId, ...draft };
+          }),
+        list: async () => [],
+        findByOrderId: async (orderId) => {
+          calls.push({ operation: 'find', orderId });
+          return { id: 'review-1', orderId, rating: 5 };
+        },
+      },
+    }),
+  };
+};
+
 test('order creation returns only the strict public order plus its access token', async () => {
   const app = createApp({
     db,
@@ -169,11 +199,84 @@ test('public order access redacts top-level and nested sensitive fields', async 
   assert.equal(JSON.stringify(response.body).includes('costPrice'), false);
 });
 
+test('review access without Authorization is rejected before review operations', async () => {
+  for (const method of ['get', 'post']) {
+    const { app, calls } = createProtectedReviewApp();
+    const pending = request(app)[method]('/api/orders/order-1/review');
+    const response =
+      method === 'post' ? await pending.send({ rating: 5 }) : await pending;
+
+    assert.equal(response.status, 401, method);
+    assert.deepEqual(response.body, { error: 'ORDER_ACCESS_REQUIRED' }, method);
+    assert.equal(calls.length, 0, method);
+  }
+});
+
+test('review access with the wrong token is rejected before review operations', async () => {
+  for (const method of ['get', 'post']) {
+    const { app, calls } = createProtectedReviewApp();
+    const pending = request(app)
+      [method]('/api/orders/order-1/review')
+      .set('Authorization', 'Bearer wrong-token');
+    const response =
+      method === 'post' ? await pending.send({ rating: 5 }) : await pending;
+
+    assert.equal(response.status, 403, method);
+    assert.deepEqual(response.body, { error: 'ORDER_ACCESS_DENIED' }, method);
+    assert.equal(calls.length, 0, method);
+  }
+});
+
+test('matching order access token allows review lookup and submission', async () => {
+  const lookup = createProtectedReviewApp();
+  const found = await request(lookup.app)
+    .get('/api/orders/order-1/review')
+    .set('Authorization', `Bearer ${accessToken}`);
+
+  assert.equal(found.status, 200);
+  assert.deepEqual(found.body, {
+    id: 'review-1',
+    orderId: 'order-1',
+    rating: 5,
+  });
+  assert.deepEqual(lookup.calls, [
+    { operation: 'find', orderId: 'order-1' },
+  ]);
+
+  const submission = createProtectedReviewApp();
+  const created = await request(submission.app)
+    .post('/api/orders/order-1/review')
+    .set('Authorization', `Bearer ${accessToken}`)
+    .send({ rating: 4, authorName: 'Ilya', comment: 'Tasty' });
+
+  assert.equal(created.status, 201);
+  assert.deepEqual(created.body, {
+    id: 'review-1',
+    orderId: 'order-1',
+    rating: 4,
+    authorName: 'Ilya',
+    comment: 'Tasty',
+  });
+  assert.deepEqual(submission.calls, [
+    {
+      operation: 'submit',
+      orderId: 'order-1',
+      draft: { rating: 4, authorName: 'Ilya', comment: 'Tasty' },
+    },
+  ]);
+});
+
 test('отзыв разрешён только после завершения заказа', async () => {
   const calls = [];
   const app = createApp({
     db,
-    orderService: { get: async () => null },
+    orderService: createOrderService({
+      orders: {
+        findById: async (id) =>
+          id === internalOrder.id ? internalOrder : null,
+      },
+      settings: {},
+    }),
     reviewsService: {
       submit: async (orderId, draft) => {
         calls.push({ orderId, draft });
@@ -189,6 +292,7 @@ test('отзыв разрешён только после завершения �
 
   const response = await request(app)
     .post('/api/orders/order-1/review')
+    .set('Authorization', `Bearer ${accessToken}`)
     .send({ rating: 5, authorName: 'Илья', comment: 'Вкусно' });
 
   assert.equal(response.status, 409);

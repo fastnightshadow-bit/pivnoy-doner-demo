@@ -4,6 +4,7 @@ import {
   createClientApi,
   normalizeClientOrderResponse,
 } from '../client-api.js';
+import { createReviewService } from '../review-service.js';
 
 const jsonResponse = (body, status = 200) => ({
   ok: status >= 200 && status < 300,
@@ -68,14 +69,64 @@ test('отзыв отправляется только для указанног
     rating: 5,
     authorName: 'Илья',
     comment: 'Всё отлично',
-  });
+  }, 'secret-token');
 
   assert.equal(calls[0].url, '/api/orders/order%2F1/review');
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer secret-token');
+  assert.doesNotMatch(calls[0].url, /secret-token/);
+  assert.doesNotMatch(calls[0].options.body, /secret-token/);
   assert.deepEqual(JSON.parse(calls[0].options.body), {
     rating: 5,
     authorName: 'Илья',
     comment: 'Всё отлично',
   });
+});
+
+test('review lookup sends access token only in Authorization', async () => {
+  const calls = [];
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      return jsonResponse({ id: 'review-1', rating: 5 });
+    },
+  });
+
+  await api.findReviewByOrderId('order/1', 'secret-token');
+
+  assert.equal(calls[0].url, '/api/orders/order%2F1/review');
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer secret-token');
+  assert.doesNotMatch(calls[0].url, /secret-token/);
+  assert.equal(calls[0].options.body, undefined);
+});
+
+test('review service forwards the stored token through the real client API', async () => {
+  const calls = [];
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      return jsonResponse(
+        options.method === 'POST' ? { id: 'review-1', rating: 5 } : null,
+        options.method === 'POST' ? 201 : 404,
+      );
+    },
+  });
+  const reviews = createReviewService({ api });
+
+  assert.equal(
+    await reviews.findByOrderId('order/1', 'secret-token'),
+    null,
+  );
+  await reviews.submit(
+    { orderId: 'order/1', rating: 5, authorName: 'Ilya', comment: 'Tasty' },
+    'secret-token',
+  );
+
+  assert.equal(calls.length, 2);
+  for (const call of calls) {
+    assert.equal(call.options.headers.Authorization, 'Bearer secret-token');
+    assert.doesNotMatch(call.url, /secret-token/);
+    assert.doesNotMatch(call.options.body ?? '', /secret-token/);
+  }
 });
 
 test('client order request sends the private access token in a header', async () => {

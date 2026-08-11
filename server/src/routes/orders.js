@@ -77,17 +77,42 @@ export const createOrdersRouter = ({
 
   if (reviewsService) {
     router.get('/:id/review', async (request, response) => {
-      const review = await reviewsService.findByOrderId(String(request.params.id));
-      if (!review) return response.status(404).json({ error: 'REVIEW_NOT_FOUND' });
-      return response.json(review);
+      try {
+        const orderId = String(request.params.id);
+        await orderService.verifyAccess(
+          orderId,
+          getOrderAccessToken(request),
+        );
+        const review = await reviewsService.findByOrderId(orderId);
+        if (!review) {
+          return response.status(404).json({ error: 'REVIEW_NOT_FOUND' });
+        }
+        return response.json(review);
+      } catch (error) {
+        return sendPublicOrderError(response, error);
+      }
     });
 
     router.post('/:id/review', async (request, response) => {
       try {
+        const orderId = String(request.params.id);
+        await orderService.verifyAccess(
+          orderId,
+          getOrderAccessToken(request),
+        );
         const draft = reviewSchema.parse(request.body);
-        const review = await reviewsService.submit(String(request.params.id), draft);
+        const review = await reviewsService.submit(orderId, draft);
         return response.status(201).json(review);
       } catch (error) {
+        if (
+          [
+            'ORDER_ACCESS_REQUIRED',
+            'ORDER_ACCESS_DENIED',
+            'ORDER_NOT_FOUND',
+          ].includes(error?.code)
+        ) {
+          return sendPublicOrderError(response, error);
+        }
         if (error instanceof z.ZodError) {
           return response.status(400).json({ error: 'INVALID_REVIEW' });
         }

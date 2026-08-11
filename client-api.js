@@ -98,10 +98,11 @@ export const createClientApi = (options = {}) => {
 
     listReviews: () => fetchJson('/api/reviews'),
 
-    findReviewByOrderId: async (orderId) => {
+    findReviewByOrderId: async (orderId, accessToken) => {
       try {
         return await fetchJson(
           `/api/orders/${encodeURIComponent(String(orderId || ''))}/review`,
+          { headers: authorizationHeader(accessToken) },
         );
       } catch (error) {
         if (error?.status === 404) return null;
@@ -109,11 +110,12 @@ export const createClientApi = (options = {}) => {
       }
     },
 
-    submitReview: (orderId, data) =>
+    submitReview: (orderId, data, accessToken) =>
       fetchJson(
         `/api/orders/${encodeURIComponent(String(orderId || ''))}/review`,
         {
           method: 'POST',
+          headers: authorizationHeader(accessToken),
           body: JSON.stringify(data),
         },
       ),

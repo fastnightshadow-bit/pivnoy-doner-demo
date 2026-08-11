@@ -297,6 +297,9 @@ const initOrder = () => {
   if (!refs.screen) return;
 
   const productionApi = useProductionApi();
+  const activeOrderAccess = productionApi
+    ? loadActiveOrderAccess(window.localStorage)
+    : null;
   let currentOrder = productionApi
     ? null
     : ensureReviewDemoOrder({
@@ -324,7 +327,10 @@ const initOrder = () => {
 
   const syncReview = async (order) => {
     if (!order || !isReviewableOrder(order)) return;
-    const existing = await reviewService.findByOrderId(order.id);
+    const existing = await reviewService.findByOrderId(
+      order.id,
+      activeOrderAccess?.token,
+    );
     if (currentOrder?.id !== order.id) return;
     showReviewSuccess(Boolean(existing));
     if (!existing) renderRating(selectedRating);
@@ -382,12 +388,15 @@ const initOrder = () => {
     refs.reviewSubmit.disabled = true;
     refs.reviewError.hidden = true;
     try {
-      await reviewService.submit({
-        orderId: currentOrder.id,
-        rating: selectedRating,
-        authorName: currentOrder.customerName,
-        comment: refs.reviewComment.value,
-      });
+      await reviewService.submit(
+        {
+          orderId: currentOrder.id,
+          rating: selectedRating,
+          authorName: currentOrder.customerName,
+          comment: refs.reviewComment.value,
+        },
+        activeOrderAccess?.token,
+      );
       showReviewSuccess(true);
       revealMotion(refs.reviewSuccess);
     } catch (error) {
@@ -441,9 +450,6 @@ const initOrder = () => {
     )}`;
   });
 
-  const activeOrderAccess = productionApi
-    ? loadActiveOrderAccess(window.localStorage)
-    : null;
   const unsubscribe = productionApi
     ? activeOrderAccess
       ? clientApi.subscribeToOrder(
