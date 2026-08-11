@@ -32,7 +32,7 @@ import {
   loadActiveOrder,
   loadActiveOrderId,
   subscribeToActiveOrder,
-} from './order-storage.js';
+} from './order-storage.js?v=20260811';
 import {
   loadPreferredProductLines,
   resolvePreferredProductLine,

@@ -65,6 +65,57 @@ test('web container maps each host to its own PWA entry point', async () => {
   assert.match(nginx, /default\s+\/home\.html/);
 });
 
+test('client pages version only their changed immutable checkout assets', async () => {
+  const nginx = await read('deploy/nginx.conf');
+  const checkoutHtml = await read('checkout.html');
+  const homeHtml = await read('home.html');
+  const orderHtml = await read('order.html');
+  const checkoutSource = await read('checkout.js');
+  const homeSource = await read('home.js');
+  const orderSource = await read('order.js');
+  const orderDemoSource = await read('order-demo.js');
+
+  assert.match(
+    nginx,
+    /location\s+~\*[^\n]*\\\.\(\?:css\|js\|[^\n]*\)[^{]*\{[^}]*Cache-Control\s+"public, immutable"/s,
+  );
+  assert.match(
+    checkoutHtml,
+    /<script\s+type="module"\s+src="checkout\.js\?v=20260811"><\/script>/,
+  );
+  assert.match(checkoutHtml, /href="checkout\.css\?v=20260811"/);
+  assert.match(
+    homeHtml,
+    /<script\s+type="module"\s+src="home\.js\?v=20260811"><\/script>/,
+  );
+  assert.match(
+    orderHtml,
+    /<script\s+type="module"\s+src="order\.js\?v=20260811"><\/script>/,
+  );
+
+  const getVersionedImports = (source) => [
+    ...source.matchAll(/\bfrom\s+['"]([^'"]+\?v=[^'"]+)['"]/g),
+  ].map((match) => match[1]);
+  assert.deepEqual(
+    getVersionedImports(checkoutSource),
+    [
+      './checkout-state.js?v=20260811',
+      './order-storage.js?v=20260811',
+      './shared/legal.js?v=20260811',
+    ],
+  );
+  assert.deepEqual(getVersionedImports(homeSource), [
+    './order-storage.js?v=20260811',
+  ]);
+  assert.deepEqual(getVersionedImports(orderSource), [
+    './order-storage.js?v=20260811',
+    './order-demo.js?v=20260811',
+  ]);
+  assert.deepEqual(getVersionedImports(orderDemoSource), [
+    './order-storage.js?v=20260811',
+  ]);
+});
+
 test('deployment template contains placeholders but no production secrets', async () => {
   const env = await read('deploy/.env.example');
   assert.match(env, /POSTGRES_PASSWORD=change-me/);

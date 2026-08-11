@@ -6,7 +6,7 @@ import {
   getCheckoutFieldOrder,
   normalizeDeliveryAddress,
   validateCheckout,
-} from './checkout-state.js';
+} from './checkout-state.js?v=20260811';
 import {
   loadFulfillment,
   saveFulfillment,
@@ -17,7 +17,7 @@ import {
   loadActiveOrder,
   saveActiveOrder,
   saveActiveOrderId,
-} from './order-storage.js';
+} from './order-storage.js?v=20260811';
 import { loadPayment, savePayment } from './payment-storage.js';
 import { getPromoResult } from './promo-state.js';
 import { getDeliveryMinimumRemaining } from './delivery-policy.js';
@@ -29,7 +29,7 @@ import {
 } from './promo-storage.js';
 import { clientApi } from './client-api.js';
 import { useProductionApi } from './runtime-mode.js';
-import { LEGAL_VERSIONS } from './shared/legal.js';
+import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 
 const CHECKOUT_ATTEMPT_STORAGE_KEY = 'pivnoy-doner-checkout-attempt-v1';
 
@@ -62,37 +62,108 @@ export const createCheckoutOrderPayload = ({
   })),
 });
 
-export const getCheckoutAttemptKey = (
-  storage,
-  payload,
-  {
-    randomUUID = globalThis.crypto?.randomUUID?.bind(globalThis.crypto),
-    now = Date.now,
-  } = {},
-) => {
+const getCheckoutOrderIdentity = (payload) => {
   const {
     personalDataConsent: _personalDataConsent,
     personalDataConsentVersion: _personalDataConsentVersion,
     offerVersion: _offerVersion,
     ...orderIdentity
   } = payload && typeof payload === 'object' ? payload : {};
-  const fingerprint = JSON.stringify(orderIdentity);
+  return orderIdentity;
+};
+
+const sortObjectKeys = (value) => {
+  if (Array.isArray(value)) return value.map(sortObjectKeys);
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.keys(value)
+    .sort()
+    .reduce((result, key) => {
+      if (value[key] !== undefined) result[key] = sortObjectKeys(value[key]);
+      return result;
+    }, {});
+};
+
+export const createCheckoutAttemptDigest = async (
+  payload,
+  {
+    cryptoRef = globalThis.crypto,
+    TextEncoderRef = globalThis.TextEncoder,
+  } = {},
+) => {
+  if (!cryptoRef?.subtle?.digest || typeof TextEncoderRef !== 'function') {
+    throw new Error('SHA-256 checkout digest is unavailable');
+  }
+
+  const identity = JSON.stringify(
+    sortObjectKeys(getCheckoutOrderIdentity(payload)),
+  );
+  const digest = await cryptoRef.subtle.digest(
+    'SHA-256',
+    new TextEncoderRef().encode(identity),
+  );
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+export const getCheckoutAttemptKey = async (
+  storage,
+  payload,
+  {
+    randomUUID = globalThis.crypto?.randomUUID?.bind(globalThis.crypto),
+    now = Date.now,
+    cryptoRef = globalThis.crypto,
+    TextEncoderRef = globalThis.TextEncoder,
+  } = {},
+) => {
+  const orderIdentity = getCheckoutOrderIdentity(payload);
+  const legacyFingerprint = JSON.stringify(orderIdentity);
+  let digest;
   try {
-    const saved = JSON.parse(
+    digest = await createCheckoutAttemptDigest(payload, {
+      cryptoRef,
+      TextEncoderRef,
+    });
+  } catch (error) {
+    try {
+      storage?.removeItem?.(CHECKOUT_ATTEMPT_STORAGE_KEY);
+    } catch {
+      // The checkout remains fail-closed even when storage cannot be cleaned.
+    }
+    throw error;
+  }
+  let saved = null;
+  try {
+    saved = JSON.parse(
       storage?.getItem?.(CHECKOUT_ATTEMPT_STORAGE_KEY) || 'null',
     );
-    if (saved?.fingerprint === fingerprint && saved?.key) return saved.key;
   } catch {
     // A damaged retry marker is replaced below.
   }
+
+  const savedKey = String(saved?.key || '').trim();
+  if (
+    savedKey &&
+    (saved?.digest === digest || saved?.fingerprint === legacyFingerprint)
+  ) {
+    const createdAt = Number(saved?.createdAt) || Number(now());
+    storage?.setItem?.(
+      CHECKOUT_ATTEMPT_STORAGE_KEY,
+      JSON.stringify({ digest, key: savedKey, createdAt }),
+    );
+    return savedKey;
+  }
+
+  const createdAt = Number(now());
   const suffix =
     typeof randomUUID === 'function'
       ? randomUUID()
-      : `${now()}-${Math.random().toString(36).slice(2)}`;
+      : `${createdAt}-${Math.random().toString(36).slice(2)}`;
   const key = `checkout-${suffix}`;
   storage?.setItem?.(
     CHECKOUT_ATTEMPT_STORAGE_KEY,
-    JSON.stringify({ fingerprint, key }),
+    JSON.stringify({ digest, key, createdAt }),
   );
   return key;
 };
@@ -135,23 +206,13 @@ export const createCheckoutOrderLineMarkup = (line = {}) => ({
 
 const DELIVERY_ADDRESS_STORAGE_KEY = 'pivnoy-doner-delivery-address-v1';
 
-export const loadDeliveryAddress = (storage) => {
+export const clearLegacyDeliveryAddress = (storage) => {
   try {
-    return normalizeDeliveryAddress(
-      JSON.parse(storage?.getItem?.(DELIVERY_ADDRESS_STORAGE_KEY) || '{}'),
-    );
+    storage?.removeItem?.(DELIVERY_ADDRESS_STORAGE_KEY);
   } catch {
-    return normalizeDeliveryAddress();
+    // The current checkout still works when browser storage is unavailable.
   }
-};
-
-export const saveDeliveryAddress = (storage, address) => {
-  const normalized = normalizeDeliveryAddress(address);
-  storage?.setItem?.(
-    DELIVERY_ADDRESS_STORAGE_KEY,
-    JSON.stringify(normalized),
-  );
-  return normalized;
+  return normalizeDeliveryAddress();
 };
 
 export const copyText = async (
@@ -244,7 +305,7 @@ const initCheckout = () => {
     timeMode: 'asap',
     payment: loadPayment(window.localStorage),
   };
-  let deliveryAddress = loadDeliveryAddress(window.localStorage);
+  let deliveryAddress = clearLegacyDeliveryAddress(window.localStorage);
   let toastTimer;
 
   const showToast = (message) => {
@@ -529,10 +590,7 @@ const initCheckout = () => {
     addressIntercom,
   ].forEach((input) => {
     input.addEventListener('input', () => {
-      deliveryAddress = saveDeliveryAddress(
-        window.localStorage,
-        readDeliveryAddress(),
-      );
+      deliveryAddress = readDeliveryAddress();
       renderAddressSummary();
       if (input === addressStreet) setFieldError('address');
     });
@@ -630,12 +688,11 @@ const initCheckout = () => {
       courierComment: courierComment?.value || '',
       personalDataConsent: personalDataConsentInput.checked,
     });
-    const attemptKey = getCheckoutAttemptKey(
-      window.sessionStorage,
-      payload,
-    );
-
     try {
+      const attemptKey = await getCheckoutAttemptKey(
+        window.sessionStorage,
+        payload,
+      );
       const order = await clientApi.createOrder(payload, attemptKey);
       saveActiveOrderId(window.localStorage, order.id);
       saveCart(window.localStorage, []);

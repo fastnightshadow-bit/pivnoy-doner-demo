@@ -22,6 +22,44 @@ test('legal footer keeps fixed-bar clearance until the desktop breakpoint', asyn
   assert.equal(breakpoint?.[1], '1024');
 });
 
+test('empty checkout is the primary landmark before reachable legal links', async () => {
+  const html = await read('checkout.html');
+  const emptyStateIndex = html.indexOf(
+    '<main class="empty-checkout" hidden data-empty-checkout>',
+  );
+  const legalFooterIndex = html.indexOf(
+    '<nav class="client-footer__legal"',
+  );
+
+  assert.notEqual(emptyStateIndex, -1);
+  assert.notEqual(legalFooterIndex, -1);
+  assert.ok(emptyStateIndex < legalFooterIndex);
+});
+
+test('empty checkout removes hidden-bar clearance and avoids a full viewport spacer', async () => {
+  const themeCss = await read('client-theme.css');
+  const checkoutCss = await read('checkout.css');
+  const emptyRule = checkoutCss.match(/\.empty-checkout\s*\{([^}]*)\}/)?.[1];
+
+  assert.match(
+    themeCss,
+    /\.checkout-app\s*>\s*\[data-checkout-form\]\[hidden\]\s*~\s*\.client-footer__legal\s*\{[^}]*--client-legal-bar-height:\s*0px/s,
+  );
+  assert.ok(emptyRule);
+  assert.doesNotMatch(emptyRule, /min-height:\s*100vh/);
+  assert.match(emptyRule, /min-height:\s*max\([^;]*100svh[^;]*\)/);
+});
+
+test('privacy page describes the minimized browser retry state', async () => {
+  const privacy = await read('privacy.html');
+
+  assert.match(privacy, /sessionStorage/i);
+  assert.match(privacy, /SHA-256/i);
+  assert.match(privacy, /ключ идемпотентности/i);
+  assert.match(privacy, /имя покупателя, телефон, адрес[^.]*комментарий курьеру/i);
+  assert.match(privacy, /не сохраняются[^.]*исходн/i);
+});
+
 test('legal versions and operator details are canonical and shared with the server image', async () => {
   const { LEGAL_OPERATOR, LEGAL_VERSIONS } = await import('../shared/legal.js');
 

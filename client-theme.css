@@ -8,6 +8,9 @@
   --client-line: #e7e5e1;
   --client-canvas-rgb: 255 255 255;
   --client-surface-rgb: 255 255 255;
+  --checkout-focus-ring: #8f1712;
+  --checkout-error-text: #b71d18;
+  --checkout-error-surface: #fff9f8;
 }
 
 html[data-theme='dark'] {
@@ -20,6 +23,9 @@ html[data-theme='dark'] {
   --client-line: #30302e;
   --client-canvas-rgb: 17 17 17;
   --client-surface-rgb: 26 26 26;
+  --checkout-focus-ring: #ff8d85;
+  --checkout-error-text: #ff8a84;
+  --checkout-error-surface: #2b1716;
 
   --color-canvas: var(--client-canvas);
   --color-bg: var(--client-canvas);
@@ -32,6 +38,7 @@ html[data-theme='dark'] {
   --color-line: var(--client-line);
   --color-brand-soft: #351513;
   --color-brand-line: #672b27;
+  --color-error: var(--checkout-error-text);
 
   --control-ink: var(--client-text);
   --control-surface: #262624;
@@ -333,6 +340,10 @@ html[data-theme='dark'] .row-control input {
   --client-legal-bar-height: var(--checkout-bar-height);
 }
 
+.checkout-app > [data-checkout-form][hidden] ~ .client-footer__legal {
+  --client-legal-bar-height: 0px;
+}
+
 .checkout-legal {
   display: grid;
   gap: 10px;
@@ -374,7 +385,7 @@ html[data-theme='dark'] .row-control input {
 }
 
 .checkout-legal .field-error {
-  color: var(--color-error);
+  color: var(--checkout-error-text);
 }
 
 .checkout-legal .field-error:empty {
@@ -387,12 +398,12 @@ html[data-theme='dark'] .row-control input {
 }
 
 .checkout-legal.is-error {
-  background: #fff9f8;
+  background: var(--checkout-error-surface);
   border-color: rgb(183 29 24 / 32%);
 }
 
 .checkout-consent input:focus-visible {
-  outline: 3px solid rgb(23 23 23 / 22%);
+  outline: 3px solid var(--checkout-focus-ring);
   outline-offset: 2px;
 }
 
@@ -412,7 +423,6 @@ html[data-theme='dark'] .switch::after {
 }
 
 html[data-theme='dark'] .field.is-error,
-html[data-theme='dark'] .checkout-legal.is-error,
 html[data-theme='dark'] .promo-panel.is-invalid {
   background: #2b1716;
 }

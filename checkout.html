@@ -17,7 +17,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app/apple-touch-icon.png?v=20260805" />
     <script src="theme-preload.js"></script>
     <link rel="stylesheet" href="motion.css" />
-    <link rel="stylesheet" href="checkout.css" />
+    <link rel="stylesheet" href="checkout.css?v=20260811" />
     <link rel="stylesheet" href="client-theme.css?v=20260811" />
   </head>
   <body>
@@ -419,6 +419,8 @@
               <input
                 type="checkbox"
                 name="personalDataConsent"
+                required
+                aria-required="true"
                 aria-describedby="checkout-consent-error"
                 data-personal-data-consent
               />
@@ -455,21 +457,21 @@
         </main>
       </form>
 
-      <nav class="client-footer__legal" aria-label="Правовая информация">
-        <a href="seller.html">Продавец</a>
-        <a href="offer.html">Оферта</a>
-        <a href="privacy.html">Политика данных</a>
-        <a href="consent.html">Согласие</a>
-      </nav>
-
-      <section class="empty-checkout" hidden data-empty-checkout>
+      <main class="empty-checkout" hidden data-empty-checkout>
         <div aria-hidden="true">
           <svg class="icon"><use href="#checkout-i-bag"></use></svg>
         </div>
         <h1>Корзина пуста</h1>
         <p>Выберите блюда, чтобы продолжить заказ.</p>
         <a href="home.html#categories">Перейти в меню</a>
-      </section>
+      </main>
+
+      <nav class="client-footer__legal" aria-label="Правовая информация">
+        <a href="seller.html">Продавец</a>
+        <a href="offer.html">Оферта</a>
+        <a href="privacy.html">Политика данных</a>
+        <a href="consent.html">Согласие</a>
+      </nav>
 
       <div
         class="checkout-toast"
@@ -482,6 +484,6 @@
 
     <script type="module" src="theme.js"></script>
     <script type="module" src="motion.js"></script>
-    <script type="module" src="checkout.js"></script>
+    <script type="module" src="checkout.js?v=20260811"></script>
   </body>
 </html>

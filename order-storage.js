@@ -6,23 +6,47 @@ export const ACTIVE_ORDER_ID_STORAGE_KEY = 'pivnoy-doner-active-order-id-v1';
 const getBrowserStorage = () =>
   typeof window !== 'undefined' ? window.localStorage : null;
 
+const minimizeStoredOrder = (order) => {
+  const normalized = normalizeOrder(order);
+  if (!normalized) return null;
+
+  return normalizeOrder({
+    ...normalized,
+    customerName: '',
+    phone: '',
+    address: {},
+    comment: '',
+    items: normalized.items.map((item) => ({ ...item, comment: '' })),
+  });
+};
+
 export const loadActiveOrder = (storage = getBrowserStorage()) => {
   if (!storage?.getItem) return null;
 
+  let order;
   try {
-    return normalizeOrder(
+    order = minimizeStoredOrder(
       JSON.parse(storage.getItem(ACTIVE_ORDER_STORAGE_KEY) || 'null'),
     );
   } catch {
     return null;
   }
+
+  if (order) {
+    try {
+      storage.setItem?.(ACTIVE_ORDER_STORAGE_KEY, JSON.stringify(order));
+    } catch {
+      // The safe in-memory order remains usable when migration cannot persist.
+    }
+  }
+  return order;
 };
 
 export const saveActiveOrder = (
   storage = getBrowserStorage(),
   order = null,
 ) => {
-  const normalized = normalizeOrder(order);
+  const normalized = minimizeStoredOrder(order);
   if (!normalized || !storage?.setItem) return normalized;
 
   try {

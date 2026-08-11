@@ -787,7 +787,8 @@ button {
 
 .empty-checkout {
   display: grid;
-  min-height: 100vh;
+  min-height: max(400px, calc(100vh - 136px));
+  min-height: max(400px, calc(100svh - 136px));
   place-items: center;
   align-content: center;
   gap: 12px;
