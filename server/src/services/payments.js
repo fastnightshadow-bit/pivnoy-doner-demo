@@ -17,6 +17,42 @@ const assertPaymentOrder = (payment, orderId) => {
   }
 };
 
+const assertProviderPayment = (payment, order) => {
+  const providerPaymentId = String(payment?.id ?? '').trim();
+  if (!providerPaymentId) {
+    throw new PaymentProviderError('PAYMENT_PROVIDER_ID_REQUIRED', {
+      status: 409,
+    });
+  }
+  if (String(payment?.orderId ?? '') !== order.id) {
+    throw new PaymentProviderError('PAYMENT_ORDER_MISMATCH', { status: 409 });
+  }
+  if (!Number.isFinite(payment?.amount) || payment.amount !== order.total) {
+    throw new PaymentProviderError('PAYMENT_AMOUNT_MISMATCH', { status: 409 });
+  }
+  if (payment?.currency !== 'RUB') {
+    throw new PaymentProviderError('PAYMENT_CURRENCY_MISMATCH', {
+      status: 409,
+    });
+  }
+  return providerPaymentId;
+};
+
+const assertProviderPaymentOwner = (
+  payment,
+  { orderId, idempotencyKey, providerPaymentId },
+) => {
+  if (
+    payment.orderId !== orderId ||
+    payment.idempotencyKey !== idempotencyKey ||
+    payment.providerPaymentId !== providerPaymentId
+  ) {
+    throw new PaymentProviderError('PAYMENT_PROVIDER_ID_CONFLICT', {
+      status: 409,
+    });
+  }
+};
+
 export const createPaymentService = ({
   payments,
   orders,
@@ -39,14 +75,36 @@ export const createPaymentService = ({
       throw new PaymentProviderError('ORDER_ACCESS_DENIED', { status: 403 });
     }
 
-    const existing = await payments.findByIdempotencyKey(key);
-    if (existing) {
-      assertPaymentOrder(existing, order.id);
-      return toPublicPayment(existing);
+    let reservation = await payments.findByIdempotencyKey(key);
+    if (reservation) {
+      assertPaymentOrder(reservation, order.id);
+      if (reservation.providerPaymentId) {
+        return toPublicPayment(reservation);
+      }
     }
 
     if (order.paymentStatus === 'paid') {
       throw new PaymentProviderError('ORDER_ALREADY_PAID', { status: 409 });
+    }
+
+    if (!reservation) {
+      reservation = await payments.reserve({
+        id: createId(),
+        orderId: order.id,
+        provider: providerName,
+        idempotencyKey: key,
+        amount: order.total,
+        currency: 'RUB',
+      });
+      if (!reservation) {
+        throw new PaymentProviderError('PAYMENT_RESERVATION_FAILED', {
+          status: 409,
+        });
+      }
+      assertPaymentOrder(reservation, order.id);
+      if (reservation.providerPaymentId) {
+        return toPublicPayment(reservation);
+      }
     }
 
     const providerPayment = await provider.createPayment({
@@ -56,26 +114,55 @@ export const createPaymentService = ({
       returnUrl: returnUrlForOrder(order.id),
       idempotencyKey: key,
     });
-    const draft = {
-      id: createId(),
+    const providerPaymentId = assertProviderPayment(providerPayment, order);
+    const providerOwner = await payments.findByProviderPaymentId(
+      providerPaymentId,
+    );
+    if (providerOwner) {
+      assertProviderPaymentOwner(providerOwner, {
+        orderId: order.id,
+        idempotencyKey: key,
+        providerPaymentId,
+      });
+      return toPublicPayment(providerOwner);
+    }
+
+    const completedPayment = {
+      id: reservation.id,
       orderId: order.id,
       provider: providerName,
-      providerPaymentId: providerPayment.id,
+      providerPaymentId,
       idempotencyKey: key,
       status: mapProviderStatus(providerPayment.status),
-      amount: order.total,
-      currency: 'RUB',
-      providerPayload: providerPayment,
+      amount: providerPayment.amount,
+      currency: providerPayment.currency,
+      providerPayload: providerPayment.raw ?? providerPayment,
     };
 
     try {
-      return toPublicPayment(await payments.create(draft));
+      const completed = await payments.completeReservation(completedPayment);
+      if (!completed) {
+        throw new PaymentProviderError('PAYMENT_RESERVATION_FAILED', {
+          status: 409,
+        });
+      }
+      assertPaymentOrder(completed, order.id);
+      assertProviderPaymentOwner(completed, {
+        orderId: order.id,
+        idempotencyKey: key,
+        providerPaymentId,
+      });
+      return toPublicPayment(completed);
     } catch (error) {
       if (error?.code !== '23505') throw error;
-      const concurrent = await payments.findByIdempotencyKey(key);
-      if (!concurrent) throw error;
-      assertPaymentOrder(concurrent, order.id);
-      return toPublicPayment(concurrent);
+      const owner = await payments.findByProviderPaymentId(providerPaymentId);
+      if (!owner) throw error;
+      assertProviderPaymentOwner(owner, {
+        orderId: order.id,
+        idempotencyKey: key,
+        providerPaymentId,
+      });
+      return toPublicPayment(owner);
     }
   },
 

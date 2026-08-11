@@ -60,6 +60,17 @@ test('privacy page describes the minimized browser retry state', async () => {
   assert.match(privacy, /не сохраняются[^.]*исходн/i);
 });
 
+test('privacy page discloses local order access credentials and URL containment', async () => {
+  const privacy = await read('privacy.html');
+
+  assert.match(
+    privacy,
+    /localStorage[^.]*идентификатор[^.]*секретн[^.]*токен/i,
+  );
+  assert.match(privacy, /токен[^.]*не (?:добавляется|помещается|передаётся)[^.]*URL/i);
+  assert.match(privacy, /отслеживан[^.]*отзыв/i);
+});
+
 test('legal versions and operator details are canonical and shared with the server image', async () => {
   const { LEGAL_OPERATOR, LEGAL_VERSIONS } = await import('../shared/legal.js');
 

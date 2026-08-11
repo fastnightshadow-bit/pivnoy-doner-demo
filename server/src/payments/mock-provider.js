@@ -4,9 +4,14 @@ export class MockPaymentProvider {
   constructor({ createId = randomUUID } = {}) {
     this.createId = createId;
     this.payments = new Map();
+    this.paymentsByIdempotencyKey = new Map();
   }
 
-  async createPayment({ orderId, amount, returnUrl }) {
+  async createPayment({ orderId, amount, returnUrl, idempotencyKey }) {
+    const key = String(idempotencyKey ?? '').trim();
+    if (key && this.paymentsByIdempotencyKey.has(key)) {
+      return this.paymentsByIdempotencyKey.get(key);
+    }
     const id = `mock-${this.createId()}`;
     const payment = {
       id,
@@ -17,6 +22,7 @@ export class MockPaymentProvider {
       confirmationUrl: String(returnUrl || ''),
     };
     this.payments.set(id, payment);
+    if (key) this.paymentsByIdempotencyKey.set(key, payment);
     return payment;
   }
 

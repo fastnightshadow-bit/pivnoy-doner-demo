@@ -15,24 +15,75 @@ const mapPayment = (row) =>
       }
     : null;
 
-export const createPaymentsRepository = (pool) => ({
-  findByIdempotencyKey: async (key) => {
+export const createPaymentsRepository = (pool) => {
+  const findByIdempotencyKey = async (key) => {
     const result = await pool.query(
       'select * from payments where idempotency_key = $1',
       [key],
     );
     return mapPayment(result.rows[0]);
-  },
+  };
 
-  findByProviderPaymentId: async (providerPaymentId) => {
-    const result = await pool.query(
-      'select * from payments where provider_payment_id = $1',
-      [providerPaymentId],
-    );
-    return mapPayment(result.rows[0]);
-  },
+  return {
+    findByIdempotencyKey,
 
-  create: async (payment) => {
+    findByProviderPaymentId: async (providerPaymentId) => {
+      const result = await pool.query(
+        'select * from payments where provider_payment_id = $1',
+        [providerPaymentId],
+      );
+      return mapPayment(result.rows[0]);
+    },
+
+    reserve: async (payment) => {
+      const result = await pool.query(
+        `insert into payments (
+          id, order_id, provider, provider_payment_id, idempotency_key,
+          status, amount, currency, provider_payload
+        ) values ($1, $2, $3, null, $4, 'pending', $5, $6, '{}'::jsonb)
+        on conflict (idempotency_key) do nothing
+        returning *`,
+        [
+          payment.id,
+          payment.orderId,
+          payment.provider,
+          payment.idempotencyKey,
+          payment.amount,
+          payment.currency,
+        ],
+      );
+      return mapPayment(result.rows[0]) ??
+        findByIdempotencyKey(payment.idempotencyKey);
+    },
+
+    completeReservation: async (payment) => {
+      const result = await pool.query(
+        `update payments
+         set provider_payment_id = $3,
+             status = $4,
+             amount = $5,
+             currency = $6,
+             provider_payload = $7,
+             updated_at = now()
+         where idempotency_key = $1
+           and order_id = $2
+           and provider_payment_id is null
+         returning *`,
+        [
+          payment.idempotencyKey,
+          payment.orderId,
+          payment.providerPaymentId,
+          payment.status,
+          payment.amount,
+          payment.currency,
+          payment.providerPayload,
+        ],
+      );
+      return mapPayment(result.rows[0]) ??
+        findByIdempotencyKey(payment.idempotencyKey);
+    },
+
+    create: async (payment) => {
     const result = await pool.query(
       `insert into payments (
         id, order_id, provider, provider_payment_id, idempotency_key,
@@ -52,9 +103,9 @@ export const createPaymentsRepository = (pool) => ({
       ],
     );
     return mapPayment(result.rows[0]);
-  },
+    },
 
-  applyVerifiedState: async ({ providerPaymentId, status, providerPayload }) => {
+    applyVerifiedState: async ({ providerPaymentId, status, providerPayload }) => {
     const client = await pool.connect();
     try {
       await client.query('begin');
@@ -113,5 +164,6 @@ export const createPaymentsRepository = (pool) => ({
     } finally {
       client.release();
     }
-  },
-});
+    },
+  };
+};

@@ -207,6 +207,77 @@ test('order subscription polls after completion without overlapping requests', a
   unsubscribe();
 });
 
+test('order subscription stops after terminal status without clearing the final update', async () => {
+  for (const status of ['completed', 'cancelled']) {
+    const timers = [];
+    const listeners = new Map();
+    const updates = [];
+    const documentRef = {
+      visibilityState: 'visible',
+      addEventListener: (type, listener) => listeners.set(type, listener),
+      removeEventListener: (type, listener) => {
+        if (listeners.get(type) === listener) listeners.delete(type);
+      },
+    };
+    const api = createClientApi({
+      fetcher: async () => jsonResponse({ id: 'order-1', status }),
+      documentRef,
+      setTimeoutFn: (callback, delay) => {
+        timers.push({ callback, delay });
+        return timers.length;
+      },
+      clearTimeoutFn() {},
+    });
+
+    api.subscribeToOrder('order-1', 'secret-token', {
+      onUpdate: (order) => updates.push(order),
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.deepEqual(updates.map((order) => order.status), [status], status);
+    assert.equal(timers.length, 0, status);
+    assert.equal(listeners.has('visibilitychange'), false, status);
+  }
+});
+
+test('order subscription stops after permanent authorization or not-found errors', async () => {
+  for (const status of [401, 403, 404]) {
+    const timers = [];
+    const listeners = new Map();
+    const errors = [];
+    const documentRef = {
+      visibilityState: 'visible',
+      addEventListener: (type, listener) => listeners.set(type, listener),
+      removeEventListener: (type, listener) => {
+        if (listeners.get(type) === listener) listeners.delete(type);
+      },
+    };
+    const api = createClientApi({
+      fetcher: async () =>
+        jsonResponse(
+          { error: status === 404 ? 'ORDER_NOT_FOUND' : 'ORDER_ACCESS_DENIED' },
+          status,
+        ),
+      documentRef,
+      setTimeoutFn: (callback, delay) => {
+        timers.push({ callback, delay });
+        return timers.length;
+      },
+      clearTimeoutFn() {},
+    });
+
+    api.subscribeToOrder('order-1', 'secret-token', {
+      onError: (error) => errors.push(error),
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(errors.length, 1, status);
+    assert.equal(errors[0].status, status, status);
+    assert.equal(timers.length, 0, status);
+    assert.equal(listeners.has('visibilitychange'), false, status);
+  }
+});
+
 test('order polling pauses while hidden, refreshes on visibility and cleans up', async () => {
   const listeners = new Map();
   const timers = [];

@@ -155,7 +155,12 @@ export const createOrdersRouter = ({
         return response.status(400).json({ error: 'INVALID_ORDER' });
       }
       if (error instanceof DomainError) {
-        const status = error.code === 'LEGAL_VERSION_OUTDATED' ? 409 : 422;
+        const status = [
+          'LEGAL_VERSION_OUTDATED',
+          'ORDER_ACCESS_TOKEN_UNAVAILABLE',
+        ].includes(error.code)
+          ? 409
+          : 422;
         return response.status(status).json({
           error: error.code,
           details: error.details,

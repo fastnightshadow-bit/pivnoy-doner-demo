@@ -39,6 +39,9 @@ const authorizationHeader = (token) => ({
   Authorization: `Bearer ${String(token || '')}`,
 });
 
+const TERMINAL_ORDER_STATUSES = new Set(['completed', 'cancelled']);
+const PERMANENT_POLL_ERROR_STATUSES = new Set([401, 403, 404]);
+
 export const normalizeClientOrderResponse = (value = {}) => ({
   ...value,
   status:
@@ -124,12 +127,24 @@ export const createClientApi = (options = {}) => {
       let stopped = false;
       let inFlight = false;
       let timerId = null;
+      let onVisibilityChange = null;
 
       const isVisible = () => documentRef?.visibilityState !== 'hidden';
       const clearTimer = () => {
         if (timerId === null) return;
         clearTimeoutFn?.(timerId);
         timerId = null;
+      };
+      const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        clearTimer();
+        if (onVisibilityChange) {
+          documentRef?.removeEventListener?.(
+            'visibilitychange',
+            onVisibilityChange,
+          );
+        }
       };
       const schedule = () => {
         if (
@@ -152,15 +167,19 @@ export const createClientApi = (options = {}) => {
           const order = await getOrder(id, accessToken);
           if (stopped) return;
           handlers.onUpdate?.(order);
+          if (TERMINAL_ORDER_STATUSES.has(order.status)) stop();
         } catch (error) {
           if (stopped) return;
           handlers.onError?.(error);
+          if (PERMANENT_POLL_ERROR_STATUSES.has(Number(error?.status))) {
+            stop();
+          }
         } finally {
           inFlight = false;
           if (!stopped) schedule();
         }
       };
-      const onVisibilityChange = () => {
+      onVisibilityChange = () => {
         clearTimer();
         if (isVisible()) void poll();
       };
@@ -168,14 +187,7 @@ export const createClientApi = (options = {}) => {
       documentRef?.addEventListener?.('visibilitychange', onVisibilityChange);
       if (isVisible()) void poll();
 
-      return () => {
-        stopped = true;
-        clearTimer();
-        documentRef?.removeEventListener?.(
-          'visibilitychange',
-          onVisibilityChange,
-        );
-      };
+      return stop;
     },
   };
 };

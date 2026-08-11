@@ -74,13 +74,18 @@ const paymentAccessToken = 'private-payment-access-token';
 const createPaymentAccessFixture = ({
   orderExists = true,
   existingPayment = null,
+  providerPayment = null,
 } = {}) => {
+  let storedPayment = existingPayment;
   const calls = {
     orderReads: 0,
     paymentLookups: 0,
+    paymentReservations: 0,
+    paymentCompletions: 0,
     providerCreates: 0,
     providerArguments: [],
     returnUrlOrderIds: [],
+    events: [],
   };
   const order = {
     id: 'order-1',
@@ -93,9 +98,32 @@ const createPaymentAccessFixture = ({
     payments: {
       findByIdempotencyKey: async () => {
         calls.paymentLookups += 1;
-        return existingPayment;
+        return storedPayment;
       },
-      create: async (payment) => payment,
+      findByProviderPaymentId: async () => null,
+      reserve: async (payment) => {
+        calls.paymentReservations += 1;
+        calls.events.push('reserve');
+        if (!storedPayment) {
+          storedPayment = {
+            ...payment,
+            providerPaymentId: null,
+            providerPayload: {},
+          };
+        }
+        return storedPayment;
+      },
+      completeReservation: async (payment) => {
+        calls.paymentCompletions += 1;
+        calls.events.push('complete');
+        storedPayment = { ...storedPayment, ...payment };
+        return storedPayment;
+      },
+      create: async (payment) => {
+        calls.events.push('legacy-create');
+        storedPayment = payment;
+        return payment;
+      },
     },
     orders: {
       findById: async () => {
@@ -106,8 +134,9 @@ const createPaymentAccessFixture = ({
     provider: {
       createPayment: async (input) => {
         calls.providerCreates += 1;
+        calls.events.push('provider');
         calls.providerArguments.push(input);
-        return {
+        return providerPayment ?? {
           id: 'provider-payment-1',
           orderId: input.orderId,
           status: 'pending',
@@ -171,7 +200,10 @@ test('payment retry access with the matching token creates a payment without lea
   assert.equal(response.body.orderId, 'order-1');
   assert.equal(calls.orderReads, 1);
   assert.equal(calls.paymentLookups, 1);
+  assert.equal(calls.paymentReservations, 1);
+  assert.equal(calls.paymentCompletions, 1);
   assert.equal(calls.providerCreates, 1);
+  assert.deepEqual(calls.events, ['reserve', 'provider', 'complete']);
   assert.deepEqual(calls.returnUrlOrderIds, ['order-1']);
   assert.equal(
     JSON.stringify(calls.providerArguments).includes(paymentAccessToken),
@@ -210,24 +242,169 @@ test('payment retry access cannot reuse an idempotency key from another order', 
 
 test('payment retry access rejects a concurrent idempotency collision from another order', async () => {
   let paymentLookups = 0;
+  let storedPayment = null;
+  let releaseLookups;
+  const lookupsReady = new Promise((resolve) => {
+    releaseLookups = resolve;
+  });
+  const providerOrders = [];
+  const accessTokens = {
+    'order-1': 'private-payment-access-token-1',
+    'order-2': 'private-payment-access-token-2',
+  };
   const service = createPaymentService({
     payments: {
       findByIdempotencyKey: async () => {
         paymentLookups += 1;
-        return paymentLookups === 1
-          ? null
-          : {
-              id: 'other-local-payment',
-              orderId: 'other-order',
-              providerPaymentId: 'other-provider-payment',
-              status: 'pending',
-            };
+        if (paymentLookups <= 2) {
+          if (paymentLookups === 2) releaseLookups();
+          await lookupsReady;
+          return null;
+        }
+        return storedPayment;
       },
-      create: async () => {
-        const error = new Error('unique violation');
-        error.code = '23505';
-        throw error;
+      findByProviderPaymentId: async () => null,
+      reserve: async (payment) => {
+        if (!storedPayment) {
+          storedPayment = {
+            ...payment,
+            providerPaymentId: null,
+            providerPayload: {},
+          };
+        }
+        return storedPayment;
       },
+      completeReservation: async (payment) => {
+        storedPayment = { ...storedPayment, ...payment };
+        return storedPayment;
+      },
+      create: async (payment) => {
+        if (storedPayment) {
+          const error = new Error('unique violation');
+          error.code = '23505';
+          throw error;
+        }
+        storedPayment = payment;
+        return payment;
+      },
+    },
+    orders: {
+      findById: async (id) => ({
+        id,
+        number: id === 'order-1' ? '1464' : '2468',
+        total: 700,
+        paymentStatus: 'pending',
+        accessTokenHash: hashOrderAccessToken(accessTokens[id]),
+      }),
+    },
+    provider: {
+      createPayment: async ({ orderId, amount, returnUrl }) => {
+        providerOrders.push(orderId);
+        return {
+          id: `provider-payment-${orderId}`,
+          orderId,
+          amount,
+          status: 'pending',
+          currency: 'RUB',
+          confirmationUrl: returnUrl,
+        };
+      },
+    },
+    returnUrlForOrder: (orderId) =>
+      `https://pivdoner.ru/order.html?id=${encodeURIComponent(orderId)}`,
+  });
+
+  const results = await Promise.allSettled([
+    service.create('order-1', 'payment-retry-1', accessTokens['order-1']),
+    service.create('order-2', 'payment-retry-1', accessTokens['order-2']),
+  ]);
+
+  assert.equal(results.filter(({ status }) => status === 'fulfilled').length, 1);
+  const [rejected] = results.filter(({ status }) => status === 'rejected');
+  assert.equal(rejected.reason.code, 'PAYMENT_IDEMPOTENCY_CONFLICT');
+  assert.equal(rejected.reason.status, 409);
+  assert.equal(providerOrders.length, 1);
+  assert.equal(providerOrders[0], storedPayment.orderId);
+});
+
+test('payment creation rejects mismatched provider results before final persistence', async () => {
+  const cases = [
+    {
+      label: 'missing provider id',
+      providerPayment: {
+        id: '',
+        orderId: 'order-1',
+        amount: 700,
+        currency: 'RUB',
+        status: 'pending',
+      },
+      code: 'PAYMENT_PROVIDER_ID_REQUIRED',
+    },
+    {
+      label: 'other order',
+      providerPayment: {
+        id: 'provider-payment-1',
+        orderId: 'other-order',
+        amount: 700,
+        currency: 'RUB',
+        status: 'pending',
+      },
+      code: 'PAYMENT_ORDER_MISMATCH',
+    },
+    {
+      label: 'wrong amount',
+      providerPayment: {
+        id: 'provider-payment-1',
+        orderId: 'order-1',
+        amount: 999,
+        currency: 'RUB',
+        status: 'pending',
+      },
+      code: 'PAYMENT_AMOUNT_MISMATCH',
+    },
+    {
+      label: 'wrong currency',
+      providerPayment: {
+        id: 'provider-payment-1',
+        orderId: 'order-1',
+        amount: 700,
+        currency: 'USD',
+        status: 'pending',
+      },
+      code: 'PAYMENT_CURRENCY_MISMATCH',
+    },
+  ];
+
+  for (const { label, providerPayment, code } of cases) {
+    const { app, calls } = createPaymentAccessFixture({ providerPayment });
+    const response = await postPayment(app, paymentAccessToken);
+
+    assert.equal(response.status, 409, label);
+    assert.equal(response.body.error, code, label);
+    assert.equal(calls.paymentReservations, 1, label);
+    assert.equal(calls.paymentCompletions, 0, label);
+  }
+});
+
+test('payment creation rejects a provider id already owned by another local payment', async () => {
+  let completed = false;
+  const service = createPaymentService({
+    payments: {
+      findByIdempotencyKey: async () => null,
+      reserve: async (payment) => ({ ...payment, providerPaymentId: null }),
+      findByProviderPaymentId: async () => ({
+        id: 'orphan-local-payment',
+        orderId: 'other-order',
+        providerPaymentId: 'provider-payment-orphan',
+        idempotencyKey: 'other-payment-key',
+        amount: 700,
+        currency: 'RUB',
+      }),
+      completeReservation: async () => {
+        completed = true;
+        assert.fail('must not attach an orphan provider payment');
+      },
+      create: async (payment) => payment,
     },
     orders: {
       findById: async () => ({
@@ -239,24 +416,23 @@ test('payment retry access rejects a concurrent idempotency collision from anoth
       }),
     },
     provider: {
-      createPayment: async ({ orderId, amount, returnUrl }) => ({
-        id: 'provider-payment-1',
-        orderId,
-        amount,
-        status: 'pending',
+      createPayment: async () => ({
+        id: 'provider-payment-orphan',
+        orderId: 'order-1',
+        amount: 700,
         currency: 'RUB',
-        confirmationUrl: returnUrl,
+        status: 'pending',
       }),
     },
-    returnUrlForOrder: (orderId) =>
-      `https://pivdoner.ru/order.html?id=${encodeURIComponent(orderId)}`,
+    returnUrlForOrder: () => 'https://pivdoner.ru/order.html?id=order-1',
   });
 
   await assert.rejects(
     service.create('order-1', 'payment-retry-1', paymentAccessToken),
     (error) =>
-      error.code === 'PAYMENT_IDEMPOTENCY_CONFLICT' && error.status === 409,
+      error.code === 'PAYMENT_PROVIDER_ID_CONFLICT' && error.status === 409,
   );
+  assert.equal(completed, false);
 });
 
 test('repeated webhook verifies provider state and applies payment once', async () => {

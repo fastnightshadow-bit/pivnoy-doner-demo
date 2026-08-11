@@ -3,9 +3,35 @@ import { canTransition } from '../domain/status-machine.js';
 export const createStaffOrdersRepository = (pool) => ({
   listActive: async () => {
     const result = await pool.query(
-      `select o.*,
+      `select
+        o.id,
+        o.public_number,
+        o.status,
+        o.fulfillment,
+        o.payment_status,
+        o.customer_name,
+        o.phone,
+        o.address,
+        o.customer_comment,
+        o.courier_comment,
+        o.items_total,
+        o.delivery_total,
+        o.discount_total,
+        o.total,
+        o.eta_min,
+        o.eta_max,
+        o.version,
+        o.created_at,
+        o.updated_at,
         coalesce((
-          select json_agg(oi order by oi.id)
+          select json_agg(json_build_object(
+            'id', oi.id,
+            'product_id', oi.product_id,
+            'name', oi.name,
+            'quantity', oi.quantity,
+            'unit_price', oi.unit_price,
+            'configuration', oi.configuration
+          ) order by oi.id)
           from order_items oi
           where oi.order_id = o.id
         ), '[]') as items,

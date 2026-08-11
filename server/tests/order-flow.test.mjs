@@ -66,6 +66,27 @@ const createPaymentStore = (orders) => {
   return {
     findByIdempotencyKey: async (key) => byKey.get(key) ?? null,
     findByProviderPaymentId: async (id) => byProviderId.get(id) ?? null,
+    reserve: async (payment) => {
+      const existing = byKey.get(payment.idempotencyKey);
+      if (existing) return existing;
+      const reservation = {
+        ...payment,
+        providerPaymentId: null,
+        status: 'pending',
+        providerPayload: {},
+      };
+      byKey.set(payment.idempotencyKey, reservation);
+      return reservation;
+    },
+    completeReservation: async (payment) => {
+      const completed = {
+        ...byKey.get(payment.idempotencyKey),
+        ...payment,
+      };
+      byKey.set(payment.idempotencyKey, completed);
+      byProviderId.set(payment.providerPaymentId, completed);
+      return completed;
+    },
     create: async (payment) => {
       byKey.set(payment.idempotencyKey, payment);
       byProviderId.set(payment.providerPaymentId, payment);

@@ -16,6 +16,20 @@ export const createOrderService = ({
   now = () => new Date(),
   orderAccessSecret = '',
 }) => {
+  const recoverIdempotentOrder = async (existing, idempotencyKey) => {
+    const order = await orders.findById(existing.id);
+    if (!order) throw new DomainError('ORDER_NOT_FOUND');
+    const accessToken = deriveOrderAccessToken({
+      orderId: order.id,
+      idempotencyKey,
+      secret: orderAccessSecret,
+    });
+    if (!verifyOrderAccessToken(accessToken, order.accessTokenHash)) {
+      throw new DomainError('ORDER_ACCESS_TOKEN_UNAVAILABLE');
+    }
+    return { order, created: false, accessToken };
+  };
+
   const verifyAccess = async (id, token) => {
     if (typeof token !== 'string' || token.length === 0) {
       throw new DomainError('ORDER_ACCESS_REQUIRED');
@@ -44,15 +58,7 @@ export const createOrderService = ({
 
       const existing = await orders.findByIdempotencyKey(idempotencyKey);
       if (existing) {
-        return {
-          order: existing,
-          created: false,
-          accessToken: deriveOrderAccessToken({
-            orderId: existing.id,
-            idempotencyKey,
-            secret: orderAccessSecret,
-          }),
-        };
+        return recoverIdempotentOrder(existing, idempotencyKey);
       }
 
       const priced = priceOrder(input, settings);
@@ -92,15 +98,7 @@ export const createOrderService = ({
         if (error?.code !== '23505') throw error;
         const concurrent = await orders.findByIdempotencyKey(idempotencyKey);
         if (!concurrent) throw error;
-        return {
-          order: concurrent,
-          created: false,
-          accessToken: deriveOrderAccessToken({
-            orderId: concurrent.id,
-            idempotencyKey,
-            secret: orderAccessSecret,
-          }),
-        };
+        return recoverIdempotentOrder(concurrent, idempotencyKey);
       }
     },
   };

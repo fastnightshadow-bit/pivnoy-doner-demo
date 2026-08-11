@@ -138,6 +138,8 @@ const createRepository = () => {
   let createCalls = 0;
   return {
     findByIdempotencyKey: async (key) => byKey.get(key) ?? null,
+    findById: async (id) =>
+      [...byKey.values()].find((order) => order.id === id) ?? null,
     create: async (order) => {
       createCalls += 1;
       if (byKey.has(order.idempotencyKey)) {
@@ -454,10 +456,156 @@ test('повторный Idempotency-Key возвращает тот же зак
   assert.equal(orders.size(), 1);
 });
 
+test('idempotent creation retry rejects a token that the rotated secret cannot recover', async () => {
+  const idempotencyKey = 'rotated-secret-retry';
+  const orderId = 'rotated-secret-order';
+  const originalToken = deriveOrderAccessToken({
+    orderId,
+    idempotencyKey,
+    secret: 'original-order-access-secret',
+  });
+  const existing = {
+    id: orderId,
+    number: '1464',
+    idempotencyKey,
+    status: 'submitted',
+    paymentStatus: 'pending',
+    fulfillment: 'pickup',
+    itemsTotal: 300,
+    deliveryTotal: 0,
+    discountTotal: 0,
+    total: 300,
+    eta: { min: 8, max: 12 },
+    version: 1,
+    createdAt: '2026-08-12T12:00:00.000Z',
+    accessTokenHash: hashOrderAccessToken(originalToken),
+    items: [
+      {
+        lineId: 'line-1',
+        productId: 'nuggets',
+        name: 'Наггетсы',
+        quantity: 1,
+        unitPrice: 300,
+        configuration: {
+          meat: 'default',
+          size: 'single',
+          addons: {},
+          sauces: {},
+        },
+      },
+    ],
+  };
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    orderService: createOrderService({
+      orders: {
+        findByIdempotencyKey: async () => ({ ...existing, items: undefined }),
+        findById: async () => existing,
+        create: async () => assert.fail('must not create a duplicate order'),
+      },
+      settings,
+      orderAccessSecret: 'rotated-order-access-secret',
+    }),
+  });
+
+  const response = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', idempotencyKey)
+    .send(validOrderPayload());
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(response.body, {
+    error: 'ORDER_ACCESS_TOKEN_UNAVAILABLE',
+    details: {},
+  });
+  assert.equal(Object.hasOwn(response.body, 'accessToken'), false);
+});
+
+test('idempotent creation retry reloads the original item-aware public representation', async () => {
+  const idempotencyKey = 'item-aware-retry';
+  const orderAccessSecret = 'item-aware-order-access-secret';
+  const existing = {
+    id: 'item-aware-order',
+    number: '2468',
+    idempotencyKey,
+    status: 'submitted',
+    paymentStatus: 'pending',
+    fulfillment: 'pickup',
+    itemsTotal: 300,
+    deliveryTotal: 0,
+    discountTotal: 0,
+    total: 300,
+    eta: { min: 8, max: 12 },
+    version: 1,
+    createdAt: '2026-08-12T12:00:00.000Z',
+    items: [
+      {
+        lineId: 'line-1',
+        productId: 'nuggets',
+        name: 'Наггетсы',
+        quantity: 1,
+        unitPrice: 300,
+        configuration: {
+          meat: 'default',
+          size: 'single',
+          addons: {},
+          sauces: { tasty: 2 },
+        },
+      },
+    ],
+  };
+  const accessToken = deriveOrderAccessToken({
+    orderId: existing.id,
+    idempotencyKey,
+    secret: orderAccessSecret,
+  });
+  existing.accessTokenHash = hashOrderAccessToken(accessToken);
+  let itemAwareReads = 0;
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    orderService: createOrderService({
+      orders: {
+        findByIdempotencyKey: async () => ({ ...existing, items: undefined }),
+        findById: async (id) => {
+          itemAwareReads += 1;
+          return id === existing.id ? existing : null;
+        },
+        create: async () => assert.fail('must not create a duplicate order'),
+      },
+      settings,
+      orderAccessSecret,
+    }),
+  });
+
+  const response = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', idempotencyKey)
+    .send(validOrderPayload());
+
+  assert.equal(response.status, 200);
+  assert.equal(itemAwareReads, 1);
+  assert.equal(response.body.accessToken, accessToken);
+  assert.deepEqual(response.body.items, [
+    {
+      lineId: 'line-1',
+      productId: 'nuggets',
+      name: 'Наггетсы',
+      quantity: 1,
+      unitPrice: 300,
+      meat: 'default',
+      size: 'single',
+      addons: {},
+      sauces: { tasty: 2 },
+    },
+  ]);
+});
+
 test('одновременные запросы с одним ключом создают один заказ', async () => {
   const stored = new Map();
   const orders = {
     findByIdempotencyKey: async (key) => stored.get(key) ?? null,
+    findById: async (id) =>
+      [...stored.values()].find((order) => order.id === id) ?? null,
     create: async (order) => {
       await new Promise((resolve) => setTimeout(resolve, 5));
       if (stored.has(order.idempotencyKey)) {

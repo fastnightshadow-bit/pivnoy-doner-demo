@@ -66,6 +66,7 @@ test('web container maps each host to its own PWA entry point', async () => {
 });
 
 test('client pages version their changed immutable assets', async () => {
+  const releaseKey = '2026081202';
   const nginx = await read('deploy/nginx.conf');
   const checkoutHtml = await read('checkout.html');
   const homeHtml = await read('home.html');
@@ -81,18 +82,17 @@ test('client pages version their changed immutable assets', async () => {
   );
   assert.match(
     checkoutHtml,
-    /<script\s+type="module"\s+src="checkout\.js\?v=20260811"><\/script>/,
+    new RegExp(`<script\\s+type="module"\\s+src="checkout\\.js\\?v=${releaseKey}"><\\/script>`),
   );
   assert.match(checkoutHtml, /href="checkout\.css\?v=20260811"/);
   assert.match(
     homeHtml,
-    /<script\s+type="module"\s+src="home\.js\?v=20260811"><\/script>/,
+    new RegExp(`<script\\s+type="module"\\s+src="home\\.js\\?v=${releaseKey}"><\\/script>`),
   );
   assert.match(
     orderHtml,
-    /<script\s+type="module"\s+src="order\.js\?v=20260812"><\/script>/,
+    new RegExp(`<script\\s+type="module"\\s+src="order\\.js\\?v=${releaseKey}"><\\/script>`),
   );
-  assert.doesNotMatch(orderHtml, /order\.js\?v=20260811/);
 
   const getVersionedImports = (source) => [
     ...source.matchAll(/\bfrom\s+['"]([^'"]+\?v=[^'"]+)['"]/g),
@@ -101,26 +101,46 @@ test('client pages version their changed immutable assets', async () => {
     getVersionedImports(checkoutSource),
     [
       './checkout-state.js?v=20260811',
-      './order-storage.js?v=20260811',
+      `./order-storage.js?v=${releaseKey}`,
+      `./client-api.js?v=${releaseKey}`,
       './shared/legal.js?v=20260811',
     ],
   );
   assert.deepEqual(getVersionedImports(homeSource), [
-    './order-storage.js?v=20260811',
+    `./order-storage.js?v=${releaseKey}`,
+    `./review-service.js?v=${releaseKey}`,
+    `./client-api.js?v=${releaseKey}`,
   ]);
   assert.deepEqual(getVersionedImports(orderSource), [
-    './order-storage.js?v=20260811',
-    './review-service.js?v=20260812',
-    './order-demo.js?v=20260811',
-    './client-api.js?v=20260812',
+    `./order-storage.js?v=${releaseKey}`,
+    `./review-service.js?v=${releaseKey}`,
+    `./order-demo.js?v=${releaseKey}`,
+    `./client-api.js?v=${releaseKey}`,
   ]);
-  assert.doesNotMatch(
-    orderSource,
-    /(?:review-service|client-api)\.js\?v=20260811/,
-  );
   assert.deepEqual(getVersionedImports(orderDemoSource), [
-    './order-storage.js?v=20260811',
+    `./order-storage.js?v=${releaseKey}`,
   ]);
+
+  const completeGraph = [checkoutSource, homeSource, orderSource, orderDemoSource]
+    .join('\n');
+  for (const moduleName of [
+    'order-storage',
+    'client-api',
+    'review-service',
+    'order-demo',
+  ]) {
+    const imports = [
+      ...completeGraph.matchAll(
+        new RegExp(`\\./${moduleName}\\.js\\?v=([^'"\\s]+)`, 'g'),
+      ),
+    ];
+    assert.ok(imports.length > 0, moduleName);
+    assert.deepEqual(
+      [...new Set(imports.map((match) => match[1]))],
+      [releaseKey],
+      moduleName,
+    );
+  }
 });
 
 test('deployment template contains placeholders but no production secrets', async () => {
