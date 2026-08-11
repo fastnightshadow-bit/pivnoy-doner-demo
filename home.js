@@ -30,7 +30,7 @@ import {
 import { getOrderPresentation } from './order-state.js';
 import {
   loadActiveOrder,
-  loadActiveOrderId,
+  loadActiveOrderAccess,
   subscribeToActiveOrder,
 } from './order-storage.js?v=20260811';
 import {
@@ -66,6 +66,9 @@ export function getActiveHomeTab(scrollY, categoriesTop, stickyHeaderHeight = 0)
   const menuStart = Math.max(0, Number(categoriesTop) || 0) - stickyOffset - 24;
   return currentScroll >= menuStart ? 'menu' : 'home';
 }
+
+export const getHomeActiveOrderAccess = (storage) =>
+  loadActiveOrderAccess(storage);
 
 function initHomeScreen() {
   const header = document.querySelector('.app-header');
@@ -141,29 +144,23 @@ function initHomeScreen() {
     }`;
   };
 
-  const activeOrderId = productionApi
-    ? loadActiveOrderId(window.localStorage)
-    : '';
-  const refreshActiveOrder = async () => {
-    if (!activeOrderId) {
-      renderActiveOrder(null);
-      return;
-    }
-    try {
-      renderActiveOrder(await clientApi.getOrder(activeOrderId));
-    } catch (error) {
-      if (error?.status === 404) renderActiveOrder(null);
-    }
-  };
+  const activeOrderAccess = productionApi
+    ? getHomeActiveOrderAccess(window.localStorage)
+    : null;
 
-  if (productionApi) void refreshActiveOrder();
+  if (productionApi) renderActiveOrder(null);
   else renderActiveOrder(loadActiveOrder(window.localStorage));
 
   const unsubscribeActiveOrder = productionApi
-    ? activeOrderId
-      ? clientApi.subscribeToOrder(activeOrderId, {
-          onUpdate: () => void refreshActiveOrder(),
-        })
+    ? activeOrderAccess
+      ? clientApi.subscribeToOrder(
+          activeOrderAccess.id,
+          activeOrderAccess.token,
+          {
+            onUpdate: renderActiveOrder,
+            onError: () => {},
+          },
+        )
       : () => {}
     : subscribeToActiveOrder(window, renderActiveOrder);
   window.addEventListener('pagehide', unsubscribeActiveOrder, {

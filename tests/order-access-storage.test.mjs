@@ -78,3 +78,32 @@ test('production checkout requires and persists both returned credentials', asyn
     /order-access-unavailable/,
   );
 });
+
+test('checkout explains when secure order access cannot be stored', async () => {
+  const checkout = await import('../checkout.js');
+  const blockedStorage = {
+    setItem: () => {
+      throw new Error('quota-exceeded');
+    },
+  };
+
+  let error;
+  try {
+    checkout.saveCreatedOrderAccess(blockedStorage, {
+      id: 'order-1',
+      accessToken: 'secret-token',
+    });
+  } catch (caught) {
+    error = caught;
+  }
+
+  assert.equal(error.code, 'ACTIVE_ORDER_ACCESS_STORAGE_FAILED');
+  assert.match(
+    checkout.getCheckoutSubmissionErrorMessage(error),
+    /не удалось сохранить доступ к заказу/i,
+  );
+  assert.match(
+    checkout.getCheckoutSubmissionErrorMessage(error),
+    /оформление остановлено/i,
+  );
+});

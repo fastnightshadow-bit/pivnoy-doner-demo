@@ -148,12 +148,14 @@ export const createClientApi = (options = {}) => {
         inFlight = true;
         try {
           const order = await getOrder(id, accessToken);
+          if (stopped) return;
           handlers.onUpdate?.(order);
         } catch (error) {
+          if (stopped) return;
           handlers.onError?.(error);
         } finally {
           inFlight = false;
-          schedule();
+          if (!stopped) schedule();
         }
       };
       const onVisibilityChange = () => {

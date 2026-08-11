@@ -233,6 +233,51 @@ test('polling reports errors and preserves the last successful update', async ()
   unsubscribe();
 });
 
+test('unsubscribe suppresses callbacks from an in-flight poll', async () => {
+  for (const outcome of ['success', 'error']) {
+    let settle;
+    const response = new Promise((resolve, reject) => {
+      settle = outcome === 'success' ? resolve : reject;
+    });
+    const updates = [];
+    const errors = [];
+    const timers = [];
+    const api = createClientApi({
+      fetcher: async () => response,
+      documentRef: {
+        visibilityState: 'visible',
+        addEventListener() {},
+        removeEventListener() {},
+      },
+      setTimeoutFn: (callback) => {
+        timers.push(callback);
+        return timers.length;
+      },
+      clearTimeoutFn() {},
+    });
+
+    const unsubscribe = api.subscribeToOrder(
+      'order-1',
+      'secret-token',
+      {
+        onUpdate: (order) => updates.push(order),
+        onError: (error) => errors.push(error),
+      },
+    );
+    unsubscribe();
+    settle(
+      outcome === 'success'
+        ? jsonResponse({ id: 'order-1', status: 'accepted' })
+        : new Error('offline'),
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(updates.length, 0, outcome);
+    assert.equal(errors.length, 0, outcome);
+    assert.equal(timers.length, 0, outcome);
+  }
+});
+
 test('серверный заказ приводится к формату экрана клиента', () => {
   const order = normalizeClientOrderResponse({
     id: 'order-1',

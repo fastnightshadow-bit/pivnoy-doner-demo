@@ -188,8 +188,31 @@ const clearCheckoutAttempt = (storage) =>
 export const saveCreatedOrderAccess = (storage, order = {}) => {
   const id = String(order.id || '').trim();
   const token = String(order.accessToken || '').trim();
-  if (!id || !token) throw new Error('order-access-unavailable');
-  return saveActiveOrderAccess(storage, { id, token });
+  if (!id || !token) {
+    const error = new Error('order-access-unavailable');
+    error.code = 'ACTIVE_ORDER_ACCESS_STORAGE_FAILED';
+    throw error;
+  }
+  try {
+    return saveActiveOrderAccess(storage, { id, token });
+  } catch (cause) {
+    const error = new Error('active-order-access-storage-failed', { cause });
+    error.code = 'ACTIVE_ORDER_ACCESS_STORAGE_FAILED';
+    throw error;
+  }
+};
+
+export const getCheckoutSubmissionErrorMessage = (error) => {
+  if (error?.code === 'ACTIVE_ORDER_ACCESS_STORAGE_FAILED') {
+    return 'Не удалось сохранить доступ к заказу. Оформление остановлено. Разрешите хранение данных в браузере и повторите.';
+  }
+  if (error?.code === 'MINIMUM_ORDER') {
+    return 'Минимальная сумма доставки — 300 ₽';
+  }
+  if (error?.code === 'PRODUCT_NOT_SALEABLE') {
+    return 'Один из товаров временно недоступен';
+  }
+  return 'Не удалось оформить заказ. Проверьте интернет и повторите.';
 };
 
 export const formatCheckoutPrice = (value) =>
@@ -709,13 +732,7 @@ const initCheckout = () => {
     } catch (error) {
       confirmButton.classList.remove('is-loading');
       confirmButton.disabled = false;
-      if (error?.code === 'MINIMUM_ORDER') {
-        showToast('Минимальная сумма доставки — 300 ₽');
-      } else if (error?.code === 'PRODUCT_NOT_SALEABLE') {
-        showToast('Один из товаров временно недоступен');
-      } else {
-        showToast('Не удалось оформить заказ. Проверьте интернет и повторите.');
-      }
+      showToast(getCheckoutSubmissionErrorMessage(error));
     }
   });
 };
