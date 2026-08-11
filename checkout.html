@@ -414,6 +414,33 @@
             </div>
           </section>
 
+          <div class="checkout-legal" data-field="personalDataConsent">
+            <label class="checkout-consent">
+              <input
+                type="checkbox"
+                name="personalDataConsent"
+                aria-describedby="checkout-consent-error"
+                data-personal-data-consent
+              />
+              <span>
+                Я даю
+                <a href="consent.html" target="_blank" rel="noopener noreferrer">согласие на обработку персональных данных</a>
+                для оформления и исполнения заказа и ознакомлен(а) с
+                <a href="privacy.html" target="_blank" rel="noopener noreferrer">политикой</a>.
+              </span>
+            </label>
+            <p
+              class="field-error"
+              id="checkout-consent-error"
+              role="alert"
+              data-error-for="personalDataConsent"
+            ></p>
+            <p class="checkout-offer-copy">
+              Нажимая «Оплатить», вы принимаете условия
+              <a href="offer.html" target="_blank" rel="noopener noreferrer">публичной оферты</a>.
+            </p>
+          </div>
+
           <footer class="checkout-bar">
             <div>
               <span>Итого</span>

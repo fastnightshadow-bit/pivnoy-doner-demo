@@ -56,6 +56,9 @@ export const validateCheckout = (data = {}) => {
   if (data.timeMode === 'scheduled' && !data.selectedTime) {
     errors.selectedTime = 'Выберите время';
   }
+  if (!data.personalDataConsent) {
+    errors.personalDataConsent = 'Подтвердите согласие на обработку данных';
+  }
   const minimumRemaining = getDeliveryMinimumRemaining(
     data.itemsTotal,
     data.fulfillment,
@@ -69,7 +72,9 @@ export const validateCheckout = (data = {}) => {
 export const getCheckoutFieldOrder = (fulfillment, timeMode = 'asap') => {
   const fields =
     fulfillment === 'delivery' ? ['address', 'phone'] : ['phone'];
-  return timeMode === 'scheduled' ? [...fields, 'selectedTime'] : fields;
+  const orderedFields =
+    timeMode === 'scheduled' ? [...fields, 'selectedTime'] : fields;
+  return [...orderedFields, 'personalDataConsent'];
 };
 
 export const createTimeSlots = (now = new Date(), count = 6) => {

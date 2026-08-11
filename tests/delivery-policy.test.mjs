@@ -49,6 +49,7 @@ test('валидация не пропускает доставку дешевл
     itemsTotal: 250,
     phone: '+7 (999) 111-22-33',
     address: { street: 'Тестовая улица, 1' },
+    personalDataConsent: true,
   });
   assert.equal(errors.order, 'Добавьте блюда ещё на 50 ₽');
 });

@@ -29,6 +29,7 @@ import {
 } from './promo-storage.js';
 import { clientApi } from './client-api.js';
 import { useProductionApi } from './runtime-mode.js';
+import { LEGAL_VERSIONS } from './shared/legal.js';
 
 const CHECKOUT_ATTEMPT_STORAGE_KEY = 'pivnoy-doner-checkout-attempt-v1';
 
@@ -39,6 +40,7 @@ export const createCheckoutOrderPayload = ({
   phone = '',
   address = {},
   courierComment = '',
+  personalDataConsent = false,
 } = {}) => ({
   fulfillment: fulfillment === 'delivery' ? 'delivery' : 'pickup',
   customer: {
@@ -47,6 +49,9 @@ export const createCheckoutOrderPayload = ({
   },
   ...(fulfillment === 'delivery' ? { address } : {}),
   courierComment: String(courierComment || '').trim(),
+  personalDataConsent: personalDataConsent === true,
+  personalDataConsentVersion: LEGAL_VERSIONS.personalDataConsent,
+  offerVersion: LEGAL_VERSIONS.offer,
   items: (Array.isArray(lines) ? lines : []).map((line) => ({
     productId: String(line.productId || ''),
     quantity: Math.max(1, Number(line.quantity) || 1),
@@ -177,6 +182,9 @@ const initCheckout = () => {
   const timeSelect = document.querySelector('[data-time-options]');
   const customerNameInput = document.querySelector('[data-customer-name]');
   const phoneInput = document.querySelector('[data-phone]');
+  const personalDataConsentInput = document.querySelector(
+    '[data-personal-data-consent]',
+  );
   const courierComment = document.querySelector(
     '[name="courierComment"]',
   );
@@ -259,6 +267,7 @@ const initCheckout = () => {
     address: readDeliveryAddress(),
     selectedTime: timeSelect.value,
     itemsTotal: createCheckoutSummary(lines).items,
+    personalDataConsent: personalDataConsentInput.checked,
   });
 
   const getControl = (name) => {
@@ -266,6 +275,7 @@ const initCheckout = () => {
       phone: phoneInput,
       address: addressInput,
       selectedTime: timeSelect,
+      personalDataConsent: personalDataConsentInput,
     };
     return controls[name];
   };
@@ -512,6 +522,7 @@ const initCheckout = () => {
     ['phone', phoneInput],
     ['address', addressInput],
     ['selectedTime', timeSelect],
+    ['personalDataConsent', personalDataConsentInput],
   ].forEach(([name, control]) => {
     control.addEventListener('blur', () => validateField(name));
     if (name !== 'phone') {
@@ -536,8 +547,8 @@ const initCheckout = () => {
       state.timeMode,
     );
 
-    ['address', 'phone', 'selectedTime'].forEach((name) =>
-      setFieldError(name, errors[name] || ''),
+    ['address', 'phone', 'selectedTime', 'personalDataConsent'].forEach(
+      (name) => setFieldError(name, errors[name] || ''),
     );
     const firstError = order.find((name) => errors[name]);
     if (errors.order) {
@@ -600,6 +611,7 @@ const initCheckout = () => {
       phone: phoneInput.value,
       address: readDeliveryAddress(),
       courierComment: courierComment?.value || '',
+      personalDataConsent: personalDataConsentInput.checked,
     });
     const attemptKey = getCheckoutAttemptKey(
       window.sessionStorage,

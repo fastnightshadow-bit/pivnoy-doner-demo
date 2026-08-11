@@ -333,6 +333,69 @@ html[data-theme='dark'] .row-control input {
   --client-legal-bar-height: var(--checkout-bar-height);
 }
 
+.checkout-legal {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  color: var(--client-muted);
+  background: var(--client-surface);
+  border: 1px solid var(--client-line);
+  border-radius: 20px;
+}
+
+.checkout-consent {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.checkout-consent input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-brand);
+}
+
+.checkout-legal a {
+  color: var(--client-text);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.checkout-legal .field-error,
+.checkout-offer-copy {
+  margin: 0;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.checkout-legal .field-error {
+  color: var(--color-error);
+}
+
+.checkout-legal .field-error:empty {
+  display: none;
+}
+
+.checkout-offer-copy {
+  padding-top: 10px;
+  border-top: 1px solid var(--client-line);
+}
+
+.checkout-legal.is-error {
+  background: #fff9f8;
+  border-color: rgb(183 29 24 / 32%);
+}
+
+.checkout-consent input:focus-visible {
+  outline: 3px solid rgb(23 23 23 / 22%);
+  outline-offset: 2px;
+}
+
 @media (min-width: 1024px) {
   .client-footer > .client-footer__legal,
   .client-footer__legal {
@@ -349,6 +412,7 @@ html[data-theme='dark'] .switch::after {
 }
 
 html[data-theme='dark'] .field.is-error,
+html[data-theme='dark'] .checkout-legal.is-error,
 html[data-theme='dark'] .promo-panel.is-invalid {
   background: #2b1716;
 }
