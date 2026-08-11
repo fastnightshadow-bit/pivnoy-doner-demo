@@ -86,11 +86,11 @@ test('retry key is stable across legal-only payload differences', () => {
   assert.equal(retryKey, firstKey);
 });
 
-test('order minimum toast does not bypass consent focus action', () => {
+test('unchecked consent overrides every other checkout focus error', () => {
   const errors = validateCheckout({
     fulfillment: 'delivery',
-    phone: '+7 (999) 123-45-67',
-    address: { street: 'Тестовая улица, 1' },
+    phone: '',
+    address: { street: '' },
     itemsTotal: 250,
     personalDataConsent: false,
   });
@@ -103,6 +103,27 @@ test('order minimum toast does not bypass consent focus action', () => {
     focusField: 'personalDataConsent',
     toast: 'Добавьте блюда ещё на 50 ₽',
   });
+});
+
+test('checked consent preserves normal checkout focus order', () => {
+  const errors = validateCheckout({
+    fulfillment: 'delivery',
+    phone: '',
+    address: { street: '' },
+    itemsTotal: 250,
+    personalDataConsent: true,
+  });
+
+  assert.deepEqual(
+    checkout.getCheckoutValidationAction(
+      errors,
+      getCheckoutFieldOrder('delivery'),
+    ),
+    {
+      focusField: 'address',
+      toast: 'Добавьте блюда ещё на 50 ₽',
+    },
+  );
 });
 
 test('checkout focuses personal-data consent after the other required fields', () => {

@@ -101,7 +101,9 @@ export const getCheckoutValidationAction = (
   errors = {},
   fieldOrder = [],
 ) => {
-  const focusField = fieldOrder.find((name) => errors[name]);
+  const focusField = errors.personalDataConsent
+    ? 'personalDataConsent'
+    : fieldOrder.find((name) => errors[name]);
   return {
     focusField,
     toast:
