@@ -2,7 +2,7 @@ import { createOrderSnapshot } from './order-state.js';
 import {
   loadActiveOrder,
   saveActiveOrder,
-} from './order-storage.js?v=2026081202';
+} from './order-storage.js?v=2026081203';
 
 export const REVIEW_DEMO_ORDER_ID = 'demo-review-order';
 

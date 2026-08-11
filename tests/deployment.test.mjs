@@ -66,15 +66,18 @@ test('web container maps each host to its own PWA entry point', async () => {
 });
 
 test('client pages version their changed immutable assets', async () => {
-  const releaseKey = '2026081202';
+  const releaseKey = '2026081203';
   const nginx = await read('deploy/nginx.conf');
+  const cartHtml = await read('cart.html');
   const checkoutHtml = await read('checkout.html');
+  const dishHtml = await read('dish.html');
   const homeHtml = await read('home.html');
   const orderHtml = await read('order.html');
   const checkoutSource = await read('checkout.js');
   const homeSource = await read('home.js');
   const orderSource = await read('order.js');
   const orderDemoSource = await read('order-demo.js');
+  const reviewServiceSource = await read('review-service.js');
 
   assert.match(
     nginx,
@@ -93,6 +96,12 @@ test('client pages version their changed immutable assets', async () => {
     orderHtml,
     new RegExp(`<script\\s+type="module"\\s+src="order\\.js\\?v=${releaseKey}"><\\/script>`),
   );
+  for (const html of [cartHtml, checkoutHtml, dishHtml, homeHtml, orderHtml]) {
+    assert.match(
+      html,
+      new RegExp(`href="client-theme\\.css\\?v=${releaseKey}"`),
+    );
+  }
 
   const getVersionedImports = (source) => [
     ...source.matchAll(/\bfrom\s+['"]([^'"]+\?v=[^'"]+)['"]/g),
@@ -114,19 +123,30 @@ test('client pages version their changed immutable assets', async () => {
   assert.deepEqual(getVersionedImports(orderSource), [
     `./order-storage.js?v=${releaseKey}`,
     `./review-service.js?v=${releaseKey}`,
+    `./review-state.js?v=${releaseKey}`,
     `./order-demo.js?v=${releaseKey}`,
     `./client-api.js?v=${releaseKey}`,
   ]);
   assert.deepEqual(getVersionedImports(orderDemoSource), [
     `./order-storage.js?v=${releaseKey}`,
   ]);
+  assert.deepEqual(getVersionedImports(reviewServiceSource), [
+    `./review-state.js?v=${releaseKey}`,
+    './shared/legal.js?v=20260811',
+  ]);
 
-  const completeGraph = [checkoutSource, homeSource, orderSource, orderDemoSource]
-    .join('\n');
+  const completeGraph = [
+    checkoutSource,
+    homeSource,
+    orderSource,
+    orderDemoSource,
+    reviewServiceSource,
+  ].join('\n');
   for (const moduleName of [
     'order-storage',
     'client-api',
     'review-service',
+    'review-state',
     'order-demo',
   ]) {
     const imports = [

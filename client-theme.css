@@ -407,6 +407,34 @@ html[data-theme='dark'] .row-control input {
   outline-offset: 2px;
 }
 
+.order-review__publication {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  color: var(--client-muted);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.order-review__publication input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-brand);
+}
+
+.order-review__publication a {
+  color: var(--client-text);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.order-review__publication input:focus-visible {
+  outline: 3px solid var(--checkout-focus-ring);
+  outline-offset: 2px;
+}
+
 @media (min-width: 1024px) {
   .client-footer > .client-footer__legal,
   .client-footer__legal {

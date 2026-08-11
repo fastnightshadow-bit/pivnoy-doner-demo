@@ -17,7 +17,7 @@ import {
   loadActiveOrder,
   saveActiveOrder,
   saveActiveOrderAccess,
-} from './order-storage.js?v=2026081202';
+} from './order-storage.js?v=2026081203';
 import { loadPayment, savePayment } from './payment-storage.js';
 import { getPromoResult } from './promo-state.js';
 import { getDeliveryMinimumRemaining } from './delivery-policy.js';
@@ -27,7 +27,7 @@ import {
   loadPromo,
   savePromo,
 } from './promo-storage.js';
-import { clientApi } from './client-api.js?v=2026081202';
+import { clientApi } from './client-api.js?v=2026081203';
 import { useProductionApi } from './runtime-mode.js';
 import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 

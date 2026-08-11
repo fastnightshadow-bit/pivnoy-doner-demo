@@ -10,15 +10,15 @@ import {
   loadActiveOrderAccess,
   saveActiveOrder,
   subscribeToActiveOrder,
-} from './order-storage.js?v=2026081202';
-import { createReviewService } from './review-service.js?v=2026081202';
-import { isReviewableOrder } from './review-state.js';
+} from './order-storage.js?v=2026081203';
+import { createReviewService } from './review-service.js?v=2026081203';
+import { isReviewableOrder } from './review-state.js?v=2026081203';
 import { formatOptionQuantities } from './option-quantities.js';
 import {
   canUseReviewDemo,
   ensureReviewDemoOrder,
-} from './order-demo.js?v=2026081202';
-import { clientApi } from './client-api.js?v=2026081202';
+} from './order-demo.js?v=2026081203';
+import { clientApi } from './client-api.js?v=2026081203';
 import { useProductionApi } from './runtime-mode.js';
 
 const escapeHtml = (value) =>
@@ -55,6 +55,11 @@ export const createRatingButtonsMarkup = (selectedRating = 0) =>
 
 export const isLocalReviewDemoHost = (hostname = '') =>
   canUseReviewDemo({ hostname });
+
+export const getReviewSuccessMessage = (publicationConsent) =>
+  publicationConsent
+    ? 'Спасибо — отзыв опубликован на главной'
+    : 'Спасибо — отзыв отправлен ресторану';
 
 export const getTechnicalStatus = (search = '') => {
   const value = new URLSearchParams(String(search)).get('state') || '';
@@ -218,8 +223,12 @@ const getRefs = (root) => ({
   reviewForm: root.querySelector('[data-review-form]'),
   reviewStars: root.querySelector('[data-review-stars]'),
   reviewComment: root.querySelector('[data-review-comment]'),
+  reviewPublicationConsent: root.querySelector(
+    '[data-review-publication-consent]',
+  ),
   reviewSubmit: root.querySelector('[data-review-submit]'),
   reviewSuccess: root.querySelector('[data-review-success]'),
+  reviewSuccessMessage: root.querySelector('[data-review-success-message]'),
   reviewError: root.querySelector('[data-review-error]'),
   demoComplete: root.querySelector('[data-demo-complete-order]'),
 });
@@ -319,10 +328,14 @@ const initOrder = () => {
     refs.reviewSubmit.disabled = rating === 0;
   };
 
-  const showReviewSuccess = (shown) => {
+  const showReviewSuccess = (shown, published = false) => {
     refs.reviewForm.hidden = shown;
     refs.reviewSuccess.hidden = !shown;
     refs.reviewError.hidden = true;
+    if (shown) {
+      refs.reviewSuccessMessage.textContent =
+        getReviewSuccessMessage(published);
+    }
   };
 
   const syncReview = async (order) => {
@@ -332,7 +345,7 @@ const initOrder = () => {
       activeOrderAccess?.token,
     );
     if (currentOrder?.id !== order.id) return;
-    showReviewSuccess(Boolean(existing));
+    showReviewSuccess(Boolean(existing), Boolean(existing?.published));
     if (!existing) renderRating(selectedRating);
   };
 
@@ -387,6 +400,7 @@ const initOrder = () => {
 
     refs.reviewSubmit.disabled = true;
     refs.reviewError.hidden = true;
+    const publicationConsent = refs.reviewPublicationConsent.checked;
     try {
       await reviewService.submit(
         {
@@ -394,17 +408,18 @@ const initOrder = () => {
           rating: selectedRating,
           authorName: currentOrder.customerName,
           comment: refs.reviewComment.value,
+          publicationConsent,
         },
         activeOrderAccess?.token,
       );
-      showReviewSuccess(true);
+      showReviewSuccess(true, publicationConsent);
       revealMotion(refs.reviewSuccess);
     } catch (error) {
       if (
         error?.code === 'ALREADY_REVIEWED' ||
         String(error?.message).includes('already-reviewed')
       ) {
-        showReviewSuccess(true);
+        showReviewSuccess(true, publicationConsent);
         return;
       }
       refs.reviewError.textContent =

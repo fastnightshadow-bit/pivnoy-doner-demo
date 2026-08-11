@@ -1,4 +1,5 @@
-import { createReview } from './review-state.js';
+import { createReview } from './review-state.js?v=2026081203';
+import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 import {
   findReviewByOrderId,
   loadReviews,
@@ -18,13 +19,21 @@ export const createReviewService = ({
     const review = createReview(draft);
     if (!review) throw new Error('invalid-review');
     if (api) {
+      const payload = {
+        rating: review.rating,
+        authorName: review.authorName,
+        comment: review.comment,
+        publicationConsent: review.publicationConsent,
+        ...(review.publicationConsent
+          ? {
+              publicationConsentVersion:
+                LEGAL_VERSIONS.reviewPublication,
+            }
+          : {}),
+      };
       return api.submitReview(
         review.orderId,
-        {
-          rating: review.rating,
-          authorName: review.authorName,
-          comment: review.comment,
-        },
+        payload,
         accessToken,
       );
     }

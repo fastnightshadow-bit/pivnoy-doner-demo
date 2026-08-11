@@ -69,6 +69,8 @@ test('отзыв отправляется только для указанног
     rating: 5,
     authorName: 'Илья',
     comment: 'Всё отлично',
+    publicationConsent: true,
+    publicationConsentVersion: '2026-08-11',
   }, 'secret-token');
 
   assert.equal(calls[0].url, '/api/orders/order%2F1/review');
@@ -79,6 +81,8 @@ test('отзыв отправляется только для указанног
     rating: 5,
     authorName: 'Илья',
     comment: 'Всё отлично',
+    publicationConsent: true,
+    publicationConsentVersion: '2026-08-11',
   });
 });
 

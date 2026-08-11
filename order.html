@@ -14,7 +14,7 @@
     <script src="theme-preload.js"></script>
     <link rel="stylesheet" href="motion.css" />
     <link rel="stylesheet" href="order.css" />
-    <link rel="stylesheet" href="client-theme.css?v=20260811" />
+    <link rel="stylesheet" href="client-theme.css?v=2026081203" />
   </head>
   <body>
     <svg class="order-sprite" aria-hidden="true">
@@ -123,7 +123,7 @@
             <div class="order-review__heading">
               <span>Заказ завершён</span>
               <h2>Как вам заказ?</h2>
-              <p>Оценка появится в отзывах на главной.</p>
+              <p>Вы решаете, публиковать ли отзыв на главной</p>
             </div>
             <div
               class="order-review__stars"
@@ -146,6 +146,13 @@
                 data-review-comment
               ></textarea>
             </label>
+            <label class="order-review__publication">
+              <input type="checkbox" data-review-publication-consent />
+              <span>
+                Разрешаю опубликовать моё имя и текст отзыва на сайте.
+                <a href="review-consent.html" target="_blank" rel="noopener">Подробнее</a>
+              </span>
+            </label>
             <p class="order-review__error" role="alert" data-review-error hidden></p>
             <button
               class="order-review__submit"
@@ -159,8 +166,7 @@
           <div class="order-review__success" data-review-success hidden>
             <span aria-hidden="true">✓</span>
             <div>
-              <h2>Спасибо за отзыв</h2>
-              <p>Он уже появился на главной странице.</p>
+              <h2 data-review-success-message>Спасибо — отзыв отправлен ресторану</h2>
             </div>
           </div>
         </section>
@@ -217,6 +223,6 @@
 
     <script type="module" src="theme.js"></script>
     <script type="module" src="motion.js"></script>
-    <script type="module" src="order.js?v=2026081202"></script>
+    <script type="module" src="order.js?v=2026081203"></script>
   </body>
 </html>

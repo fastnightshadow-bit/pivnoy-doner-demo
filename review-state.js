@@ -18,6 +18,7 @@ export const normalizeReviewDraft = (value = {}) => {
     rating,
     comment: cleanText(value.comment, 500),
     authorName: cleanText(value.authorName, 80) || 'Покупатель',
+    publicationConsent: value.publicationConsent === true,
   };
 };
 
@@ -32,7 +33,7 @@ export const createReview = (value, now = new Date()) => {
     ...draft,
     id: `${draft.orderId}-${createdAtDate.getTime()}`,
     createdAt: createdAtDate.toISOString(),
-    published: true,
+    published: draft.publicationConsent,
     verified: false,
   };
 };
