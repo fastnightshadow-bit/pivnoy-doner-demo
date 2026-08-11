@@ -27,11 +27,34 @@ test('legal versions and operator details are canonical and shared with the serv
   assert.match(dockerfile, /COPY\s+shared\s+\/app\/shared/);
 });
 
-for (const page of ['privacy.html', 'consent.html', 'review-consent.html', 'offer.html', 'seller.html']) {
+const requirements = {
+  'privacy.html': [/персональн/i, /localStorage/i, /90 дней/i, /3 лет/i, /Роскомнадзор/i],
+  'consent.html': [/согласие/i, /телефон/i, /адрес/i, /отозвать/i],
+  'review-consent.html': [/распространен/i, /имя/i, /текст отзыва/i, /отозвать/i],
+  'offer.html': [/публичн.*оферт/i, /200\s*₽/, /2\s*000\s*₽/, /300\s*₽/, /11:30/, /22:30/, /возврат/i],
+  'seller.html': [/325508100421400/, /Волоколамское шоссе/i, /Без НДС/i],
+};
+
+for (const [page, expectedContent] of Object.entries(requirements)) {
   test(`${page} contains operator identity and contact`, async () => {
     const html = await read(page);
     assert.match(html, /Цивил[её]в Павел Иннокентьевич/i);
     assert.match(html, /470310402026/);
     assert.match(html, /Piv\.don@ya\.ru/i);
+  });
+
+  test(`${page} is a responsive standalone document with navigation`, async () => {
+    const html = await read(page);
+    assert.match(html, /<meta\s+name=["']viewport["']/i);
+    assert.match(html, /href=["']home\.html["']/i);
+    assert.match(html, /href=["']legal\.css\?v=20260811["']/i);
+  });
+
+  test(`${page} contains its required public information`, async () => {
+    const html = await read(page);
+
+    for (const pattern of expectedContent) {
+      assert.match(html, pattern);
+    }
   });
 }
