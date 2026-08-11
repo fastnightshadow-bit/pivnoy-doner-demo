@@ -37,6 +37,8 @@ const reviewSchema = z.object({
   rating: z.coerce.number().int().min(1).max(5),
   authorName: z.string().max(80).optional(),
   comment: z.string().max(500).optional(),
+  publicationConsent: z.boolean(),
+  publicationConsentVersion: z.string().min(1).max(40).optional(),
 });
 
 const getOrderAccessToken = (request) => {

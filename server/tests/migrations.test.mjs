@@ -46,3 +46,26 @@ test('order consent and access migration stores proof without raw token', async 
   ]) assert.match(sql, new RegExp(column, 'i'));
   assert.doesNotMatch(sql, /access_token\s+text/i);
 });
+
+test('review consent and retention migration stores publication proof and order closure time', async () => {
+  const sql = await readFile(
+    new URL(
+      '../src/db/migrations/003_review_consent_retention.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  ).catch(() => '');
+
+  assert.match(
+    sql,
+    /alter table reviews alter column published set default false/i,
+  );
+  for (const column of [
+    'publication_consent_at timestamptz',
+    'publication_consent_version text',
+    'publication_revoked_at timestamptz',
+  ]) {
+    assert.match(sql, new RegExp(`add column ${column}`, 'i'));
+  }
+  assert.match(sql, /alter table orders add column closed_at timestamptz/i);
+});

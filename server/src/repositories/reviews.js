@@ -1,12 +1,18 @@
 import { randomUUID } from 'node:crypto';
+import { LEGAL_VERSIONS } from '../../../shared/legal.js';
+
+const DEFAULT_AUTHOR_NAME = 'Покупатель';
 
 const mapReview = (row) => ({
   id: row.id,
   orderId: row.order_id,
-  authorName: row.customer_name || 'Покупатель',
+  authorName: row.customer_name || DEFAULT_AUTHOR_NAME,
   rating: Number(row.rating),
   comment: row.comment || '',
   published: Boolean(row.published),
+  publicationConsentAt: row.publication_consent_at ?? null,
+  publicationConsentVersion: row.publication_consent_version ?? null,
+  publicationRevokedAt: row.publication_revoked_at ?? null,
   verified: true,
   createdAt: row.created_at,
 });
@@ -31,11 +37,16 @@ export const createReviewsRepository = (pool) => ({
   },
 
   createForCompletedOrder: async (orderId, draft) => {
+    const publicationConsent =
+      draft.publicationConsent === true &&
+      draft.publicationConsentVersion === LEGAL_VERSIONS.reviewPublication;
+    const authorName =
+      String(draft.authorName || '').trim() || DEFAULT_AUTHOR_NAME;
     const client = await pool.connect();
     try {
       await client.query('begin');
       const orderResult = await client.query(
-        'select id, status, customer_name from orders where id = $1 for update',
+        'select id, status from orders where id = $1 for update',
         [orderId],
       );
       const order = orderResult.rows[0];
@@ -49,16 +60,22 @@ export const createReviewsRepository = (pool) => ({
       }
       const result = await client.query(
         `insert into reviews (
-          id, order_id, customer_name, rating, comment, published
-        ) values ($1, $2, $3, $4, $5, true)
+          id, order_id, customer_name, rating, comment, published,
+          publication_consent_at, publication_consent_version
+        ) values (
+          $1, $2, $3, $4, $5, $6,
+          case when $6 then now() else null end, $7
+        )
         on conflict (order_id) do nothing
         returning *`,
         [
           randomUUID(),
           orderId,
-          String(draft.authorName || order.customer_name || 'Покупатель').trim(),
+          authorName,
           draft.rating,
           String(draft.comment || '').trim(),
+          publicationConsent,
+          publicationConsent ? LEGAL_VERSIONS.reviewPublication : null,
         ],
       );
       if (!result.rows[0]) {
@@ -73,5 +90,17 @@ export const createReviewsRepository = (pool) => ({
     } finally {
       client.release();
     }
+  },
+
+  unpublish: async (id, revokedAt) => {
+    const result = await pool.query(
+      `update reviews
+       set published = false,
+           publication_revoked_at = $2
+       where id = $1
+       returning *`,
+      [id, revokedAt],
+    );
+    return result.rows[0] ? mapReview(result.rows[0]) : null;
   },
 });
