@@ -19,6 +19,10 @@ const mapOrder = (row) => ({
   eta: { min: row.eta_min, max: row.eta_max },
   version: row.version,
   createdAt: row.created_at,
+  personalDataConsentAt: row.personal_data_consent_at,
+  personalDataConsentVersion: row.personal_data_consent_version,
+  offerVersion: row.offer_version,
+  accessTokenHash: row.access_token_hash,
   items: Array.isArray(row.items)
     ? row.items.map((item) => ({
         lineId: item.id,
@@ -65,12 +69,15 @@ export const createOrdersRepository = (pool) => ({
           id, idempotency_key, status, fulfillment, payment_status,
           customer_name, phone, address, customer_comment, courier_comment,
           items_total, delivery_total, discount_total, total,
-          eta_min, eta_max, version, created_at, updated_at
+          eta_min, eta_max, version, created_at, updated_at,
+          personal_data_consent_at, personal_data_consent_version,
+          offer_version, access_token_hash
         ) values (
           $1, $2, $3, $4, $5,
           $6, $7, $8, $9, $10,
           $11, $12, $13, $14,
-          $15, $16, $17, $18, $18
+          $15, $16, $17, $18, $18,
+          $19, $20, $21, $22
         ) returning *`,
         [
           order.id,
@@ -91,6 +98,10 @@ export const createOrdersRepository = (pool) => ({
           order.eta.max,
           order.version,
           order.createdAt,
+          order.personalDataConsentAt,
+          order.personalDataConsentVersion,
+          order.offerVersion,
+          order.accessTokenHash,
         ],
       );
 

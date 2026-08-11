@@ -33,6 +33,7 @@ const orders = createOrdersRepository(db);
 const orderService = createOrderService({
   orders,
   settings: DEFAULT_ORDER_SETTINGS,
+  orderAccessSecret: config.orderAccessSecret,
 });
 const authService = createAuthService({ repository: createAuthRepository(db) });
 const staffOrders = createStaffOrdersRepository(db);

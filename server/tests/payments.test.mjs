@@ -6,6 +6,7 @@ import { createApp } from '../src/app.js';
 import { MockPaymentProvider } from '../src/payments/mock-provider.js';
 import { YooKassaPaymentProvider } from '../src/payments/yookassa-provider.js';
 import { createPaymentService } from '../src/services/payments.js';
+import { LEGAL_VERSIONS } from '../../shared/legal.js';
 
 test('mock provider creates a redirect payment without real credentials', async () => {
   const provider = new MockPaymentProvider();
@@ -169,6 +170,9 @@ test('order creation returns a payment confirmation and webhook is idempotent', 
       fulfillment: 'pickup',
       customer: { phone: '+7 (999) 123-45-67' },
       items: [{ productId: 'nuggets', quantity: 1 }],
+      personalDataConsent: true,
+      personalDataConsentVersion: LEGAL_VERSIONS.personalDataConsent,
+      offerVersion: LEGAL_VERSIONS.offer,
     });
   const webhook = await request(app)
     .post('/api/payments/webhook')

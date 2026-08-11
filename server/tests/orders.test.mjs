@@ -8,13 +8,21 @@ import {
 } from '../src/domain/order-access.js';
 import { priceOrder } from '../src/domain/pricing.js';
 import { createOrderService } from '../src/services/orders.js';
+import { createOrdersRepository } from '../src/repositories/orders.js';
 import { createApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
+import { LEGAL_VERSIONS } from '../../shared/legal.js';
 
 const settings = Object.freeze({
   deliveryPrice: 200,
   freeDeliveryFrom: 2000,
   minimumOrder: 300,
+});
+
+const currentConsent = Object.freeze({
+  personalDataConsent: true,
+  personalDataConsentVersion: LEGAL_VERSIONS.personalDataConsent,
+  offerVersion: LEGAL_VERSIONS.offer,
 });
 
 test('order access token is opaque, deterministic for retries, and stored as a hash', () => {
@@ -142,6 +150,174 @@ const createRepository = () => {
   };
 };
 
+const validOrderPayload = () => ({
+  fulfillment: 'pickup',
+  customer: { name: 'Ilya', phone: '+7 (999) 123-45-67' },
+  items: [{ productId: 'nuggets', quantity: 1 }],
+  ...currentConsent,
+});
+
+test('order without consent is rejected', async () => {
+  const orders = createRepository();
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    orderService: createOrderService({
+      orders,
+      settings,
+      orderAccessSecret: 'test-order-access-secret',
+    }),
+  });
+
+  for (const personalDataConsent of [false, undefined]) {
+    const payload = validOrderPayload();
+    if (personalDataConsent === undefined) {
+      delete payload.personalDataConsent;
+    } else {
+      payload.personalDataConsent = personalDataConsent;
+    }
+
+    const response = await request(app)
+      .post('/api/orders')
+      .set('Idempotency-Key', `consent-${String(personalDataConsent)}`)
+      .send(payload);
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.error, 'PERSONAL_DATA_CONSENT_REQUIRED');
+  }
+  assert.equal(orders.size(), 0);
+});
+
+test('stale legal versions are rejected before pricing', async () => {
+  const orders = createRepository();
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    orderService: createOrderService({
+      orders,
+      settings,
+      orderAccessSecret: 'test-order-access-secret',
+    }),
+  });
+
+  const response = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', 'stale-legal-versions')
+    .send({
+      ...validOrderPayload(),
+      personalDataConsentVersion: '2026-01-01',
+      offerVersion: '2026-01-01',
+      items: [{ productId: 'not-a-real-product', quantity: 1 }],
+    });
+
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error, 'LEGAL_VERSION_OUTDATED');
+  assert.equal(orders.size(), 0);
+});
+
+test('current consent and injected time are persisted with only the token hash', async () => {
+  const orders = createRepository();
+  const createdAt = new Date('2026-08-11T12:34:56.000Z');
+  const service = createOrderService({
+    orders,
+    settings,
+    createId: () => 'order-consent-1',
+    now: () => createdAt,
+    orderAccessSecret: 'test-order-access-secret',
+  });
+
+  const result = await service.create(validOrderPayload(), 'consent-save-1');
+  const stored = await orders.findByIdempotencyKey('consent-save-1');
+
+  assert.equal(result.created, true);
+  assert.equal(result.order.id, 'order-consent-1');
+  assert.match(result.accessToken, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(stored.personalDataConsentAt, createdAt.toISOString());
+  assert.equal(
+    stored.personalDataConsentVersion,
+    LEGAL_VERSIONS.personalDataConsent,
+  );
+  assert.equal(stored.offerVersion, LEGAL_VERSIONS.offer);
+  assert.equal(stored.accessTokenHash, hashOrderAccessToken(result.accessToken));
+  assert.equal(Object.hasOwn(stored, 'accessToken'), false);
+});
+
+test('repository inserts and maps consent proof without a raw access token', async () => {
+  const queries = [];
+  const row = {
+    id: 'order-1',
+    public_number: 1464,
+    idempotency_key: 'repository-consent-1',
+    status: 'submitted',
+    payment_status: 'pending',
+    fulfillment: 'pickup',
+    customer_name: 'Ilya',
+    phone: '+79991234567',
+    address: {},
+    customer_comment: '',
+    courier_comment: '',
+    items_total: 300,
+    delivery_total: 0,
+    discount_total: 0,
+    total: 300,
+    eta_min: 8,
+    eta_max: 12,
+    version: 1,
+    created_at: '2026-08-11T12:34:56.000Z',
+    personal_data_consent_at: '2026-08-11T12:34:56.000Z',
+    personal_data_consent_version: LEGAL_VERSIONS.personalDataConsent,
+    offer_version: LEGAL_VERSIONS.offer,
+    access_token_hash: 'a'.repeat(64),
+  };
+  const client = {
+    query: async (sql, values) => {
+      queries.push({ sql, values });
+      if (String(sql).includes('returning *')) return { rows: [row] };
+      return { rows: [] };
+    },
+    release: () => {},
+  };
+  const repository = createOrdersRepository({ connect: async () => client });
+
+  const created = await repository.create({
+    id: row.id,
+    idempotencyKey: row.idempotency_key,
+    status: row.status,
+    fulfillment: row.fulfillment,
+    paymentStatus: row.payment_status,
+    customerName: row.customer_name,
+    phone: row.phone,
+    address: row.address,
+    customerComment: row.customer_comment,
+    courierComment: row.courier_comment,
+    itemsTotal: row.items_total,
+    deliveryTotal: row.delivery_total,
+    discountTotal: row.discount_total,
+    total: row.total,
+    eta: { min: row.eta_min, max: row.eta_max },
+    version: row.version,
+    createdAt: row.created_at,
+    personalDataConsentAt: row.personal_data_consent_at,
+    personalDataConsentVersion: row.personal_data_consent_version,
+    offerVersion: row.offer_version,
+    accessTokenHash: row.access_token_hash,
+    items: [],
+  });
+
+  const insert = queries.find(({ sql }) => String(sql).includes('insert into orders'));
+  assert.match(insert.sql, /personal_data_consent_at/);
+  assert.match(insert.sql, /personal_data_consent_version/);
+  assert.match(insert.sql, /offer_version/);
+  assert.match(insert.sql, /access_token_hash/);
+  assert.deepEqual(insert.values.slice(-4), [
+    row.personal_data_consent_at,
+    row.personal_data_consent_version,
+    row.offer_version,
+    row.access_token_hash,
+  ]);
+  assert.equal(created.personalDataConsentAt, row.personal_data_consent_at);
+  assert.equal(created.accessTokenHash, row.access_token_hash);
+  assert.equal(Object.hasOwn(created, 'accessToken'), false);
+});
+
 test('сервер игнорирует цену клиента и считает две порции соуса', () => {
   const priced = priceOrder(
     {
@@ -210,7 +386,11 @@ test('минимум 300 ₽ применяется только к достав
 
 test('повторный Idempotency-Key возвращает тот же заказ', async () => {
   const orders = createRepository();
-  const orderService = createOrderService({ orders, settings });
+  const orderService = createOrderService({
+    orders,
+    settings,
+    orderAccessSecret: 'test-order-access-secret',
+  });
   const app = createApp({
     db: { query: async () => ({ rows: [{ ok: 1 }] }) },
     orderService,
@@ -219,6 +399,7 @@ test('повторный Idempotency-Key возвращает тот же зак
     fulfillment: 'pickup',
     customer: { name: 'Илья', phone: '+7 (999) 123-45-67' },
     items: [{ productId: 'nuggets', quantity: 1 }],
+    ...currentConsent,
   };
 
   const first = await request(app)
@@ -233,6 +414,7 @@ test('повторный Idempotency-Key возвращает тот же зак
   assert.equal(first.status, 201);
   assert.equal(second.status, 200);
   assert.equal(second.body.id, first.body.id);
+  assert.equal(second.body.accessToken, first.body.accessToken);
   assert.equal(orders.size(), 1);
 });
 
@@ -251,11 +433,16 @@ test('одновременные запросы с одним ключом со�
       return order;
     },
   };
-  const service = createOrderService({ orders, settings });
+  const service = createOrderService({
+    orders,
+    settings,
+    orderAccessSecret: 'test-order-access-secret',
+  });
   const payload = {
     fulfillment: 'pickup',
     customer: { phone: '+7 (999) 123-45-67' },
     items: [{ productId: 'nuggets', quantity: 1 }],
+    ...currentConsent,
   };
 
   const results = await Promise.all([
@@ -265,4 +452,13 @@ test('одновременные запросы с одним ключом со�
 
   assert.equal(stored.size, 1);
   assert.equal(results[0].order.id, results[1].order.id);
+  assert.equal(results[0].accessToken, results[1].accessToken);
+  assert.deepEqual(
+    results.map(({ created }) => created).sort(),
+    [false, true],
+  );
+  assert.equal(
+    stored.get('same-key-123').accessTokenHash,
+    hashOrderAccessToken(results[0].accessToken),
+  );
 });

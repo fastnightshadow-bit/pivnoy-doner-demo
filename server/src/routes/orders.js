@@ -6,6 +6,9 @@ import { PaymentProviderError } from '../payments/provider.js';
 const quantitiesSchema = z.record(z.string().min(1), z.coerce.number().int().min(0).max(5));
 const orderSchema = z.object({
   fulfillment: z.enum(['pickup', 'delivery']),
+  personalDataConsent: z.literal(true),
+  personalDataConsentVersion: z.string().min(1).max(40),
+  offerVersion: z.string().min(1).max(40),
   customer: z.object({
     name: z.string().max(80).default(''),
     phone: z.string().min(10).max(32),
@@ -88,14 +91,21 @@ export const createOrdersRouter = ({
         : null;
       return response.status(result.created ? 201 : 200).json({
         ...result.order,
+        accessToken: result.accessToken,
         ...(payment ? { payment } : {}),
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
+        if (error.issues.some((issue) => issue.path[0] === 'personalDataConsent')) {
+          return response
+            .status(400)
+            .json({ error: 'PERSONAL_DATA_CONSENT_REQUIRED' });
+        }
         return response.status(400).json({ error: 'INVALID_ORDER' });
       }
       if (error instanceof DomainError) {
-        return response.status(422).json({
+        const status = error.code === 'LEGAL_VERSION_OUTDATED' ? 409 : 422;
+        return response.status(status).json({
           error: error.code,
           details: error.details,
         });

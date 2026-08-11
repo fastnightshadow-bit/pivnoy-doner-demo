@@ -2,8 +2,37 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
+import { LEGAL_VERSIONS } from '../../shared/legal.js';
 
 const db = { query: async () => ({ rows: [{ ok: 1 }] }) };
+
+test('order creation returns the service access token to the client', async () => {
+  const app = createApp({
+    db,
+    orderService: {
+      create: async () => ({
+        created: true,
+        accessToken: 'raw-access-token',
+        order: { id: 'order-1', number: '1464', total: 300 },
+      }),
+    },
+  });
+
+  const response = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', 'client-token-1')
+    .send({
+      fulfillment: 'pickup',
+      customer: { phone: '+7 (999) 123-45-67' },
+      items: [{ productId: 'nuggets', quantity: 1 }],
+      personalDataConsent: true,
+      personalDataConsentVersion: LEGAL_VERSIONS.personalDataConsent,
+      offerVersion: LEGAL_VERSIONS.offer,
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.accessToken, 'raw-access-token');
+});
 
 test('клиент получает заказ по непредсказуемому идентификатору', async () => {
   const app = createApp({

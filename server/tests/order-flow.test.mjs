@@ -8,6 +8,7 @@ import { MockPaymentProvider } from '../src/payments/mock-provider.js';
 import { createOrderService } from '../src/services/orders.js';
 import { createPaymentService } from '../src/services/payments.js';
 import { createStatusService } from '../src/services/statuses.js';
+import { LEGAL_VERSIONS } from '../../shared/legal.js';
 
 const settings = Object.freeze({
   deliveryPrice: 200,
@@ -110,6 +111,7 @@ test('paid delivery order follows client to kitchen to courier flow', async () =
       orders,
       settings,
       createId: () => 'order-flow-1',
+      orderAccessSecret: 'test-order-access-secret',
     }),
     paymentService,
     authService: createAuthStub(),
@@ -125,6 +127,9 @@ test('paid delivery order follows client to kitchen to courier flow', async () =
       customer: { name: 'Ilya', phone: '+7 (999) 123-45-67' },
       address: { street: 'Test street', house: '1' },
       items: [{ productId: 'nuggets', quantity: 1, sauces: { tasty: 2 } }],
+      personalDataConsent: true,
+      personalDataConsentVersion: LEGAL_VERSIONS.personalDataConsent,
+      offerVersion: LEGAL_VERSIONS.offer,
     });
   assert.equal(created.status, 201);
   assert.equal(created.body.total, 500);
