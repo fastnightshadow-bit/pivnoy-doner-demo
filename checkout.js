@@ -70,7 +70,13 @@ export const getCheckoutAttemptKey = (
     now = Date.now,
   } = {},
 ) => {
-  const fingerprint = JSON.stringify(payload);
+  const {
+    personalDataConsent: _personalDataConsent,
+    personalDataConsentVersion: _personalDataConsentVersion,
+    offerVersion: _offerVersion,
+    ...orderIdentity
+  } = payload && typeof payload === 'object' ? payload : {};
+  const fingerprint = JSON.stringify(orderIdentity);
   try {
     const saved = JSON.parse(
       storage?.getItem?.(CHECKOUT_ATTEMPT_STORAGE_KEY) || 'null',
@@ -89,6 +95,18 @@ export const getCheckoutAttemptKey = (
     JSON.stringify({ fingerprint, key }),
   );
   return key;
+};
+
+export const getCheckoutValidationAction = (
+  errors = {},
+  fieldOrder = [],
+) => {
+  const focusField = fieldOrder.find((name) => errors[name]);
+  return {
+    focusField,
+    toast:
+      errors.order || (focusField ? 'Проверьте обязательные поля' : ''),
+  };
 };
 
 const clearCheckoutAttempt = (storage) =>
@@ -550,16 +568,13 @@ const initCheckout = () => {
     ['address', 'phone', 'selectedTime', 'personalDataConsent'].forEach(
       (name) => setFieldError(name, errors[name] || ''),
     );
-    const firstError = order.find((name) => errors[name]);
-    if (errors.order) {
-      showToast(errors.order);
-      return;
-    }
-    if (firstError) {
-      if (firstError === 'address') {
+    const validationAction = getCheckoutValidationAction(errors, order);
+    if (validationAction.toast) showToast(validationAction.toast);
+    if (validationAction.focusField) {
+      if (validationAction.focusField === 'address') {
         setAddressExpanded(true);
       }
-      const control = getControl(firstError);
+      const control = getControl(validationAction.focusField);
       control.focus();
       control.closest('[data-field]')?.scrollIntoView({
         behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)')
@@ -568,9 +583,9 @@ const initCheckout = () => {
           : 'smooth',
         block: 'center',
       });
-      showToast('Проверьте обязательные поля');
       return;
     }
+    if (errors.order) return;
 
     const summary = createCheckoutSummary(
       lines,
