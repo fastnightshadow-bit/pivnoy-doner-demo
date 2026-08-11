@@ -1,0 +1,23 @@
+pivnoy-doner.digital {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy app:3001
+	}
+
+	handle {
+		reverse_proxy app:3000
+	}
+}
+
+stage.pivdoner.ru {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy pivdoner-api:3001
+	}
+
+	handle {
+		reverse_proxy pivdoner-web:8080
+	}
+}

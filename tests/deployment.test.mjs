@@ -47,6 +47,16 @@ test('Caddy routes client and staff subdomains to the isolated services', async 
   assert.match(caddy, /reverse_proxy\s+pivdoner-web:8080/);
 });
 
+test('stage Caddy rollout preserves the legacy site and exposes only the test host', async () => {
+  const caddy = await read('deploy/Caddyfile.stage');
+  assert.match(caddy, /^pivnoy-doner\.digital\s*\{/m);
+  assert.match(caddy, /^stage\.pivdoner\.ru\s*\{/m);
+  assert.doesNotMatch(caddy, /^pivdoner\.ru(?:,|\s)/m);
+  assert.doesNotMatch(caddy, /^(?:kitchen|courier|owner)\.pivdoner\.ru\s*\{/m);
+  assert.match(caddy, /reverse_proxy\s+pivdoner-api:3001/);
+  assert.match(caddy, /reverse_proxy\s+pivdoner-web:8080/);
+});
+
 test('web container maps each host to its own PWA entry point', async () => {
   const nginx = await read('deploy/nginx.conf');
   assert.ok(nginx.includes('~^kitchen\\.pivdoner\\.ru$ /kitchen.html;'));
