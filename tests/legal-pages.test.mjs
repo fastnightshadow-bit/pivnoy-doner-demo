@@ -4,6 +4,15 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
+for (const page of ['home.html', 'cart.html', 'checkout.html', 'order.html']) {
+  test(`${page} links all required legal documents`, async () => {
+    const html = await read(page);
+    for (const href of ['privacy.html', 'consent.html', 'offer.html', 'seller.html']) {
+      assert.match(html, new RegExp(`href=["']${href}["']`));
+    }
+  });
+}
+
 test('legal versions and operator details are canonical and shared with the server image', async () => {
   const { LEGAL_OPERATOR, LEGAL_VERSIONS } = await import('../shared/legal.js');
 
