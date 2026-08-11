@@ -120,6 +120,11 @@ test('deployment template contains placeholders but no production secrets', asyn
   const env = await read('deploy/.env.example');
   assert.match(env, /POSTGRES_PASSWORD=change-me/);
   assert.match(env, /SESSION_SECRET=change-me/);
+  assert.match(env, /ORDER_ACCESS_SECRET=change-me-order-access/);
+  assert.match(
+    env,
+    /ORDER_ACCESS_SECRET must be at least 32 characters and differ from SESSION_SECRET/,
+  );
   assert.match(env, /PAYMENT_PROVIDER=mock/);
   assert.match(env, /YOOKASSA_SECRET_KEY=$/m);
   assert.doesNotMatch(env, /Preacher768|codex-pivdoner-temp/);
