@@ -23,7 +23,7 @@ test('mock provider creates a redirect payment without real credentials', async 
   assert.match(payment.confirmationUrl, /order\.html\?id=order-1/);
 });
 
-test('YooKassa provider sends server credentials, rubles and idempotency key', async () => {
+test('YooKassa provider sends server credentials, fiscal receipt and idempotency key', async () => {
   const calls = [];
   const provider = new YooKassaPaymentProvider({
     shopId: 'shop-1',
@@ -36,7 +36,7 @@ test('YooKassa provider sends server credentials, rubles and idempotency key', a
         json: async () => ({
           id: 'pay-1',
           status: 'pending',
-          amount: { value: '700.00', currency: 'RUB' },
+          amount: { value: '400.00', currency: 'RUB' },
           confirmation: { confirmation_url: 'https://yookassa.test/pay-1' },
           metadata: { order_id: 'order-1' },
         }),
@@ -47,16 +47,26 @@ test('YooKassa provider sends server credentials, rubles and idempotency key', a
   const result = await provider.createPayment({
     orderId: 'order-1',
     publicNumber: '1464',
-    amount: 700,
+    amount: 400,
     returnUrl: 'https://pivdoner.ru/order.html?id=order-1',
     idempotencyKey: 'payment-key-1',
+    customerPhone: '8 (925) 647-45-77',
+    items: [
+      {
+        productId: 'nuggets',
+        name: 'Наггетсы',
+        quantity: 1,
+        unitPrice: 200,
+      },
+    ],
+    deliveryAmount: 200,
   });
 
   assert.equal(calls[0].url, 'https://api.yookassa.ru/v3/payments');
   assert.equal(calls[0].options.headers['Idempotence-Key'], 'payment-key-1');
   assert.match(calls[0].options.headers.Authorization, /^Basic /);
   assert.deepEqual(JSON.parse(calls[0].options.body).amount, {
-    value: '700.00',
+    value: '400.00',
     currency: 'RUB',
   });
   assert.deepEqual(JSON.parse(calls[0].options.body).metadata, {
@@ -66,7 +76,265 @@ test('YooKassa provider sends server credentials, rubles and idempotency key', a
     JSON.parse(calls[0].options.body).confirmation.return_url,
     'https://pivdoner.ru/order.html?id=order-1',
   );
+  assert.deepEqual(JSON.parse(calls[0].options.body).receipt, {
+    customer: { phone: '+79256474577' },
+    items: [
+      {
+        description: 'Наггетсы',
+        quantity: '1.00',
+        amount: { value: '200.00', currency: 'RUB' },
+        vat_code: 1,
+        payment_mode: 'full_payment',
+        payment_subject: 'commodity',
+      },
+      {
+        description: 'Доставка',
+        quantity: '1.00',
+        amount: { value: '200.00', currency: 'RUB' },
+        vat_code: 1,
+        payment_mode: 'full_payment',
+        payment_subject: 'service',
+      },
+    ],
+  });
   assert.equal(result.confirmationUrl, 'https://yookassa.test/pay-1');
+});
+
+test('YooKassa receipt keeps quantity and leading product identity when truncating descriptions', async () => {
+  const calls = [];
+  const provider = new YooKassaPaymentProvider({
+    shopId: 'shop-1',
+    secretKey: 'secret-1',
+    fetcher: async (_url, options) => {
+      calls.push(options);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: 'pay-quantity',
+          status: 'pending',
+          amount: { value: '650.00', currency: 'RUB' },
+          confirmation: {
+            confirmation_url: 'https://yookassa.test/pay-quantity',
+          },
+          metadata: { order_id: 'order-quantity' },
+        }),
+      };
+    },
+  });
+  const longName = `Наггетсы ${'с хрустящей панировкой '.repeat(10)}`;
+
+  await provider.createPayment({
+    orderId: 'order-quantity',
+    publicNumber: '1465',
+    amount: 650,
+    returnUrl: 'https://pivdoner.ru/order.html?id=order-quantity',
+    idempotencyKey: 'payment-key-quantity',
+    customerPhone: '925 647 45 77',
+    items: [
+      {
+        productId: 'nuggets',
+        name: longName,
+        quantity: 2,
+        unitPrice: 225,
+      },
+    ],
+    deliveryAmount: 200,
+  });
+
+  const [product] = JSON.parse(calls[0].body).receipt.items;
+  assert.equal(product.quantity, '2.00');
+  assert.deepEqual(product.amount, { value: '225.00', currency: 'RUB' });
+  assert.equal(product.description.startsWith('Наггетсы'), true);
+  assert.equal(Array.from(product.description).length <= 128, true);
+});
+
+test('YooKassa normalizes supported Russian phone forms to +7', async () => {
+  const cases = [
+    ['+7 (925) 647-45-77', '+79256474577'],
+    ['8 925 647 45 77', '+79256474577'],
+    ['7 925 647 45 77', '+79256474577'],
+    ['9256474577', '+79256474577'],
+  ];
+
+  for (const [phone, expected] of cases) {
+    let requestBody;
+    const provider = new YooKassaPaymentProvider({
+      shopId: 'shop-1',
+      secretKey: 'secret-1',
+      fetcher: async (_url, options) => {
+        requestBody = JSON.parse(options.body);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'pay-phone',
+            status: 'pending',
+            amount: { value: '200.00', currency: 'RUB' },
+            confirmation: {
+              confirmation_url: 'https://yookassa.test/pay-phone',
+            },
+            metadata: { order_id: 'order-phone' },
+          }),
+        };
+      },
+    });
+
+    await provider.createPayment({
+      orderId: 'order-phone',
+      publicNumber: '1466',
+      amount: 200,
+      returnUrl: 'https://pivdoner.ru/order.html?id=order-phone',
+      idempotencyKey: `payment-key-${phone.replace(/\D/g, '')}`,
+      customerPhone: phone,
+      items: [
+        {
+          productId: 'nuggets',
+          name: 'Наггетсы',
+          quantity: 1,
+          unitPrice: 200,
+        },
+      ],
+      deliveryAmount: 0,
+    });
+
+    assert.equal(requestBody.receipt.customer.phone, expected, phone);
+  }
+});
+
+test('YooKassa preserves provider kopecks so amount validation stays exact', async () => {
+  const provider = new YooKassaPaymentProvider({
+    shopId: 'shop-1',
+    secretKey: 'secret-1',
+    fetcher: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'pay-fractional',
+        status: 'pending',
+        amount: { value: '200.01', currency: 'RUB' },
+        confirmation: {
+          confirmation_url: 'https://yookassa.test/pay-fractional',
+        },
+        metadata: { order_id: 'order-fractional' },
+      }),
+    }),
+  });
+
+  const payment = await provider.createPayment({
+    orderId: 'order-fractional',
+    publicNumber: '1467',
+    amount: 200,
+    returnUrl: 'https://pivdoner.ru/order.html?id=order-fractional',
+    idempotencyKey: 'payment-key-fractional',
+    customerPhone: '+79256474577',
+    items: [
+      {
+        productId: 'nuggets',
+        name: 'Наггетсы',
+        quantity: 1,
+        unitPrice: 200,
+      },
+    ],
+    deliveryAmount: 0,
+  });
+
+  assert.equal(payment.amount, 200.01);
+});
+
+test('YooKassa rejects a receipt total mismatch before contacting the provider', async () => {
+  let fetchCalls = 0;
+  const provider = new YooKassaPaymentProvider({
+    shopId: 'shop-1',
+    secretKey: 'secret-1',
+    fetcher: async () => {
+      fetchCalls += 1;
+      assert.fail('must not contact YooKassa for a mismatched receipt');
+    },
+  });
+
+  await assert.rejects(
+    provider.createPayment({
+      orderId: 'order-mismatch',
+      publicNumber: '1467',
+      amount: 399,
+      returnUrl: 'https://pivdoner.ru/order.html?id=order-mismatch',
+      idempotencyKey: 'payment-key-mismatch',
+      customerPhone: '+79256474577',
+      items: [
+        {
+          productId: 'nuggets',
+          name: 'Наггетсы',
+          quantity: 1,
+          unitPrice: 200,
+        },
+      ],
+      deliveryAmount: 200,
+    }),
+    (error) =>
+      error.code === 'PAYMENT_RECEIPT_TOTAL_MISMATCH' && error.status === 409,
+  );
+  assert.equal(fetchCalls, 0);
+});
+
+test('YooKassa rejects non-positive receipt values and more than 80 items', async () => {
+  const validItem = {
+    productId: 'nuggets',
+    name: 'Наггетсы',
+    quantity: 1,
+    unitPrice: 200,
+  };
+  const cases = [
+    {
+      label: 'zero unit price',
+      amount: 0,
+      items: [{ ...validItem, unitPrice: 0 }],
+      code: 'PAYMENT_RECEIPT_AMOUNT_INVALID',
+    },
+    {
+      label: 'zero quantity',
+      amount: 200,
+      items: [{ ...validItem, quantity: 0 }],
+      code: 'PAYMENT_RECEIPT_QUANTITY_INVALID',
+    },
+    {
+      label: 'more than 80 items',
+      amount: 16_200,
+      items: Array.from({ length: 81 }, (_, index) => ({
+        ...validItem,
+        productId: `nuggets-${index}`,
+      })),
+      code: 'PAYMENT_RECEIPT_ITEMS_LIMIT',
+    },
+  ];
+
+  for (const receiptCase of cases) {
+    let fetchCalls = 0;
+    const provider = new YooKassaPaymentProvider({
+      shopId: 'shop-1',
+      secretKey: 'secret-1',
+      fetcher: async () => {
+        fetchCalls += 1;
+        assert.fail('must reject invalid receipt before fetch');
+      },
+    });
+
+    await assert.rejects(
+      provider.createPayment({
+        orderId: 'order-invalid',
+        publicNumber: '1468',
+        amount: receiptCase.amount,
+        returnUrl: 'https://pivdoner.ru/order.html?id=order-invalid',
+        idempotencyKey: 'payment-key-invalid',
+        customerPhone: '+79256474577',
+        items: receiptCase.items,
+        deliveryAmount: 0,
+      }),
+      (error) => error.code === receiptCase.code,
+      receiptCase.label,
+    );
+    assert.equal(fetchCalls, 0, receiptCase.label);
+  }
 });
 
 const paymentAccessToken = 'private-payment-access-token';
@@ -75,6 +343,7 @@ const createPaymentAccessFixture = ({
   orderExists = true,
   existingPayment = null,
   providerPayment = null,
+  orderOverrides = {},
 } = {}) => {
   let storedPayment = existingPayment;
   const calls = {
@@ -84,15 +353,27 @@ const createPaymentAccessFixture = ({
     paymentCompletions: 0,
     providerCreates: 0,
     providerArguments: [],
+    completedPayments: [],
     returnUrlOrderIds: [],
     events: [],
   };
   const order = {
     id: 'order-1',
     number: '1464',
+    phone: '+7 (925) 647-45-77',
+    items: [
+      {
+        productId: 'nuggets',
+        name: 'Наггетсы',
+        quantity: 2,
+        unitPrice: 250,
+      },
+    ],
+    deliveryTotal: 200,
     total: 700,
     paymentStatus: 'pending',
     accessTokenHash: hashOrderAccessToken(paymentAccessToken),
+    ...orderOverrides,
   };
   const service = createPaymentService({
     payments: {
@@ -116,6 +397,7 @@ const createPaymentAccessFixture = ({
       completeReservation: async (payment) => {
         calls.paymentCompletions += 1;
         calls.events.push('complete');
+        calls.completedPayments.push(payment);
         storedPayment = { ...storedPayment, ...payment };
         return storedPayment;
       },
@@ -205,11 +487,72 @@ test('payment retry access with the matching token creates a payment without lea
   assert.equal(calls.providerCreates, 1);
   assert.deepEqual(calls.events, ['reserve', 'provider', 'complete']);
   assert.deepEqual(calls.returnUrlOrderIds, ['order-1']);
+  assert.deepEqual(calls.providerArguments[0].items, [
+    {
+      productId: 'nuggets',
+      name: 'Наггетсы',
+      quantity: 2,
+      unitPrice: 250,
+    },
+  ]);
+  assert.equal(calls.providerArguments[0].deliveryAmount, 200);
+  assert.equal(calls.providerArguments[0].customerPhone, '+7 (925) 647-45-77');
   assert.equal(
     JSON.stringify(calls.providerArguments).includes(paymentAccessToken),
     false,
   );
   assert.equal(JSON.stringify(response.body).includes(paymentAccessToken), false);
+});
+
+test('payment service rejects a server receipt mismatch before reservation or provider creation', async () => {
+  const { app, calls } = createPaymentAccessFixture({
+    orderOverrides: { total: 701 },
+  });
+
+  const response = await postPayment(app, paymentAccessToken);
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(response.body, {
+    error: 'PAYMENT_RECEIPT_TOTAL_MISMATCH',
+  });
+  assert.equal(calls.paymentReservations, 0);
+  assert.equal(calls.providerCreates, 0);
+});
+
+test('payment persistence excludes provider authorization, secrets and receipt contact', async () => {
+  const { app, calls } = createPaymentAccessFixture({
+    providerPayment: {
+      id: 'provider-payment-safe-payload',
+      orderId: 'order-1',
+      status: 'pending',
+      amount: 700,
+      currency: 'RUB',
+      confirmationUrl: 'https://yookassa.test/pay-safe',
+      raw: {
+        id: 'provider-payment-safe-payload',
+        status: 'pending',
+        authorization: 'Basic must-not-persist',
+        secretKey: 'must-not-persist',
+        receipt: { customer: { phone: '+79256474577' } },
+      },
+    },
+  });
+
+  const response = await postPayment(app, paymentAccessToken);
+
+  assert.equal(response.status, 201);
+  assert.equal(calls.completedPayments.length, 1);
+  assert.deepEqual(calls.completedPayments[0].providerPayload, {
+    id: 'provider-payment-safe-payload',
+    orderId: 'order-1',
+    status: 'pending',
+    amount: 700,
+    currency: 'RUB',
+    confirmationUrl: 'https://yookassa.test/pay-safe',
+  });
+  const persisted = JSON.stringify(calls.completedPayments[0].providerPayload);
+  assert.equal(persisted.includes('must-not-persist'), false);
+  assert.equal(persisted.includes('+79256474577'), false);
 });
 
 test('payment retry access returns not found before payment lookup for a missing order', async () => {
@@ -292,6 +635,16 @@ test('payment retry access rejects a concurrent idempotency collision from anoth
       findById: async (id) => ({
         id,
         number: id === 'order-1' ? '1464' : '2468',
+        phone: '+79256474577',
+        items: [
+          {
+            productId: 'nuggets',
+            name: 'Наггетсы',
+            quantity: 1,
+            unitPrice: 500,
+          },
+        ],
+        deliveryTotal: 200,
         total: 700,
         paymentStatus: 'pending',
         accessTokenHash: hashOrderAccessToken(accessTokens[id]),
@@ -410,6 +763,16 @@ test('payment creation rejects a provider id already owned by another local paym
       findById: async () => ({
         id: 'order-1',
         number: '1464',
+        phone: '+79256474577',
+        items: [
+          {
+            productId: 'nuggets',
+            name: 'Наггетсы',
+            quantity: 1,
+            unitPrice: 500,
+          },
+        ],
+        deliveryTotal: 200,
         total: 700,
         paymentStatus: 'pending',
         accessTokenHash: hashOrderAccessToken(paymentAccessToken),

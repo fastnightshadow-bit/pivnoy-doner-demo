@@ -4,10 +4,37 @@ import {
   PaymentProviderError,
   mapProviderStatus,
   toPublicPayment,
+  validateReceiptAmounts,
 } from '../payments/provider.js';
 
 const getWebhookPaymentId = (payload = {}) =>
   String(payload.object?.id ?? payload.paymentId ?? '').trim();
+
+const prepareReceiptInput = (order) => {
+  const items = (Array.isArray(order.items) ? order.items : []).map((item) => ({
+    productId: String(item?.productId ?? ''),
+    name: String(item?.name ?? ''),
+    quantity: item?.quantity,
+    unitPrice: item?.unitPrice,
+  }));
+  const deliveryAmount = order.deliveryTotal ?? 0;
+  validateReceiptAmounts({ amount: order.total, items, deliveryAmount });
+
+  return {
+    customerPhone: String(order.phone ?? ''),
+    items,
+    deliveryAmount,
+  };
+};
+
+const toSafeProviderPayload = (payment = {}) => ({
+  id: String(payment.id ?? ''),
+  orderId: String(payment.orderId ?? ''),
+  status: String(payment.status ?? 'pending'),
+  amount: payment.amount,
+  currency: String(payment.currency ?? ''),
+  confirmationUrl: String(payment.confirmationUrl ?? ''),
+});
 
 const assertPaymentOrder = (payment, orderId) => {
   if (payment.orderId !== orderId) {
@@ -87,6 +114,8 @@ export const createPaymentService = ({
       throw new PaymentProviderError('ORDER_ALREADY_PAID', { status: 409 });
     }
 
+    const receiptInput = prepareReceiptInput(order);
+
     if (!reservation) {
       reservation = await payments.reserve({
         id: createId(),
@@ -113,6 +142,7 @@ export const createPaymentService = ({
       amount: order.total,
       returnUrl: returnUrlForOrder(order.id),
       idempotencyKey: key,
+      ...receiptInput,
     });
     const providerPaymentId = assertProviderPayment(providerPayment, order);
     const providerOwner = await payments.findByProviderPaymentId(
@@ -136,7 +166,7 @@ export const createPaymentService = ({
       status: mapProviderStatus(providerPayment.status),
       amount: providerPayment.amount,
       currency: providerPayment.currency,
-      providerPayload: providerPayment.raw ?? providerPayment,
+      providerPayload: toSafeProviderPayload(providerPayment),
     };
 
     try {
@@ -195,7 +225,7 @@ export const createPaymentService = ({
       (await payments.applyVerifiedState({
         providerPaymentId: paymentId,
         status: mapProviderStatus(verified.status),
-        providerPayload: verified.raw ?? verified,
+        providerPayload: toSafeProviderPayload(verified),
       })) ?? { applied: false }
     );
   },
