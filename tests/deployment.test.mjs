@@ -4,6 +4,14 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
+const composeService = (compose, name) => {
+  const match = compose.match(
+    new RegExp(`^  ${name}:\\r?\\n[\\s\\S]*?(?=^  [a-z0-9_-]+:\\r?$|^networks:\\r?$)`, 'im'),
+  );
+  assert.ok(match, `missing ${name} compose service`);
+  return match[0];
+};
+
 test('production compose keeps PostgreSQL private and isolates the new stack', async () => {
   const compose = await read('deploy/docker-compose.production.yml');
   assert.match(compose, /pivdoner-web/);
@@ -30,6 +38,32 @@ test('API image includes the shared server-side catalog', async () => {
   );
   assert.match(ignore, /!shared\/\*\*/);
   assert.match(ignore, /!server\/src\/\*\*/);
+});
+
+test('retention worker is profile-gated and uses the private API runtime once daily', async () => {
+  const compose = await read('deploy/docker-compose.production.yml');
+  const env = await read('deploy/.env.example');
+  const api = composeService(compose, 'api');
+  const db = composeService(compose, 'db');
+  const retention = composeService(compose, 'retention');
+
+  assert.match(api, /^    image:\s*pivdoner-api:local$/m);
+  assert.match(api, /^    build:$/m);
+  assert.match(retention, /^    profiles:\s*\["retention"\]$/m);
+  assert.match(retention, /^    image:\s*pivdoner-api:local$/m);
+  assert.match(retention, /^    restart:\s*unless-stopped$/m);
+  assert.match(retention, /^      RETENTION_APPLY_CONFIRM:\s*"YES"$/m);
+  assert.match(retention, /^      DATABASE_URL:\s*postgresql:\/\//m);
+  assert.match(retention, /^      db:\r?\n        condition:\s*service_healthy$/m);
+  assert.match(retention, /^    networks:\r?\n      - internal$/m);
+  assert.match(
+    retention,
+    /^    command: \["sh", "-c", "set -eu; while true; do node src\/scripts\/retention\.js --apply; sleep 86400; done"\]$/m,
+  );
+  assert.doesNotMatch(retention, /^    (?:build|expose|ports):/m);
+  assert.doesNotMatch(retention, /\bcaddy\b/);
+  assert.doesNotMatch(db, /^    ports:/m);
+  assert.match(env, /^RETENTION_APPLY_CONFIRM=YES$/m);
 });
 
 test('Caddy routes client and staff subdomains to the isolated services', async () => {

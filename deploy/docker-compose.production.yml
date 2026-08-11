@@ -17,6 +17,7 @@ services:
 
   api:
     container_name: pivdoner-api
+    image: pivdoner-api:local
     build:
       context: ..
       dockerfile: server/Dockerfile
@@ -41,6 +42,24 @@ services:
     networks:
       - internal
       - caddy
+
+  retention:
+    profiles: ["retention"]
+    container_name: pivdoner-retention
+    image: pivdoner-api:local
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      NODE_ENV: production
+      RETENTION_APPLY_CONFIRM: "YES"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "set -eu; while true; do node src/scripts/retention.js --apply; sleep 86400; done"]
+    networks:
+      - internal
 
   db:
     container_name: pivdoner-db
