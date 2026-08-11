@@ -59,3 +59,14 @@ test('бренд в шапке кухни является статичным и
   assert.doesNotMatch(html, /<a\s+class="kitchen-brand"/);
   assert.match(html, /<div\s+class="kitchen-brand">/);
 });
+
+test('dark product sauce rows use readable theme variables', () => {
+  const css = readText('client-theme.css');
+  assert.match(css, /html\[data-theme='dark'\]\s+\.product-sheet__sauce/);
+  assert.match(css, /\.product-sheet__sauce[\s\S]*?color:\s*var\(--client-text\)/);
+  assert.match(css, /\.product-sheet__sauce[\s\S]*?background:\s*var\(--control-surface\)/);
+  assert.match(
+    css,
+    /html\[data-theme='dark'\]\s+\.product-sheet__sauce\s*\{[^}]*color:\s*var\(--client-text\);[^}]*background:\s*var\(--control-surface\);[^}]*border-color:\s*var\(--control-border\);[^}]*\}/s,
+  );
+});

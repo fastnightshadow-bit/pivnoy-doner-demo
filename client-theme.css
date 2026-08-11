@@ -196,6 +196,12 @@ html[data-theme='dark'] .product-sheet__addon {
   border-color: var(--control-border);
 }
 
+html[data-theme='dark'] .product-sheet__sauce {
+  color: var(--client-text);
+  background: var(--control-surface);
+  border-color: var(--control-border);
+}
+
 html[data-theme='dark'] .menu-add {
   color: #fff;
   background: #0d0d0d;
