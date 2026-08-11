@@ -135,9 +135,11 @@ test('production access token config rejects a reused session secret', () => {
 
 const createRepository = () => {
   const byKey = new Map();
+  let createCalls = 0;
   return {
     findByIdempotencyKey: async (key) => byKey.get(key) ?? null,
     create: async (order) => {
+      createCalls += 1;
       if (byKey.has(order.idempotencyKey)) {
         const error = new Error('unique violation');
         error.code = '23505';
@@ -147,6 +149,7 @@ const createRepository = () => {
       return order;
     },
     size: () => byKey.size,
+    createCalls: () => createCalls,
   };
 };
 
@@ -211,6 +214,39 @@ test('stale legal versions are rejected before pricing', async () => {
   assert.equal(response.status, 409);
   assert.equal(response.body.error, 'LEGAL_VERSION_OUTDATED');
   assert.equal(orders.size(), 0);
+});
+
+test('stale legal versions on an Idempotency retry are rejected before lookup and pricing', async () => {
+  const orders = createRepository();
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    orderService: createOrderService({
+      orders,
+      settings,
+      createId: () => 'existing-consent-order',
+      orderAccessSecret: 'test-order-access-secret',
+    }),
+  });
+
+  const first = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', 'stale-retry-key')
+    .send(validOrderPayload());
+  const staleRetry = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', 'stale-retry-key')
+    .send({
+      ...validOrderPayload(),
+      personalDataConsentVersion: '2026-01-01',
+      offerVersion: '2026-01-01',
+      items: [{ productId: 'not-a-real-product', quantity: 1 }],
+    });
+
+  assert.equal(first.status, 201);
+  assert.equal(staleRetry.status, 409);
+  assert.equal(staleRetry.body.error, 'LEGAL_VERSION_OUTDATED');
+  assert.equal(orders.size(), 1);
+  assert.equal(orders.createCalls(), 1);
 });
 
 test('current consent and injected time are persisted with only the token hash', async () => {

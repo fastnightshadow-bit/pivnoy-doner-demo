@@ -16,6 +16,13 @@ export const createOrderService = ({
 }) => ({
   get: (id) => orders.findById(id),
   create: async (input, idempotencyKey) => {
+    if (
+      input.personalDataConsentVersion !== LEGAL_VERSIONS.personalDataConsent ||
+      input.offerVersion !== LEGAL_VERSIONS.offer
+    ) {
+      throw new DomainError('LEGAL_VERSION_OUTDATED');
+    }
+
     const existing = await orders.findByIdempotencyKey(idempotencyKey);
     if (existing) {
       return {
@@ -27,13 +34,6 @@ export const createOrderService = ({
           secret: orderAccessSecret,
         }),
       };
-    }
-
-    if (
-      input.personalDataConsentVersion !== LEGAL_VERSIONS.personalDataConsent ||
-      input.offerVersion !== LEGAL_VERSIONS.offer
-    ) {
-      throw new DomainError('LEGAL_VERSION_OUTDATED');
     }
 
     const priced = priceOrder(input, settings);
