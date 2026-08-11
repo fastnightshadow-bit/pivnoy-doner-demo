@@ -2,6 +2,8 @@ import { normalizeOrder } from './order-state.js';
 
 export const ACTIVE_ORDER_STORAGE_KEY = 'pivnoy-doner-active-order-v1';
 export const ACTIVE_ORDER_ID_STORAGE_KEY = 'pivnoy-doner-active-order-id-v1';
+export const ACTIVE_ORDER_ACCESS_STORAGE_KEY =
+  'pivnoy-doner-active-order-access-v1';
 
 const getBrowserStorage = () =>
   typeof window !== 'undefined' ? window.localStorage : null;
@@ -71,6 +73,39 @@ export const saveActiveOrderId = (
   if (!storage?.setItem) return normalized;
   if (normalized) storage.setItem(ACTIVE_ORDER_ID_STORAGE_KEY, normalized);
   else storage.removeItem?.(ACTIVE_ORDER_ID_STORAGE_KEY);
+  return normalized;
+};
+
+const normalizeActiveOrderAccess = (value) => {
+  const id = String(value?.id || '').trim();
+  const token = String(value?.token || '').trim();
+  return id && token ? { id, token } : null;
+};
+
+export const loadActiveOrderAccess = (storage = getBrowserStorage()) => {
+  if (!storage?.getItem) return null;
+  try {
+    return normalizeActiveOrderAccess(
+      JSON.parse(storage.getItem(ACTIVE_ORDER_ACCESS_STORAGE_KEY) || 'null'),
+    );
+  } catch {
+    return null;
+  }
+};
+
+export const saveActiveOrderAccess = (
+  storage = getBrowserStorage(),
+  access = null,
+) => {
+  const normalized = normalizeActiveOrderAccess(access);
+  if (!normalized) throw new Error('active-order-access-invalid');
+  if (!storage?.setItem) {
+    throw new Error('active-order-access-storage-unavailable');
+  }
+  storage.setItem(
+    ACTIVE_ORDER_ACCESS_STORAGE_KEY,
+    JSON.stringify(normalized),
+  );
   return normalized;
 };
 

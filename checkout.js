@@ -16,7 +16,7 @@ import { createOrderSnapshot } from './order-state.js';
 import {
   loadActiveOrder,
   saveActiveOrder,
-  saveActiveOrderId,
+  saveActiveOrderAccess,
 } from './order-storage.js?v=20260811';
 import { loadPayment, savePayment } from './payment-storage.js';
 import { getPromoResult } from './promo-state.js';
@@ -184,6 +184,13 @@ export const getCheckoutValidationAction = (
 
 const clearCheckoutAttempt = (storage) =>
   storage?.removeItem?.(CHECKOUT_ATTEMPT_STORAGE_KEY);
+
+export const saveCreatedOrderAccess = (storage, order = {}) => {
+  const id = String(order.id || '').trim();
+  const token = String(order.accessToken || '').trim();
+  if (!id || !token) throw new Error('order-access-unavailable');
+  return saveActiveOrderAccess(storage, { id, token });
+};
 
 export const formatCheckoutPrice = (value) =>
   `${Math.max(0, Number(value) || 0).toLocaleString('ru-RU')}\u00a0₽`;
@@ -694,7 +701,7 @@ const initCheckout = () => {
         payload,
       );
       const order = await clientApi.createOrder(payload, attemptKey);
-      saveActiveOrderId(window.localStorage, order.id);
+      saveCreatedOrderAccess(window.localStorage, order);
       saveCart(window.localStorage, []);
       clearCheckoutAttempt(window.sessionStorage);
       window.location.href =

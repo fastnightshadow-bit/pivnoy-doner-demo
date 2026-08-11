@@ -35,14 +35,9 @@ const requestOptions = (options = {}) => ({
   },
 });
 
-const createEventHandler = (handler) => (event) => {
-  if (typeof handler !== 'function') return;
-  try {
-    handler(JSON.parse(event.data));
-  } catch {
-    // Ignore malformed realtime data and wait for the next valid event.
-  }
-};
+const authorizationHeader = (token) => ({
+  Authorization: `Bearer ${String(token || '')}`,
+});
 
 export const normalizeClientOrderResponse = (value = {}) => ({
   ...value,
@@ -64,7 +59,9 @@ export const createClientApi = (options = {}) => {
   const normalized =
     typeof options === 'function' ? { fetcher: options } : options;
   const fetcher = normalized.fetcher ?? globalThis.fetch?.bind(globalThis);
-  const EventSourceClass = normalized.EventSourceClass ?? globalThis.EventSource;
+  const documentRef = normalized.documentRef ?? globalThis.document;
+  const setTimeoutFn = normalized.setTimeoutFn ?? globalThis.setTimeout;
+  const clearTimeoutFn = normalized.clearTimeoutFn ?? globalThis.clearTimeout;
 
   if (typeof fetcher !== 'function') {
     throw new Error('fetch-unavailable');
@@ -72,6 +69,12 @@ export const createClientApi = (options = {}) => {
 
   const fetchJson = async (url, options = {}) =>
     parseResponse(await fetcher(url, requestOptions(options)));
+  const getOrder = async (id, accessToken) =>
+    normalizeClientOrderResponse(
+      await fetchJson(`/api/orders/${encodeURIComponent(String(id || ''))}`, {
+        headers: authorizationHeader(accessToken),
+      }),
+    );
 
   return {
     createOrder: (payload, idempotencyKey) =>
@@ -81,17 +84,17 @@ export const createClientApi = (options = {}) => {
         body: JSON.stringify(payload),
       }),
 
-    createPayment: (orderId, idempotencyKey) =>
+    createPayment: (orderId, idempotencyKey, accessToken) =>
       fetchJson('/api/payments', {
         method: 'POST',
-        headers: { 'Idempotency-Key': String(idempotencyKey || '') },
+        headers: {
+          'Idempotency-Key': String(idempotencyKey || ''),
+          ...authorizationHeader(accessToken),
+        },
         body: JSON.stringify({ orderId: String(orderId || '') }),
       }),
 
-    getOrder: async (id) =>
-      normalizeClientOrderResponse(
-        await fetchJson(`/api/orders/${encodeURIComponent(String(id || ''))}`),
-      ),
+    getOrder,
 
     listReviews: () => fetchJson('/api/reviews'),
 
@@ -115,21 +118,60 @@ export const createClientApi = (options = {}) => {
         },
       ),
 
-    subscribeToOrder: (id, handlers = {}) => {
-      if (typeof EventSourceClass !== 'function') return () => {};
-      const source = new EventSourceClass(
-        `/api/events?orderId=${encodeURIComponent(String(id || ''))}`,
-      );
-      const onUpdate = createEventHandler(handlers.onUpdate);
-      const onPayment = createEventHandler(
-        handlers.onPayment ?? handlers.onUpdate,
-      );
+    subscribeToOrder: (id, accessToken, handlers = {}) => {
+      let stopped = false;
+      let inFlight = false;
+      let timerId = null;
 
-      source.onmessage = onUpdate;
-      source.addEventListener?.('order.updated', onUpdate);
-      source.addEventListener?.('payment.updated', onPayment);
-      source.onerror = (event) => handlers.onError?.(event);
-      return () => source.close();
+      const isVisible = () => documentRef?.visibilityState !== 'hidden';
+      const clearTimer = () => {
+        if (timerId === null) return;
+        clearTimeoutFn?.(timerId);
+        timerId = null;
+      };
+      const schedule = () => {
+        if (
+          stopped ||
+          !isVisible() ||
+          typeof setTimeoutFn !== 'function'
+        ) {
+          return;
+        }
+        clearTimer();
+        timerId = setTimeoutFn(() => {
+          timerId = null;
+          return poll();
+        }, 3000);
+      };
+      const poll = async () => {
+        if (stopped || inFlight || !isVisible()) return;
+        inFlight = true;
+        try {
+          const order = await getOrder(id, accessToken);
+          handlers.onUpdate?.(order);
+        } catch (error) {
+          handlers.onError?.(error);
+        } finally {
+          inFlight = false;
+          schedule();
+        }
+      };
+      const onVisibilityChange = () => {
+        clearTimer();
+        if (isVisible()) void poll();
+      };
+
+      documentRef?.addEventListener?.('visibilitychange', onVisibilityChange);
+      if (isVisible()) void poll();
+
+      return () => {
+        stopped = true;
+        clearTimer();
+        documentRef?.removeEventListener?.(
+          'visibilitychange',
+          onVisibilityChange,
+        );
+      };
     },
   };
 };

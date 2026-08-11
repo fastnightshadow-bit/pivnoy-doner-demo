@@ -78,32 +78,159 @@ test('отзыв отправляется только для указанног
   });
 });
 
-test('подписка на заказ открывает SSE и передаёт обновление', () => {
-  const opened = [];
-  class FakeEventSource {
-    constructor(url) {
-      this.url = url;
-      opened.push(this);
-    }
-    close() {
-      this.closed = true;
-    }
-  }
+test('client order request sends the private access token in a header', async () => {
+  const calls = [];
   const api = createClientApi({
-    fetcher: async () => jsonResponse({}),
-    EventSourceClass: FakeEventSource,
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      return jsonResponse({ id: 'order/1' });
+    },
+  });
+
+  await api.getOrder('order/1', 'secret-token');
+
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer secret-token');
+  assert.doesNotMatch(calls[0].url, /secret-token/);
+});
+
+test('payment retry sends access token only in Authorization', async () => {
+  const calls = [];
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      return jsonResponse({ id: 'payment-1' }, 201);
+    },
+  });
+
+  await api.createPayment('order/1', 'retry-1', 'secret-token');
+
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer secret-token');
+  assert.doesNotMatch(calls[0].url, /secret-token/);
+  assert.doesNotMatch(calls[0].options.body, /secret-token/);
+});
+
+test('order subscription polls after completion without overlapping requests', async () => {
+  const calls = [];
+  const timers = [];
+  let resolveFirst;
+  const firstResponse = new Promise((resolve) => {
+    resolveFirst = resolve;
+  });
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      if (calls.length === 1) return firstResponse;
+      return jsonResponse({ id: 'order/1', status: 'accepted' });
+    },
+    documentRef: {
+      visibilityState: 'visible',
+      addEventListener() {},
+      removeEventListener() {},
+    },
+    setTimeoutFn: (callback, delay) => {
+      timers.push({ callback, delay });
+      return timers.length;
+    },
+    clearTimeoutFn() {},
   });
   const updates = [];
 
-  const unsubscribe = api.subscribeToOrder('order/1', {
+  const unsubscribe = api.subscribeToOrder('order/1', 'secret-token', {
     onUpdate: (payload) => updates.push(payload),
   });
-  opened[0].onmessage({ data: JSON.stringify({ status: 'accepted' }) });
-  unsubscribe();
+  assert.equal(calls.length, 1);
+  assert.equal(timers.length, 0);
+  resolveFirst(jsonResponse({ id: 'order/1', status: 'submitted' }));
+  await new Promise((resolve) => setImmediate(resolve));
 
-  assert.equal(opened[0].url, '/api/events?orderId=order%2F1');
-  assert.deepEqual(updates, [{ status: 'accepted' }]);
-  assert.equal(opened[0].closed, true);
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].delay, 3000);
+  await timers[0].callback();
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].options.headers.Authorization, 'Bearer secret-token');
+  assert.doesNotMatch(calls[1].url, /secret-token/);
+  assert.deepEqual(
+    updates.map(({ status }) => status),
+    ['submitted', 'accepted'],
+  );
+  unsubscribe();
+});
+
+test('order polling pauses while hidden, refreshes on visibility and cleans up', async () => {
+  const listeners = new Map();
+  const timers = [];
+  const cleared = [];
+  const documentRef = {
+    visibilityState: 'hidden',
+    addEventListener: (type, listener) => listeners.set(type, listener),
+    removeEventListener: (type, listener) => {
+      if (listeners.get(type) === listener) listeners.delete(type);
+    },
+  };
+  let fetches = 0;
+  const api = createClientApi({
+    fetcher: async () => {
+      fetches += 1;
+      return jsonResponse({ id: 'order-1', status: 'accepted' });
+    },
+    documentRef,
+    setTimeoutFn: (callback, delay) => {
+      timers.push({ callback, delay });
+      return timers.length;
+    },
+    clearTimeoutFn: (id) => cleared.push(id),
+  });
+
+  const unsubscribe = api.subscribeToOrder('order-1', 'secret-token', {});
+  assert.equal(fetches, 0);
+  documentRef.visibilityState = 'visible';
+  listeners.get('visibilitychange')();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(fetches, 1);
+  assert.equal(timers.length, 1);
+
+  unsubscribe();
+  assert.equal(listeners.has('visibilitychange'), false);
+  assert.deepEqual(cleared, [1]);
+  await timers[0].callback();
+  assert.equal(fetches, 1);
+});
+
+test('polling reports errors and preserves the last successful update', async () => {
+  const timers = [];
+  const updates = [];
+  const errors = [];
+  let attempt = 0;
+  const api = createClientApi({
+    fetcher: async () => {
+      attempt += 1;
+      if (attempt === 2) throw new Error('offline');
+      return jsonResponse({ id: 'order-1', status: 'accepted' });
+    },
+    documentRef: {
+      visibilityState: 'visible',
+      addEventListener() {},
+      removeEventListener() {},
+    },
+    setTimeoutFn: (callback, delay) => {
+      timers.push({ callback, delay });
+      return timers.length;
+    },
+    clearTimeoutFn() {},
+  });
+
+  const unsubscribe = api.subscribeToOrder('order-1', 'secret-token', {
+    onUpdate: (payload) => updates.push(payload),
+    onError: (error) => errors.push(error),
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  await timers[0].callback();
+
+  assert.equal(updates.length, 1);
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].message, 'offline');
+  assert.equal(timers.length, 2);
+  unsubscribe();
 });
 
 test('серверный заказ приводится к формату экрана клиента', () => {
@@ -142,10 +269,15 @@ test('payment retry uses a separate idempotency key', async () => {
     },
   });
 
-  const payment = await api.createPayment('order/1', 'retry-payment-1');
+  const payment = await api.createPayment(
+    'order/1',
+    'retry-payment-1',
+    'secret-token',
+  );
 
   assert.equal(payment.id, 'pay-2');
   assert.equal(calls[0].url, '/api/payments');
   assert.equal(calls[0].options.headers['Idempotency-Key'], 'retry-payment-1');
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer secret-token');
   assert.deepEqual(JSON.parse(calls[0].options.body), { orderId: 'order/1' });
 });

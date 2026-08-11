@@ -7,7 +7,7 @@ import {
 } from './order-state.js';
 import {
   loadActiveOrder,
-  loadActiveOrderId,
+  loadActiveOrderAccess,
   saveActiveOrder,
   subscribeToActiveOrder,
 } from './order-storage.js?v=20260811';
@@ -422,7 +422,11 @@ const initOrder = () => {
       refs.retry.setAttribute('aria-busy', 'true');
       const key = `retry-${globalThis.crypto?.randomUUID?.() || Date.now()}`;
       try {
-        const payment = await clientApi.createPayment(currentOrder.id, key);
+        const payment = await clientApi.createPayment(
+          currentOrder.id,
+          key,
+          activeOrderAccess?.token,
+        );
         if (!payment.confirmationUrl) throw new Error('confirmation-unavailable');
         window.location.href = payment.confirmationUrl;
       } catch {
@@ -437,22 +441,19 @@ const initOrder = () => {
     )}`;
   });
 
-  const activeOrderId = productionApi
-    ? loadActiveOrderId(window.localStorage)
-    : '';
-  const refreshOrder = async ({ animate = false } = {}) => {
-    if (!productionApi || !activeOrderId) return;
-    try {
-      update(await clientApi.getOrder(activeOrderId), { animate });
-    } catch (error) {
-      if (error?.status === 404) update(null);
-    }
-  };
+  const activeOrderAccess = productionApi
+    ? loadActiveOrderAccess(window.localStorage)
+    : null;
   const unsubscribe = productionApi
-    ? activeOrderId
-      ? clientApi.subscribeToOrder(activeOrderId, {
-          onUpdate: () => void refreshOrder({ animate: true }),
-        })
+    ? activeOrderAccess
+      ? clientApi.subscribeToOrder(
+          activeOrderAccess.id,
+          activeOrderAccess.token,
+          {
+            onUpdate: (order) => update(order, { animate: true }),
+            onError: () => {},
+          },
+        )
       : () => {}
     : subscribeToActiveOrder(window, (order) => {
         update(order, { animate: true });
@@ -460,15 +461,15 @@ const initOrder = () => {
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      if (productionApi) void refreshOrder({ animate: true });
-      else update(loadActiveOrder(window.localStorage), { animate: true });
+      if (!productionApi) {
+        update(loadActiveOrder(window.localStorage), { animate: true });
+      }
     }
   });
   window.addEventListener('pagehide', unsubscribe, { once: true });
 
   if (productionApi) {
     update(null);
-    void refreshOrder();
   } else {
     update(currentOrder);
   }
