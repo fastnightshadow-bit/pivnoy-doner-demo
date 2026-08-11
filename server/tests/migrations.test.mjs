@@ -35,3 +35,14 @@ test('заказы защищены ограничениями и ключом �
   assert.match(sql, /payment_status text not null check/i);
   assert.match(sql, /version integer not null default 1/i);
 });
+
+test('order consent and access migration stores proof without raw token', async () => {
+  const sql = await readFile(new URL('../src/db/migrations/002_order_consent_access.sql', import.meta.url), 'utf8');
+  for (const column of [
+    'personal_data_consent_at',
+    'personal_data_consent_version',
+    'offer_version',
+    'access_token_hash',
+  ]) assert.match(sql, new RegExp(column, 'i'));
+  assert.doesNotMatch(sql, /access_token\s+text/i);
+});
