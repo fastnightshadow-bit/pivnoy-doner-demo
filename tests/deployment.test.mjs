@@ -15,6 +15,23 @@ test('production compose keeps PostgreSQL private and isolates the new stack', a
   assert.doesNotMatch(compose, /container_name:\s*(?:caddy|shawarma-app|shop-backend|tse-bot)\b/);
 });
 
+test('API image includes the shared server-side catalog', async () => {
+  const compose = await read('deploy/docker-compose.production.yml');
+  const dockerfile = await read('server/Dockerfile');
+  const ignore = await read('server/Dockerfile.dockerignore');
+  assert.match(
+    compose,
+    /api:\s*[\s\S]*?build:\s*[\s\S]*?context:\s*\.\.[\s\S]*?dockerfile:\s*server\/Dockerfile/,
+  );
+  assert.match(dockerfile, /COPY\s+shared\s+\/app\/shared/);
+  assert.match(
+    dockerfile,
+    /COPY\s+catalog-data\.js\s+product-config\.js\s+option-quantities\.js\s+\/app\//,
+  );
+  assert.match(ignore, /!shared\/\*\*/);
+  assert.match(ignore, /!server\/src\/\*\*/);
+});
+
 test('Caddy routes client and staff subdomains to the isolated services', async () => {
   const caddy = await read('deploy/Caddyfile.pivdoner');
   for (const host of [

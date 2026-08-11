@@ -18,7 +18,8 @@ services:
   api:
     container_name: pivdoner-api
     build:
-      context: ../server
+      context: ..
+      dockerfile: server/Dockerfile
     env_file:
       - .env
     environment:

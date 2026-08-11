@@ -1,0 +1,11 @@
+**
+!server/
+!server/package.json
+!server/pnpm-lock.yaml
+!server/src/
+!server/src/**
+!shared/
+!shared/**
+!catalog-data.js
+!product-config.js
+!option-quantities.js
