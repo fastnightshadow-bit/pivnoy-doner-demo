@@ -44,7 +44,7 @@ export const createApp = ({
       }),
     );
   }
-  if (events) {
+  if (events && authService) {
     app.use('/api/events', createEventsRouter({ events, authService }));
   }
   if (authService && settingsService) {

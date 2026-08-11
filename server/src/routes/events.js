@@ -13,18 +13,16 @@ export const createEventsRouter = ({
 }) => {
   const router = Router();
   router.get('/', async (request, response) => {
-    const orderId = String(request.query.orderId ?? '').trim();
     const staffScope = request.query.scope === 'staff';
-    if (staffScope) {
-      const account = await authService?.authenticate(
-        request.cookies?.[SESSION_COOKIE],
-      );
-      if (!account) return response.status(401).json({ error: 'UNAUTHORIZED' });
-      if (!canSubscribeToStaffEvents(account)) {
-        return response.status(403).json({ error: 'FORBIDDEN' });
-      }
-    } else if (!orderId) {
-      return response.status(400).json({ error: 'ORDER_ID_REQUIRED' });
+    if (!staffScope) {
+      return response.status(404).json({ error: 'NOT_FOUND' });
+    }
+    const account = await authService?.authenticate(
+      request.cookies?.[SESSION_COOKIE],
+    );
+    if (!account) return response.status(401).json({ error: 'UNAUTHORIZED' });
+    if (!canSubscribeToStaffEvents(account)) {
+      return response.status(403).json({ error: 'FORBIDDEN' });
     }
 
     response.status(200);
@@ -39,11 +37,7 @@ export const createEventsRouter = ({
 
     const sendPending = async () => {
       if (closed) return;
-      const pending = await replayEvents(
-        events,
-        cursor,
-        staffScope ? {} : { orderId },
-      );
+      const pending = await replayEvents(events, cursor, {});
       for (const event of pending) {
         response.write(formatSseEvent(event));
         cursor = Math.max(cursor, Number(event.id) || 0);

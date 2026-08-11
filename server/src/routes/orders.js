@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { DomainError } from '../domain/errors.js';
+import { toPublicClientOrder } from '../domain/public-order.js';
 import { PaymentProviderError } from '../payments/provider.js';
 
 const quantitiesSchema = z.record(z.string().min(1), z.coerce.number().int().min(0).max(5));
@@ -38,6 +39,21 @@ const reviewSchema = z.object({
   comment: z.string().max(500).optional(),
 });
 
+const getOrderAccessToken = (request) => {
+  const authorization = String(request.get('Authorization') ?? '').trim();
+  return /^Bearer\s+([^\s]+)$/i.exec(authorization)?.[1] ?? '';
+};
+
+const sendPublicOrderError = (response, error) => {
+  const status = {
+    ORDER_ACCESS_REQUIRED: 401,
+    ORDER_ACCESS_DENIED: 403,
+    ORDER_NOT_FOUND: 404,
+  }[error?.code];
+  if (status) return response.status(status).json({ error: error.code });
+  throw error;
+};
+
 export const createOrdersRouter = ({
   orderService,
   reviewsService = null,
@@ -45,11 +61,17 @@ export const createOrdersRouter = ({
 }) => {
   const router = Router();
 
-  if (typeof orderService.get === 'function') {
+  if (typeof orderService.getPublic === 'function') {
     router.get('/:id', async (request, response) => {
-      const order = await orderService.get(String(request.params.id));
-      if (!order) return response.status(404).json({ error: 'ORDER_NOT_FOUND' });
-      return response.json(order);
+      try {
+        const order = await orderService.getPublic(
+          String(request.params.id),
+          getOrderAccessToken(request),
+        );
+        return response.json(order);
+      } catch (error) {
+        return sendPublicOrderError(response, error);
+      }
     });
   }
 
@@ -87,10 +109,14 @@ export const createOrdersRouter = ({
       const input = orderSchema.parse(request.body);
       const result = await orderService.create(input, idempotencyKey);
       const payment = paymentService
-        ? await paymentService.create(result.order.id, result.order.id)
+        ? await paymentService.create(
+            result.order.id,
+            result.order.id,
+            result.accessToken,
+          )
         : null;
       return response.status(result.created ? 201 : 200).json({
-        ...result.order,
+        ...toPublicClientOrder(result.order),
         accessToken: result.accessToken,
         ...(payment ? { payment } : {}),
       });

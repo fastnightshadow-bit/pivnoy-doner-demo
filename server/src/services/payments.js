@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { verifyOrderAccessToken } from '../domain/order-access.js';
 import {
   PaymentProviderError,
   mapProviderStatus,
@@ -8,6 +9,14 @@ import {
 const getWebhookPaymentId = (payload = {}) =>
   String(payload.object?.id ?? payload.paymentId ?? '').trim();
 
+const assertPaymentOrder = (payment, orderId) => {
+  if (payment.orderId !== orderId) {
+    throw new PaymentProviderError('PAYMENT_IDEMPOTENCY_CONFLICT', {
+      status: 409,
+    });
+  }
+};
+
 export const createPaymentService = ({
   payments,
   orders,
@@ -16,15 +25,26 @@ export const createPaymentService = ({
   createId = randomUUID,
   returnUrlForOrder,
 }) => ({
-  create: async (orderId, idempotencyKey) => {
-    const key = String(idempotencyKey || '').trim();
-    const existing = await payments.findByIdempotencyKey(key);
-    if (existing) return toPublicPayment(existing);
+  create: async (orderId, idempotencyKey, accessToken) => {
+    if (typeof accessToken !== 'string' || accessToken.length === 0) {
+      throw new PaymentProviderError('ORDER_ACCESS_REQUIRED', { status: 401 });
+    }
 
+    const key = String(idempotencyKey || '').trim();
     const order = await orders.findById(String(orderId));
     if (!order) {
       throw new PaymentProviderError('ORDER_NOT_FOUND', { status: 404 });
     }
+    if (!verifyOrderAccessToken(accessToken, order.accessTokenHash)) {
+      throw new PaymentProviderError('ORDER_ACCESS_DENIED', { status: 403 });
+    }
+
+    const existing = await payments.findByIdempotencyKey(key);
+    if (existing) {
+      assertPaymentOrder(existing, order.id);
+      return toPublicPayment(existing);
+    }
+
     if (order.paymentStatus === 'paid') {
       throw new PaymentProviderError('ORDER_ALREADY_PAID', { status: 409 });
     }
@@ -54,6 +74,7 @@ export const createPaymentService = ({
       if (error?.code !== '23505') throw error;
       const concurrent = await payments.findByIdempotencyKey(key);
       if (!concurrent) throw error;
+      assertPaymentOrder(concurrent, order.id);
       return toPublicPayment(concurrent);
     }
   },

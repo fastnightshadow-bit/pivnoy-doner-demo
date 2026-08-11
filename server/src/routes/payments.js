@@ -9,6 +9,11 @@ const paymentSchema = z.object({
 const getIdempotencyKey = (request) =>
   String(request.get('Idempotency-Key') ?? '').trim();
 
+const getOrderAccessToken = (request) => {
+  const authorization = String(request.get('Authorization') ?? '').trim();
+  return /^Bearer\s+([^\s]+)$/i.exec(authorization)?.[1] ?? '';
+};
+
 const sendPaymentError = (response, error) => {
   if (error instanceof z.ZodError) {
     return response.status(400).json({ error: 'INVALID_PAYMENT' });
@@ -32,7 +37,11 @@ export const createPaymentsRouter = ({ paymentService }) => {
     }
     try {
       const { orderId } = paymentSchema.parse(request.body);
-      const payment = await paymentService.create(orderId, idempotencyKey);
+      const payment = await paymentService.create(
+        orderId,
+        idempotencyKey,
+        getOrderAccessToken(request),
+      );
       return response.status(201).json(payment);
     } catch (error) {
       return sendPaymentError(response, error);

@@ -170,7 +170,9 @@ test('paid delivery order follows client to kitchen to courier flow', async () =
     version = changed.body.version;
   }
 
-  const result = await request(app).get(`/api/orders/${created.body.id}`);
+  const result = await request(app)
+    .get(`/api/orders/${created.body.id}`)
+    .set('Authorization', `Bearer ${created.body.accessToken}`);
   assert.equal(result.status, 200);
   assert.equal(result.body.status, 'delivered');
   assert.equal(result.body.paymentStatus, 'paid');

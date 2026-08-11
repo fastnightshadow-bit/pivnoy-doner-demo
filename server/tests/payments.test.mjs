@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 
 import { createApp } from '../src/app.js';
+import { hashOrderAccessToken } from '../src/domain/order-access.js';
 import { MockPaymentProvider } from '../src/payments/mock-provider.js';
 import { YooKassaPaymentProvider } from '../src/payments/yookassa-provider.js';
 import { createPaymentService } from '../src/services/payments.js';
@@ -58,7 +59,204 @@ test('YooKassa provider sends server credentials, rubles and idempotency key', a
     value: '700.00',
     currency: 'RUB',
   });
+  assert.deepEqual(JSON.parse(calls[0].options.body).metadata, {
+    order_id: 'order-1',
+  });
+  assert.equal(
+    JSON.parse(calls[0].options.body).confirmation.return_url,
+    'https://pivdoner.ru/order.html?id=order-1',
+  );
   assert.equal(result.confirmationUrl, 'https://yookassa.test/pay-1');
+});
+
+const paymentAccessToken = 'private-payment-access-token';
+
+const createPaymentAccessFixture = ({
+  orderExists = true,
+  existingPayment = null,
+} = {}) => {
+  const calls = {
+    orderReads: 0,
+    paymentLookups: 0,
+    providerCreates: 0,
+    providerArguments: [],
+    returnUrlOrderIds: [],
+  };
+  const order = {
+    id: 'order-1',
+    number: '1464',
+    total: 700,
+    paymentStatus: 'pending',
+    accessTokenHash: hashOrderAccessToken(paymentAccessToken),
+  };
+  const service = createPaymentService({
+    payments: {
+      findByIdempotencyKey: async () => {
+        calls.paymentLookups += 1;
+        return existingPayment;
+      },
+      create: async (payment) => payment,
+    },
+    orders: {
+      findById: async () => {
+        calls.orderReads += 1;
+        return orderExists ? order : null;
+      },
+    },
+    provider: {
+      createPayment: async (input) => {
+        calls.providerCreates += 1;
+        calls.providerArguments.push(input);
+        return {
+          id: 'provider-payment-1',
+          orderId: input.orderId,
+          status: 'pending',
+          amount: input.amount,
+          currency: 'RUB',
+          confirmationUrl: input.returnUrl,
+        };
+      },
+    },
+    createId: () => 'local-payment-1',
+    returnUrlForOrder: (orderId) => {
+      calls.returnUrlOrderIds.push(orderId);
+      return `https://pivdoner.ru/order.html?id=${encodeURIComponent(orderId)}`;
+    },
+  });
+  return {
+    app: createApp({
+      db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+      paymentService: service,
+    }),
+    calls,
+  };
+};
+
+const postPayment = (app, token) => {
+  const pending = request(app)
+    .post('/api/payments')
+    .set('Idempotency-Key', 'payment-retry-1');
+  if (token !== undefined) pending.set('Authorization', `Bearer ${token}`);
+  return pending.send({ orderId: 'order-1' });
+};
+
+test('payment retry access without Authorization is rejected before payment lookup', async () => {
+  const { app, calls } = createPaymentAccessFixture();
+
+  const response = await postPayment(app);
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(response.body, { error: 'ORDER_ACCESS_REQUIRED' });
+  assert.equal(calls.paymentLookups, 0);
+  assert.equal(calls.providerCreates, 0);
+});
+
+test('payment retry access with the wrong token is rejected before payment lookup', async () => {
+  const { app, calls } = createPaymentAccessFixture();
+
+  const response = await postPayment(app, 'wrong-token');
+
+  assert.equal(response.status, 403);
+  assert.deepEqual(response.body, { error: 'ORDER_ACCESS_DENIED' });
+  assert.equal(calls.paymentLookups, 0);
+  assert.equal(calls.providerCreates, 0);
+});
+
+test('payment retry access with the matching token creates a payment without leaking it', async () => {
+  const { app, calls } = createPaymentAccessFixture();
+
+  const response = await postPayment(app, paymentAccessToken);
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.orderId, 'order-1');
+  assert.equal(calls.orderReads, 1);
+  assert.equal(calls.paymentLookups, 1);
+  assert.equal(calls.providerCreates, 1);
+  assert.deepEqual(calls.returnUrlOrderIds, ['order-1']);
+  assert.equal(
+    JSON.stringify(calls.providerArguments).includes(paymentAccessToken),
+    false,
+  );
+  assert.equal(JSON.stringify(response.body).includes(paymentAccessToken), false);
+});
+
+test('payment retry access returns not found before payment lookup for a missing order', async () => {
+  const { app, calls } = createPaymentAccessFixture({ orderExists: false });
+
+  const response = await postPayment(app, paymentAccessToken);
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, { error: 'ORDER_NOT_FOUND' });
+  assert.equal(calls.paymentLookups, 0);
+  assert.equal(calls.providerCreates, 0);
+});
+
+test('payment retry access cannot reuse an idempotency key from another order', async () => {
+  const { app, calls } = createPaymentAccessFixture({
+    existingPayment: {
+      id: 'other-local-payment',
+      orderId: 'other-order',
+      providerPaymentId: 'other-provider-payment',
+      status: 'pending',
+    },
+  });
+
+  const response = await postPayment(app, paymentAccessToken);
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(response.body, { error: 'PAYMENT_IDEMPOTENCY_CONFLICT' });
+  assert.equal(calls.providerCreates, 0);
+});
+
+test('payment retry access rejects a concurrent idempotency collision from another order', async () => {
+  let paymentLookups = 0;
+  const service = createPaymentService({
+    payments: {
+      findByIdempotencyKey: async () => {
+        paymentLookups += 1;
+        return paymentLookups === 1
+          ? null
+          : {
+              id: 'other-local-payment',
+              orderId: 'other-order',
+              providerPaymentId: 'other-provider-payment',
+              status: 'pending',
+            };
+      },
+      create: async () => {
+        const error = new Error('unique violation');
+        error.code = '23505';
+        throw error;
+      },
+    },
+    orders: {
+      findById: async () => ({
+        id: 'order-1',
+        number: '1464',
+        total: 700,
+        paymentStatus: 'pending',
+        accessTokenHash: hashOrderAccessToken(paymentAccessToken),
+      }),
+    },
+    provider: {
+      createPayment: async ({ orderId, amount, returnUrl }) => ({
+        id: 'provider-payment-1',
+        orderId,
+        amount,
+        status: 'pending',
+        currency: 'RUB',
+        confirmationUrl: returnUrl,
+      }),
+    },
+    returnUrlForOrder: (orderId) =>
+      `https://pivdoner.ru/order.html?id=${encodeURIComponent(orderId)}`,
+  });
+
+  await assert.rejects(
+    service.create('order-1', 'payment-retry-1', paymentAccessToken),
+    (error) =>
+      error.code === 'PAYMENT_IDEMPOTENCY_CONFLICT' && error.status === 409,
+  );
 });
 
 test('repeated webhook verifies provider state and applies payment once', async () => {
@@ -143,13 +341,17 @@ test('webhook rejects a provider payment with a mismatched amount', async () => 
 });
 
 test('order creation returns a payment confirmation and webhook is idempotent', async () => {
+  const createCalls = [];
   const paymentService = {
-    create: async (orderId) => ({
-      id: 'pay-1',
-      orderId,
-      status: 'pending',
-      confirmationUrl: 'https://yookassa.test/pay-1',
-    }),
+    create: async (...args) => {
+      createCalls.push(args);
+      return {
+        id: 'pay-1',
+        orderId: args[0],
+        status: 'pending',
+        confirmationUrl: 'https://yookassa.test/pay-1',
+      };
+    },
     handleWebhook: async () => ({ applied: true }),
   };
   const app = createApp({
@@ -157,7 +359,23 @@ test('order creation returns a payment confirmation and webhook is idempotent', 
     orderService: {
       create: async () => ({
         created: true,
-        order: { id: 'order-1', number: '1464', total: 700 },
+        accessToken: paymentAccessToken,
+        order: {
+          id: 'order-1',
+          number: '1464',
+          status: 'submitted',
+          paymentStatus: 'pending',
+          fulfillment: 'pickup',
+          itemsTotal: 700,
+          deliveryTotal: 0,
+          discountTotal: 0,
+          total: 700,
+          eta: { min: 8, max: 12 },
+          createdAt: '2026-08-11T12:34:56.000Z',
+          items: [],
+          accessTokenHash: hashOrderAccessToken(paymentAccessToken),
+          personalDataConsentAt: '2026-08-11T12:34:56.000Z',
+        },
       }),
     },
     paymentService,
@@ -180,6 +398,12 @@ test('order creation returns a payment confirmation and webhook is idempotent', 
 
   assert.equal(created.status, 201);
   assert.equal(created.body.payment.confirmationUrl, 'https://yookassa.test/pay-1');
+  assert.deepEqual(createCalls, [
+    ['order-1', 'order-1', paymentAccessToken],
+  ]);
+  assert.equal(created.body.accessToken, paymentAccessToken);
+  assert.equal(Object.hasOwn(created.body, 'accessTokenHash'), false);
+  assert.equal(Object.hasOwn(created.body, 'personalDataConsentAt'), false);
   assert.equal(webhook.status, 200);
   assert.equal(webhook.body.applied, true);
 });
