@@ -98,3 +98,43 @@ test('review success message distinguishes public and private feedback', () => {
     'Спасибо — отзыв отправлен ресторану',
   );
 });
+
+test('duplicate review submission uses the persisted publication state', async () => {
+  const lookups = [];
+  const reviewService = {
+    submit: async () => {
+      const error = new Error('duplicate review');
+      error.code = 'ALREADY_REVIEWED';
+      throw error;
+    },
+    findByOrderId: async (orderId, accessToken) => {
+      lookups.push({ orderId, accessToken });
+      return { id: 'review-1', published: true };
+    },
+  };
+
+  const published = await orderScreen.submitReviewAndResolvePublication?.({
+    reviewService,
+    draft: {
+      orderId: 'order-1',
+      rating: 5,
+      publicationConsent: false,
+    },
+    accessToken: 'secret-token',
+  });
+
+  assert.equal(published, true);
+  assert.deepEqual(lookups, [
+    { orderId: 'order-1', accessToken: 'secret-token' },
+  ]);
+});
+
+test('order publication checkbox uses the defined order accent token', () => {
+  const css = readText('client-theme.css');
+  const rule = css.match(
+    /\.order-review__publication input\s*\{[^}]*\}/s,
+  )?.[0] ?? '';
+
+  assert.match(rule, /accent-color:\s*var\(--order-accent\);/);
+  assert.doesNotMatch(rule, /var\(--color-brand\)/);
+});

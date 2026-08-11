@@ -66,7 +66,7 @@ test('web container maps each host to its own PWA entry point', async () => {
 });
 
 test('client pages version their changed immutable assets', async () => {
-  const releaseKey = '2026081203';
+  const releaseKey = '2026081204';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
   const checkoutHtml = await read('checkout.html');
@@ -78,6 +78,7 @@ test('client pages version their changed immutable assets', async () => {
   const orderSource = await read('order.js');
   const orderDemoSource = await read('order-demo.js');
   const reviewServiceSource = await read('review-service.js');
+  const reviewViewSource = await read('review-view.js');
 
   assert.match(
     nginx,
@@ -118,6 +119,7 @@ test('client pages version their changed immutable assets', async () => {
   assert.deepEqual(getVersionedImports(homeSource), [
     `./order-storage.js?v=${releaseKey}`,
     `./review-service.js?v=${releaseKey}`,
+    `./review-view.js?v=${releaseKey}`,
     `./client-api.js?v=${releaseKey}`,
   ]);
   assert.deepEqual(getVersionedImports(orderSource), [
@@ -134,6 +136,9 @@ test('client pages version their changed immutable assets', async () => {
     `./review-state.js?v=${releaseKey}`,
     './shared/legal.js?v=20260811',
   ]);
+  assert.deepEqual(getVersionedImports(reviewViewSource), [
+    `./review-state.js?v=${releaseKey}`,
+  ]);
 
   const completeGraph = [
     checkoutSource,
@@ -141,20 +146,30 @@ test('client pages version their changed immutable assets', async () => {
     orderSource,
     orderDemoSource,
     reviewServiceSource,
+    reviewViewSource,
   ].join('\n');
   for (const moduleName of [
     'order-storage',
     'client-api',
     'review-service',
     'review-state',
+    'review-view',
     'order-demo',
   ]) {
     const imports = [
       ...completeGraph.matchAll(
-        new RegExp(`\\./${moduleName}\\.js\\?v=([^'"\\s]+)`, 'g'),
+        new RegExp(
+          `\\./${moduleName}\\.js(?:\\?v=([^'"\\s]+))?`,
+          'g',
+        ),
       ),
     ];
     assert.ok(imports.length > 0, moduleName);
+    assert.equal(
+      imports.every((match) => Boolean(match[1])),
+      true,
+      `${moduleName} has an unversioned import`,
+    );
     assert.deepEqual(
       [...new Set(imports.map((match) => match[1]))],
       [releaseKey],

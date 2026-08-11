@@ -10,15 +10,15 @@ import {
   loadActiveOrderAccess,
   saveActiveOrder,
   subscribeToActiveOrder,
-} from './order-storage.js?v=2026081203';
-import { createReviewService } from './review-service.js?v=2026081203';
-import { isReviewableOrder } from './review-state.js?v=2026081203';
+} from './order-storage.js?v=2026081204';
+import { createReviewService } from './review-service.js?v=2026081204';
+import { isReviewableOrder } from './review-state.js?v=2026081204';
 import { formatOptionQuantities } from './option-quantities.js';
 import {
   canUseReviewDemo,
   ensureReviewDemoOrder,
-} from './order-demo.js?v=2026081203';
-import { clientApi } from './client-api.js?v=2026081203';
+} from './order-demo.js?v=2026081204';
+import { clientApi } from './client-api.js?v=2026081204';
 import { useProductionApi } from './runtime-mode.js';
 
 const escapeHtml = (value) =>
@@ -60,6 +60,28 @@ export const getReviewSuccessMessage = (publicationConsent) =>
   publicationConsent
     ? 'Спасибо — отзыв опубликован на главной'
     : 'Спасибо — отзыв отправлен ресторану';
+
+export const submitReviewAndResolvePublication = async ({
+  reviewService,
+  draft,
+  accessToken,
+}) => {
+  try {
+    await reviewService.submit(draft, accessToken);
+    return draft.publicationConsent === true;
+  } catch (error) {
+    const alreadyReviewed =
+      error?.code === 'ALREADY_REVIEWED' ||
+      String(error?.message).includes('already-reviewed');
+    if (!alreadyReviewed) throw error;
+
+    const existing = await reviewService.findByOrderId(
+      draft.orderId,
+      accessToken,
+    );
+    return Boolean(existing?.published);
+  }
+};
 
 export const getTechnicalStatus = (search = '') => {
   const value = new URLSearchParams(String(search)).get('state') || '';
@@ -402,26 +424,20 @@ const initOrder = () => {
     refs.reviewError.hidden = true;
     const publicationConsent = refs.reviewPublicationConsent.checked;
     try {
-      await reviewService.submit(
-        {
+      const published = await submitReviewAndResolvePublication({
+        reviewService,
+        draft: {
           orderId: currentOrder.id,
           rating: selectedRating,
           authorName: currentOrder.customerName,
           comment: refs.reviewComment.value,
           publicationConsent,
         },
-        activeOrderAccess?.token,
-      );
-      showReviewSuccess(true, publicationConsent);
+        accessToken: activeOrderAccess?.token,
+      });
+      showReviewSuccess(true, published);
       revealMotion(refs.reviewSuccess);
     } catch (error) {
-      if (
-        error?.code === 'ALREADY_REVIEWED' ||
-        String(error?.message).includes('already-reviewed')
-      ) {
-        showReviewSuccess(true, publicationConsent);
-        return;
-      }
       refs.reviewError.textContent =
         'Не удалось отправить отзыв. Попробуйте ещё раз.';
       refs.reviewError.hidden = false;

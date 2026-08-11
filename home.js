@@ -32,16 +32,16 @@ import {
   loadActiveOrder,
   loadActiveOrderAccess,
   subscribeToActiveOrder,
-} from './order-storage.js?v=2026081203';
+} from './order-storage.js?v=2026081204';
 import {
   loadPreferredProductLines,
   resolvePreferredProductLine,
   savePreferredProductLine,
 } from './product-preference-storage.js';
 import { initProductSheet } from './product-sheet.js';
-import { createReviewService } from './review-service.js?v=2026081203';
-import { createReviewsSectionMarkup } from './review-view.js';
-import { clientApi } from './client-api.js?v=2026081203';
+import { createReviewService } from './review-service.js?v=2026081204';
+import { createReviewsSectionMarkup } from './review-view.js?v=2026081204';
+import { clientApi } from './client-api.js?v=2026081204';
 import { useProductionApi } from './runtime-mode.js';
 
 export function selectCategory(labels, activeIndex) {
