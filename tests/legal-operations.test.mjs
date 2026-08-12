@@ -17,6 +17,75 @@ const LEGAL_DOCS = [
 const readLegalDoc = (name) =>
   readFile(new URL(`../docs/legal/${name}`, import.meta.url), 'utf8');
 
+const BLOCKING_GATE_PATTERNS = [
+  /владелец.*утвердил.*политик.*согласи.*оферт/i,
+  /уведомлени.*Роскомнадзор.*до.*производственн.*сбор/i,
+  /RU VDS.*Росси.*Корол[её]в/i,
+  /трансграничн.*аналитик.*не подключ/i,
+  /матриц.*доступ.*инструктаж.*сотрудник/i,
+  /инцидент.*обращени.*субъект.*персональн/i,
+  /точн.*состав.*масс.*аллерген.*владел/i,
+  /ЮKassa.*реквизит.*магазин.*ККТ.*чек/i,
+  /stage\.pivdoner\.ru.*при[её]мочн.*успеш/i,
+];
+
+const hasAllUncheckedLaunchGates = (checklist) => {
+  const lines = checklist.split(/\r?\n/);
+  return BLOCKING_GATE_PATTERNS.every((pattern) => {
+    const matchingLines = lines.filter((line) => pattern.test(line));
+    return (
+      matchingLines.length === 1 &&
+      /^- \[ \] /.test(matchingLines[0])
+    );
+  });
+};
+
+const escapeRegex = (value) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const MENU_INTRO_LINES = [
+  '# Подтверждение обязательных сведений о меню',
+  'Список сформирован из текущего `catalog-data.js`. Он намеренно не содержит неподтверждённых рецептур, массы или аллергенов. Владелец отмечает пункт только после сверки технологической документации и обновления сайта точными сведениями.',
+];
+
+const MENU_SIGNOFF_LINES = [
+  '- [ ] Точный состав подтверждён владельцем',
+  '- [ ] Масса или размер порции подтверждены владельцем',
+  '- [ ] Аллергены подтверждены владельцем',
+];
+
+const hasOnlyBlankMenuSignoffs = (checklist) => {
+  const allowedLines = new Set([
+    ...MENU_INTRO_LINES,
+    ...MENU_SIGNOFF_LINES,
+    ...PRODUCTS.map((product) => `## ${product.id} — ${product.name}`),
+  ]);
+  const nonEmptyLines = checklist
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (nonEmptyLines.some((line) => !allowedLines.has(line))) return false;
+  if (nonEmptyLines.length !== MENU_INTRO_LINES.length + PRODUCTS.length * 4) {
+    return false;
+  }
+
+  for (const product of PRODUCTS) {
+    const heading = `## ${product.id} — ${product.name}`;
+    if ((checklist.match(new RegExp(escapeRegex(heading), 'g')) ?? []).length !== 1) {
+      return false;
+    }
+    const section = checklist.split(heading)[1]?.split(/\r?\n## /)[0] ?? '';
+    const sectionLines = section
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (JSON.stringify(sectionLines) !== JSON.stringify(MENU_SIGNOFF_LINES)) {
+      return false;
+    }
+  }
+  return (checklist.match(/^## /gm) ?? []).length === PRODUCTS.length;
+};
+
 test('owner compliance package contains all seven operational documents', async () => {
   const documents = await Promise.all(LEGAL_DOCS.map(readLegalDoc));
   assert.equal(documents.length, 7);
@@ -27,24 +96,23 @@ test('owner compliance package contains all seven operational documents', async 
 
 test('launch checklist keeps every production launch gate blocking and unsigned', async () => {
   const checklist = await readLegalDoc('owner-launch-checklist.md');
-  const blockingGates = [
-    /\[ \].*владелец.*утвердил.*политик.*согласи.*оферт/is,
-    /\[ \].*уведомлени.*Роскомнадзор.*до.*производственн.*сбор/is,
-    /\[ \].*RU VDS.*Росси.*Корол[её]в/is,
-    /\[ \].*трансграничн.*аналитик.*не подключ/is,
-    /\[ \].*матриц.*доступ.*инструктаж.*сотрудник/is,
-    /\[ \].*инцидент.*обращени.*субъект.*персональн/is,
-    /\[ \].*точн.*состав.*масс.*аллерген.*владел/is,
-    /\[ \].*ЮKassa.*реквизит.*магазин.*ККТ.*чек/is,
-    /\[ \].*stage\.pivdoner\.ru.*при[её]мочн.*успеш/is,
-  ];
-
-  for (const gate of blockingGates) assert.match(checklist, gate);
+  assert.equal(hasAllUncheckedLaunchGates(checklist), true);
   assert.match(checklist, /код.*готов/is);
   assert.match(checklist, /действи.*владельц/is);
   assert.match(checklist, /не означает.*юридическ.*утвержден/is);
   assert.match(checklist, /не подано.*Роскомнадзор/is);
   assert.match(checklist, /ЮKassa.*не включ/is);
+});
+
+test('a checked stage gate cannot borrow an unchecked box from another line', async () => {
+  const checklist = await readLegalDoc('owner-launch-checklist.md');
+  const mutated = checklist.replace(
+    '- [ ] На `https://stage.pivdoner.ru`',
+    '- [x] На `https://stage.pivdoner.ru`',
+  );
+
+  assert.notEqual(mutated, checklist);
+  assert.equal(hasAllUncheckedLaunchGates(mutated), false);
 });
 
 test('operational package uses the canonical operator identity', async () => {
@@ -75,6 +143,8 @@ test('data map covers actual stores, access paths and automated retention', asyn
     /1 год/i,
     /30 дней/i,
     /публичн.*отзыв.*до.*отзыв.*согласи/is,
+    /pivnoy-doner-reviews-v1/i,
+    /демо.*localStorage.*orderId.*оценк.*имя.*комментар.*автоматическ.*очист/is,
   ]) {
     assert.match(dataMap, pattern);
   }
@@ -133,17 +203,15 @@ test('YooKassa checklist leaves live payment blocked on owner and KKT actions', 
 
 test('menu checklist mirrors every current product and leaves owner facts blank', async () => {
   const checklist = await readLegalDoc('menu-approval-checklist.md');
+  assert.equal(hasOnlyBlankMenuSignoffs(checklist), true);
+});
 
-  for (const product of PRODUCTS) {
-    const heading = `## ${product.id} — ${product.name}`;
-    assert.match(checklist, new RegExp(heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    const section = checklist.split(heading)[1]?.split('\n## ')[0] ?? '';
-    assert.match(section, /\[ \] Точный состав подтвержд[её]н владельцем/i);
-    assert.match(section, /\[ \] Масса или размер порции подтвержден[аы] владельцем/i);
-    assert.match(section, /\[ \] Аллергены подтверждены владельцем/i);
-    assert.doesNotMatch(section, /\[x\]/i);
+test('menu checklist rejects invented weight and allergen facts', async () => {
+  const checklist = await readLegalDoc('menu-approval-checklist.md');
+  const heading = '## classic-shawarma — Классическая шаурма';
+
+  for (const inventedFact of ['Вес: 420 г', 'Аллергены: молоко']) {
+    const mutated = checklist.replace(heading, `${heading}\n\n${inventedFact}`);
+    assert.equal(hasOnlyBlankMenuSignoffs(mutated), false, inventedFact);
   }
-
-  assert.equal((checklist.match(/^## /gm) ?? []).length, PRODUCTS.length);
-  assert.doesNotMatch(checklist, /\bБЖУ\b/i);
 });
