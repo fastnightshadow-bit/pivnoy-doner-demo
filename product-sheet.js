@@ -220,7 +220,13 @@ const createAddonMarkup = (productId, selection) => {
     </section>`;
 };
 
-const createPurchaseMarkup = (totalPrice, quantity) => {
+const createPurchaseMarkup = (totalPrice, quantity, available = true) => {
+  if (!available) {
+    return `
+      <footer class="product-sheet__purchase product-sheet__purchase--unavailable" data-sheet-purchase>
+        <div class="product-sheet__unavailable">Нет в наличии</div>
+      </footer>`;
+  }
   const safeQuantity = Math.max(0, Number(quantity) || 0);
   const control =
     safeQuantity > 0
@@ -253,7 +259,7 @@ export const createProductSheetMarkup = (
   product,
   rawSelection = {},
   quantity = 0,
-  { lockMeat = false } = {},
+  { lockMeat = false, available = true } = {},
 ) => {
   if (!product?.id) return '';
   const selection = normalizeSelection(product.id, rawSelection);
@@ -304,7 +310,7 @@ export const createProductSheetMarkup = (
         </section>
       </div>
     </div>
-    ${createPurchaseMarkup(totalPrice, quantity)}`;
+    ${createPurchaseMarkup(totalPrice, quantity, available)}`;
 };
 
 const createSelectionCartLine = (product, selection) =>
@@ -339,6 +345,7 @@ export const initProductSheet = ({
   windowRef = globalThis.window,
   historyRef = globalThis.history,
   matchMediaRef = globalThis.matchMedia,
+  isProductAvailable = () => true,
 } = {}) => {
   if (!dialog) {
     return {
@@ -401,7 +408,10 @@ export const initProductSheet = ({
       state.product,
       state.selection,
       state.quantity,
-      { lockMeat: state.lockMeat },
+      {
+        lockMeat: state.lockMeat,
+        available: isProductAvailable(state.product.id),
+      },
     );
     const scroll = surface.querySelector('[data-sheet-scroll]');
     if (scroll) scroll.scrollTop = previousScroll;
@@ -518,6 +528,7 @@ export const initProductSheet = ({
     }
 
     if (event.target.closest('[data-sheet-add]')) {
+      if (!isProductAvailable(state.product?.id)) return;
       const comment =
         surface?.querySelector('[data-sheet-comment]')?.value ?? '';
       state.selection = { ...state.selection, comment };
@@ -528,6 +539,7 @@ export const initProductSheet = ({
 
     const quantityButton = event.target.closest('[data-sheet-quantity-change]');
     if (quantityButton && state.lineId) {
+      if (!isProductAvailable(state.product?.id)) return;
       const line = getCurrentLine();
       persistLines(
         changeCartLineQuantity(
@@ -646,7 +658,7 @@ export const initProductSheet = ({
     } = {},
   ) => {
     const product = PRODUCTS.find(({ id }) => id === productId);
-    if (!product || !surface) return false;
+    if (!product || !surface || !isProductAvailable(product.id)) return false;
     const meat = getAvailableMeats(product.id).includes(selection.meat)
       ? selection.meat
       : getAvailableMeats(product.id)[0];
@@ -717,6 +729,9 @@ export const initProductSheet = ({
     open: openProduct,
     close,
     isOpen,
+    refreshAvailability() {
+      if (state.product && isOpen()) render({ keepScroll: true });
+    },
     destroy() {
       globalThis.clearTimeout(state.closeTimer);
       globalThis.clearTimeout(state.settleTimer);

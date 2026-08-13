@@ -33,7 +33,7 @@ test('текстовая карточка соуса остаётся компа
   const html = readText('home.html');
   const css = readText('home.css');
 
-  assert.match(html, /href="home\.css\?v=20260807"/);
+  assert.match(html, /href="home\.css\?v=2026081301"/);
   assert.match(
     css,
     /\.menu-product\.menu-product--text\s*\{[^}]*min-height:\s*76px;/s,

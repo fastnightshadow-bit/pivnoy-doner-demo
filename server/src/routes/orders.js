@@ -160,6 +160,7 @@ export const createOrdersRouter = ({
         const status = [
           'LEGAL_VERSION_OUTDATED',
           'ORDER_ACCESS_TOKEN_UNAVAILABLE',
+          'PRODUCT_UNAVAILABLE',
         ].includes(error.code)
           ? 409
           : 422;

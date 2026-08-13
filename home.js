@@ -9,7 +9,7 @@ import {
   getMenuProducts,
   normalizeMenuMeat,
   resolveMenuProductLine,
-} from './home-menu.js';
+} from './home-menu.js?v=2026081301';
 import {
   addCartLine,
   changeCartLineQuantity,
@@ -32,16 +32,16 @@ import {
   loadActiveOrder,
   loadActiveOrderAccess,
   subscribeToActiveOrder,
-} from './order-storage.js?v=2026081204';
+} from './order-storage.js?v=2026081301';
 import {
   loadPreferredProductLines,
   resolvePreferredProductLine,
   savePreferredProductLine,
 } from './product-preference-storage.js';
-import { initProductSheet } from './product-sheet.js';
-import { createReviewService } from './review-service.js?v=2026081204';
-import { createReviewsSectionMarkup } from './review-view.js?v=2026081204';
-import { clientApi } from './client-api.js?v=2026081204';
+import { initProductSheet } from './product-sheet.js?v=2026081301';
+import { createReviewService } from './review-service.js?v=2026081301';
+import { createReviewsSectionMarkup } from './review-view.js?v=2026081301';
+import { clientApi } from './client-api.js?v=2026081301';
 import { useProductionApi } from './runtime-mode.js';
 
 export function selectCategory(labels, activeIndex) {
@@ -112,9 +112,12 @@ function initHomeScreen() {
     },
     lines: storedLines,
     quantities: {},
+    stoppedProductIds: new Set(),
   };
   let toastTimer;
   let hasRenderedHome = false;
+  const isProductAvailable = (productId) =>
+    !state.stoppedProductIds.has(String(productId));
 
   const renderReviews = async () => {
     if (!reviewsRoot) return;
@@ -249,6 +252,7 @@ function initHomeScreen() {
       product,
       state.quantities[product.id] || 0,
       'featured',
+      { available: isProductAvailable(product.id) },
     );
   };
 
@@ -267,6 +271,7 @@ function initHomeScreen() {
           product,
           quantity,
           namespace,
+          { available: isProductAvailable(product.id) },
         ).trim();
         const replacement = template.content.firstElementChild;
         if (!replacement) return;
@@ -308,6 +313,7 @@ function initHomeScreen() {
             createMenuProductCard(
               product,
               getProductViewLine(product)?.quantity ?? 0,
+              { available: isProductAvailable(product.id) },
             ),
           )
           .join('');
@@ -338,6 +344,29 @@ function initHomeScreen() {
     );
   };
 
+  const renderStaticAvailability = () => {
+    document.querySelectorAll('[data-product-card]').forEach((card) => {
+      const productId = card.dataset.productCard;
+      const available = isProductAvailable(productId);
+      card.classList.toggle('is-unavailable', !available);
+      card.querySelectorAll('button').forEach((button) => {
+        if (button.matches('[data-open-product], [data-request-product], [data-quick-add]')) {
+          button.disabled = !available;
+          button.setAttribute('aria-disabled', String(!available));
+        }
+      });
+      let badge = card.querySelector('[data-unavailable-badge]');
+      if (!available && !badge) {
+        badge = document.createElement('span');
+        badge.className = 'product-unavailable-badge';
+        badge.dataset.unavailableBadge = '';
+        badge.textContent = 'Нет в наличии';
+        (card.querySelector('.product-card__media') || card).append(badge);
+      }
+      if (available) badge?.remove();
+    });
+  };
+
   const productSheet = initProductSheet({
     dialog: productSheetDialog,
     storage: window.localStorage,
@@ -354,7 +383,27 @@ function initHomeScreen() {
       updateCart(true);
       showToast('Корзина обновлена');
     },
+    isProductAvailable,
   });
+
+  const applyCatalogStatus = (status = {}) => {
+    state.stoppedProductIds = new Set(
+      Array.isArray(status.stoppedProductIds)
+        ? status.stoppedProductIds.map(String)
+        : [],
+    );
+    renderHomeMenu();
+    renderStaticAvailability();
+    productSheet.refreshAvailability();
+  };
+
+  const unsubscribeCatalogStatus = productionApi
+    ? clientApi.subscribeToCatalogStatus({
+        onUpdate: applyCatalogStatus,
+        onError: () => {},
+      })
+    : () => {};
+  window.addEventListener('pagehide', unsubscribeCatalogStatus, { once: true });
 
   const scrollToMenu = () => {
     document.querySelector('#categories')?.scrollIntoView({
@@ -427,7 +476,7 @@ function initHomeScreen() {
         productTrigger.dataset.openProduct,
         productTrigger,
       );
-      if (!product) return;
+      if (!product || !isProductAvailable(product.id)) return;
       productSheet.open(
         product.id,
         productTrigger,
@@ -464,7 +513,7 @@ function initHomeScreen() {
     if (requestButton) {
       const id = requestButton.dataset.requestProduct;
       const product = getProductView(id, requestButton);
-      if (!product) return;
+      if (!product || !isProductAvailable(product.id)) return;
       const preferred = getProductViewLine(product);
       if (!preferred) {
         productSheet.open(
@@ -484,7 +533,7 @@ function initHomeScreen() {
       const product = PRODUCTS.find(
         ({ id }) => id === quickAddButton.dataset.quickAdd,
       );
-      if (!product?.quickAdd) return;
+      if (!product?.quickAdd || !isProductAvailable(product.id)) return;
       const line = createCartLine({
         productId: product.id,
         name: product.name,
@@ -514,7 +563,7 @@ function initHomeScreen() {
       if (!id) return;
       const control = changeButton.closest('[data-product-control]');
       const product = getProductView(id, control);
-      if (!product) return;
+      if (!product || !isProductAvailable(product.id)) return;
       const preferred = getProductViewLine(product);
       if (!preferred) {
         if (Number(changeButton.dataset.quantityChange) > 0) {
@@ -559,6 +608,7 @@ function initHomeScreen() {
   };
 
   renderHomeMenu();
+  renderStaticAvailability();
   void renderReviews();
   updateHeaderState();
   window.addEventListener('scroll', updateHeaderState, { passive: true });

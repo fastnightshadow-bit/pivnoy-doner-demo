@@ -68,6 +68,25 @@ const CHECKOUT_ATTEMPT_STORAGE_KEY = 'pivnoy-doner-checkout-attempt-v1';
 const LEGACY_DELIVERY_ADDRESS_STORAGE_KEY =
   'pivnoy-doner-delivery-address-v1';
 
+test('оформление называет недоступные товары и не меняет корзину', () => {
+  const lines = [
+    { productId: 'nuggets', name: 'Наггетсы', quantity: 1 },
+    { productId: 'sauce-tasty', name: 'Тейсти', quantity: 2 },
+  ];
+  const unavailable = checkout.getUnavailableCheckoutProducts(lines, {
+    stoppedProductIds: ['nuggets'],
+  });
+
+  assert.deepEqual(unavailable, [
+    { productId: 'nuggets', name: 'Наггетсы' },
+  ]);
+  assert.equal(
+    checkout.getUnavailableCheckoutMessage(unavailable),
+    'Сейчас нет в наличии: Наггетсы. Удалите товар или выберите другой.',
+  );
+  assert.equal(lines.length, 2);
+});
+
 test('checkout rejects an unchecked personal-data consent', () => {
   const errors = validateCheckout({
     fulfillment: 'pickup',

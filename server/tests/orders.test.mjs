@@ -162,6 +162,53 @@ const validOrderPayload = () => ({
   ...currentConsent,
 });
 
+test('новый заказ со стоп-листом отклоняется до сохранения', async () => {
+  const orders = createRepository();
+  const service = createOrderService({
+    orders,
+    settings,
+    catalogSettings: {
+      get: async () => ({ stoppedProductIds: ['nuggets'] }),
+    },
+    orderAccessSecret: 'test-order-access-secret',
+  });
+
+  await assert.rejects(
+    () => service.create(validOrderPayload(), 'stopped-product-1'),
+    (error) => {
+      assert.equal(error.code, 'PRODUCT_UNAVAILABLE');
+      assert.deepEqual(error.details, { productIds: ['nuggets'] });
+      return true;
+    },
+  );
+  assert.equal(orders.size(), 0);
+  assert.equal(orders.createCalls(), 0);
+});
+
+test('HTTP сообщает клиенту конкретные товары из стоп-листа', async () => {
+  const orders = createRepository();
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    orderService: createOrderService({
+      orders,
+      settings,
+      catalogSettings: {
+        get: async () => ({ stoppedProductIds: ['nuggets'] }),
+      },
+      orderAccessSecret: 'test-order-access-secret',
+    }),
+  });
+
+  const response = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', 'stopped-product-http')
+    .send(validOrderPayload());
+
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error, 'PRODUCT_UNAVAILABLE');
+  assert.deepEqual(response.body.details, { productIds: ['nuggets'] });
+});
+
 test('order without consent is rejected', async () => {
   const orders = createRepository();
   const app = createApp({

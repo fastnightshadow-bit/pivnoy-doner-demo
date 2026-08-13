@@ -13,6 +13,43 @@ const authService = {
   },
 };
 
+test('клиент без входа получает только публичное состояние каталога', async () => {
+  const settingsService = {
+    get: async () => ({
+      acceptingOrders: false,
+      stoppedProductIds: ['tasty-shawarma'],
+      deliveryPrice: 200,
+      internalNote: 'не публиковать',
+    }),
+  };
+  const app = createApp({ db, authService, settingsService });
+
+  const response = await request(app).get('/api/catalog-status');
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, {
+    acceptingOrders: false,
+    stoppedProductIds: ['tasty-shawarma'],
+  });
+  assert.equal(response.headers['cache-control'], 'no-store');
+});
+
+test('публичный endpoint каталога работает только на чтение', async () => {
+  const app = createApp({
+    db,
+    authService,
+    settingsService: {
+      get: async () => ({ acceptingOrders: true, stoppedProductIds: [] }),
+    },
+  });
+
+  const response = await request(app)
+    .patch('/api/catalog-status')
+    .send({ stoppedProductIds: ['nuggets'] });
+
+  assert.equal(response.status, 404);
+});
+
 test('кухня может остановить приём заказов и поставить блюдо в стоп-лист', async () => {
   const updates = [];
   const settingsService = {

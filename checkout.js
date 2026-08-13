@@ -17,7 +17,7 @@ import {
   loadActiveOrder,
   saveActiveOrder,
   saveActiveOrderAccess,
-} from './order-storage.js?v=2026081204';
+} from './order-storage.js?v=2026081301';
 import { loadPayment, savePayment } from './payment-storage.js';
 import { getPromoResult } from './promo-state.js';
 import { getDeliveryMinimumRemaining } from './delivery-policy.js';
@@ -27,7 +27,7 @@ import {
   loadPromo,
   savePromo,
 } from './promo-storage.js';
-import { clientApi } from './client-api.js?v=2026081204';
+import { clientApi } from './client-api.js?v=2026081301';
 import { useProductionApi } from './runtime-mode.js';
 import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 
@@ -202,18 +202,54 @@ export const saveCreatedOrderAccess = (storage, order = {}) => {
   }
 };
 
-export const getCheckoutSubmissionErrorMessage = (error) => {
+export const getCheckoutSubmissionErrorMessage = (error, lines = []) => {
   if (error?.code === 'ACTIVE_ORDER_ACCESS_STORAGE_FAILED') {
     return 'Не удалось сохранить доступ к заказу. Оформление остановлено. Разрешите хранение данных в браузере и повторите.';
   }
   if (error?.code === 'MINIMUM_ORDER') {
     return 'Минимальная сумма доставки — 300 ₽';
   }
-  if (error?.code === 'PRODUCT_NOT_SALEABLE') {
-    return 'Один из товаров временно недоступен';
+  if (['PRODUCT_NOT_SALEABLE', 'PRODUCT_UNAVAILABLE'].includes(error?.code)) {
+    const names = new Map(
+      (Array.isArray(lines) ? lines : []).map((line) => [
+        String(line?.productId || ''),
+        String(line?.name || line?.productId || 'Товар'),
+      ]),
+    );
+    const unavailable = (error?.details?.productIds ?? []).map((productId) => ({
+      productId,
+      name: names.get(String(productId)) || String(productId),
+    }));
+    return unavailable.length
+      ? getUnavailableCheckoutMessage(unavailable)
+      : 'Один из товаров временно недоступен';
   }
   return 'Не удалось оформить заказ. Проверьте интернет и повторите.';
 };
+
+export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
+  const stopped = new Set(
+    Array.isArray(status?.stoppedProductIds)
+      ? status.stoppedProductIds.map(String)
+      : [],
+  );
+  const seen = new Set();
+  return (Array.isArray(lines) ? lines : []).reduce((result, line) => {
+    const productId = String(line?.productId || '');
+    if (!stopped.has(productId) || seen.has(productId)) return result;
+    seen.add(productId);
+    result.push({
+      productId,
+      name: String(line?.name || productId || 'Товар'),
+    });
+    return result;
+  }, []);
+};
+
+export const getUnavailableCheckoutMessage = (products = []) =>
+  products.length
+    ? `Сейчас нет в наличии: ${products.map(({ name }) => name).join(', ')}. Удалите товар или выберите другой.`
+    : '';
 
 export const formatCheckoutPrice = (value) =>
   `${Math.max(0, Number(value) || 0).toLocaleString('ru-RU')}\u00a0₽`;
@@ -719,6 +755,14 @@ const initCheckout = () => {
       personalDataConsent: personalDataConsentInput.checked,
     });
     try {
+      const catalogStatus = await clientApi.getCatalogStatus();
+      const unavailable = getUnavailableCheckoutProducts(lines, catalogStatus);
+      if (unavailable.length > 0) {
+        confirmButton.classList.remove('is-loading');
+        confirmButton.disabled = false;
+        showToast(getUnavailableCheckoutMessage(unavailable));
+        return;
+      }
       const attemptKey = await getCheckoutAttemptKey(
         window.sessionStorage,
         payload,
@@ -732,7 +776,7 @@ const initCheckout = () => {
     } catch (error) {
       confirmButton.classList.remove('is-loading');
       confirmButton.disabled = false;
-      showToast(getCheckoutSubmissionErrorMessage(error));
+      showToast(getCheckoutSubmissionErrorMessage(error, lines));
     }
   });
 };

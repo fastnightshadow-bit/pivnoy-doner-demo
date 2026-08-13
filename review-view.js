@@ -1,4 +1,4 @@
-import { getReviewSummary } from './review-state.js?v=2026081204';
+import { getReviewSummary } from './review-state.js?v=2026081301';
 
 const escapeHtml = (value) =>
   String(value ?? '')

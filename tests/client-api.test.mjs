@@ -4,6 +4,75 @@ import {
   createClientApi,
   normalizeClientOrderResponse,
 } from '../client-api.js';
+
+test('клиент читает публичный стоп-лист без авторизации и без кеша', async () => {
+  const calls = [];
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          acceptingOrders: true,
+          stoppedProductIds: ['nuggets'],
+        }),
+      };
+    },
+  });
+
+  assert.deepEqual(await api.getCatalogStatus(), {
+    acceptingOrders: true,
+    stoppedProductIds: ['nuggets'],
+  });
+  assert.equal(calls[0].url, '/api/catalog-status');
+  assert.equal(calls[0].options.cache, 'no-store');
+  assert.equal(calls[0].options.headers?.Authorization, undefined);
+});
+
+test('подписка на стоп-лист не перекрывает запросы и сохраняет последнее успешное состояние', async () => {
+  const timers = [];
+  const updates = [];
+  const errors = [];
+  let attempt = 0;
+  const api = createClientApi({
+    fetcher: async () => {
+      attempt += 1;
+      if (attempt === 2) throw new Error('offline');
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          acceptingOrders: true,
+          stoppedProductIds: ['nuggets'],
+        }),
+      };
+    },
+    documentRef: {
+      visibilityState: 'visible',
+      addEventListener() {},
+      removeEventListener() {},
+    },
+    setTimeoutFn: (callback, delay) => {
+      timers.push({ callback, delay });
+      return timers.length;
+    },
+    clearTimeoutFn() {},
+  });
+
+  const unsubscribe = api.subscribeToCatalogStatus({
+    onUpdate: (status) => updates.push(status),
+    onError: (error) => errors.push(error),
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  await timers[0].callback();
+
+  assert.equal(updates.length, 1);
+  assert.deepEqual(updates[0].stoppedProductIds, ['nuggets']);
+  assert.equal(errors.length, 1);
+  assert.equal(timers[0].delay, 20000);
+  unsubscribe();
+});
 import { createReviewService } from '../review-service.js';
 
 const jsonResponse = (body, status = 200) => ({

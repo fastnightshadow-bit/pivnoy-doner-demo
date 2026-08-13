@@ -30,9 +30,13 @@ if (!config.databaseUrl) {
 const db = createPool(config.databaseUrl);
 await runMigrations(db);
 const orders = createOrdersRepository(db);
+const settingsService = createSettingsService({
+  settings: createSettingsRepository(db),
+});
 const orderService = createOrderService({
   orders,
   settings: DEFAULT_ORDER_SETTINGS,
+  catalogSettings: settingsService,
   orderAccessSecret: config.orderAccessSecret,
 });
 const authService = createAuthService({ repository: createAuthRepository(db) });
@@ -41,9 +45,6 @@ const statusService = createStatusService({ orders: staffOrders });
 const events = createEventsRepository(db);
 const reviewsService = createReviewsService({
   reviews: createReviewsRepository(db),
-});
-const settingsService = createSettingsService({
-  settings: createSettingsRepository(db),
 });
 const dashboardService = createDashboardService({
   dashboard: createDashboardRepository(db),

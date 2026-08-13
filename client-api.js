@@ -78,6 +78,8 @@ export const createClientApi = (options = {}) => {
         headers: authorizationHeader(accessToken),
       }),
     );
+  const getCatalogStatus = () =>
+    fetchJson('/api/catalog-status', { cache: 'no-store' });
 
   return {
     createOrder: (payload, idempotencyKey) =>
@@ -86,6 +88,60 @@ export const createClientApi = (options = {}) => {
         headers: { 'Idempotency-Key': String(idempotencyKey || '') },
         body: JSON.stringify(payload),
       }),
+
+    getCatalogStatus,
+
+    subscribeToCatalogStatus: (handlers = {}) => {
+      let stopped = false;
+      let inFlight = false;
+      let timerId = null;
+      let onVisibilityChange = null;
+      const isVisible = () => documentRef?.visibilityState !== 'hidden';
+      const clearTimer = () => {
+        if (timerId === null) return;
+        clearTimeoutFn?.(timerId);
+        timerId = null;
+      };
+      const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        clearTimer();
+        if (onVisibilityChange) {
+          documentRef?.removeEventListener?.(
+            'visibilitychange',
+            onVisibilityChange,
+          );
+        }
+      };
+      const schedule = () => {
+        if (stopped || !isVisible() || typeof setTimeoutFn !== 'function') return;
+        clearTimer();
+        timerId = setTimeoutFn(() => {
+          timerId = null;
+          return poll();
+        }, 20000);
+      };
+      const poll = async () => {
+        if (stopped || inFlight || !isVisible()) return;
+        inFlight = true;
+        try {
+          const status = await getCatalogStatus();
+          if (!stopped) handlers.onUpdate?.(status);
+        } catch (error) {
+          if (!stopped) handlers.onError?.(error);
+        } finally {
+          inFlight = false;
+          if (!stopped) schedule();
+        }
+      };
+      onVisibilityChange = () => {
+        clearTimer();
+        if (isVisible()) void poll();
+      };
+      documentRef?.addEventListener?.('visibilitychange', onVisibilityChange);
+      if (isVisible()) void poll();
+      return stop;
+    },
 
     createPayment: (orderId, idempotencyKey, accessToken) =>
       fetchJson('/api/payments', {

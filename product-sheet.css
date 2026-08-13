@@ -405,6 +405,22 @@
   backdrop-filter: blur(12px);
 }
 
+.product-sheet__purchase--unavailable {
+  grid-template-columns: 1fr;
+}
+
+.product-sheet__unavailable {
+  display: grid;
+  min-height: 56px;
+  place-items: center;
+  color: var(--color-muted);
+  background: var(--color-soft);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 760;
+}
+
 .product-sheet__total {
   display: grid;
   min-width: 76px;

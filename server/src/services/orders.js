@@ -12,6 +12,7 @@ import { LEGAL_VERSIONS } from '../../../shared/legal.js';
 export const createOrderService = ({
   orders,
   settings,
+  catalogSettings = null,
   createId = randomUUID,
   now = () => new Date(),
   orderAccessSecret = '',
@@ -59,6 +60,25 @@ export const createOrderService = ({
       const existing = await orders.findByIdempotencyKey(idempotencyKey);
       if (existing) {
         return recoverIdempotentOrder(existing, idempotencyKey);
+      }
+
+      if (catalogSettings?.get) {
+        const catalog = await catalogSettings.get();
+        const stopped = new Set(
+          Array.isArray(catalog?.stoppedProductIds)
+            ? catalog.stoppedProductIds.map(String)
+            : [],
+        );
+        const productIds = [
+          ...new Set(
+            input.items
+              .map(({ productId }) => String(productId))
+              .filter((productId) => stopped.has(productId)),
+          ),
+        ];
+        if (productIds.length > 0) {
+          throw new DomainError('PRODUCT_UNAVAILABLE', { productIds });
+        }
       }
 
       const priced = priceOrder(input, settings);

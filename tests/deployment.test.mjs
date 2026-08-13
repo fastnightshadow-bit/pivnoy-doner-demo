@@ -100,7 +100,7 @@ test('web container maps each host to its own PWA entry point', async () => {
 });
 
 test('client pages version their changed immutable assets', async () => {
-  const releaseKey = '2026081204';
+  const releaseKey = '2026081301';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
   const checkoutHtml = await read('checkout.html');
@@ -151,7 +151,9 @@ test('client pages version their changed immutable assets', async () => {
     ],
   );
   assert.deepEqual(getVersionedImports(homeSource), [
+    `./home-menu.js?v=${releaseKey}`,
     `./order-storage.js?v=${releaseKey}`,
+    `./product-sheet.js?v=${releaseKey}`,
     `./review-service.js?v=${releaseKey}`,
     `./review-view.js?v=${releaseKey}`,
     `./client-api.js?v=${releaseKey}`,

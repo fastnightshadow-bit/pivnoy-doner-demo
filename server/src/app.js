@@ -7,7 +7,11 @@ import { createAuthRouter } from './routes/auth.js';
 import { createStaffOrdersRouter } from './routes/staff-orders.js';
 import { createEventsRouter } from './routes/events.js';
 import { createReviewsRouter } from './routes/reviews.js';
-import { createCatalogRouter, createSettingsRouter } from './routes/settings.js';
+import {
+  createCatalogRouter,
+  createPublicCatalogStatusRouter,
+  createSettingsRouter,
+} from './routes/settings.js';
 import { createOwnerRouter } from './routes/owner.js';
 import { createPaymentsRouter } from './routes/payments.js';
 
@@ -55,6 +59,12 @@ export const createApp = ({
     app.use(
       '/api/catalog',
       createCatalogRouter({ authService, settings: settingsService }),
+    );
+  }
+  if (settingsService) {
+    app.use(
+      '/api/catalog-status',
+      createPublicCatalogStatusRouter({ settings: settingsService }),
     );
   }
   if (authService && dashboardService) {

@@ -113,11 +113,24 @@ export const createProductQuantityControl = (
   product,
   quantity = 0,
   namespace = 'menu',
+  { available = true } = {},
 ) => {
   const safeQuantity = Math.max(0, Number(quantity) || 0);
   const variantData = product.selectedMeat
     ? ` data-product-meat="${product.selectedMeat}" data-lock-meat="${Boolean(product.lockMeat)}"`
     : '';
+
+  if (!available) {
+    return `
+      <button
+        class="${namespace}-add is-unavailable"
+        type="button"
+        aria-label="${product.name} — нет в наличии"
+        data-product-control="${product.id}"
+        data-control-namespace="${namespace}"
+        disabled
+      >Нет в наличии</button>`;
+  }
 
   if (safeQuantity === 0) {
     const requestAttribute = product.quickAdd
@@ -155,11 +168,17 @@ export const createProductQuantityControl = (
     </div>`;
 };
 
-export const createMenuProductCard = (product, quantity = 0) => {
+export const createMenuProductCard = (
+  product,
+  quantity = 0,
+  { available = true } = {},
+) => {
   if (product.textOnly) {
-    const control = createProductQuantityControl(product, quantity, 'menu');
+    const control = createProductQuantityControl(product, quantity, 'menu', {
+      available,
+    });
     return `
-      <article class="menu-product menu-product--text" data-menu-product="${product.id}">
+      <article class="menu-product menu-product--text${available ? '' : ' is-unavailable'}" data-menu-product="${product.id}">
         <div class="menu-product__content">
           <div><h3>${product.name}</h3></div>
           <footer${quantity > 0 ? ' class="has-quantity"' : ''}>
@@ -176,13 +195,15 @@ export const createMenuProductCard = (product, quantity = 0) => {
   const badge = product.badge
     ? `<span class="menu-product__badge">${product.badge}</span>`
     : '';
-  const control = createProductQuantityControl(product, quantity, 'menu');
+  const control = createProductQuantityControl(product, quantity, 'menu', {
+    available,
+  });
   const price = `${product.pricePrefix ? `${product.pricePrefix} ` : ''}${product.price} ₽`;
 
   return `
-    <article class="menu-product" data-menu-product="${product.id}"${product.selectedMeat ? ` data-product-meat="${product.selectedMeat}"` : ''}>
-      <button class="menu-product__link" type="button" data-open-product="${product.id}"${product.selectedMeat ? ` data-product-meat="${product.selectedMeat}" data-lock-meat="true"` : ''} aria-label="Открыть ${product.name}"></button>
-      <div class="menu-product__media">${media}${badge}</div>
+    <article class="menu-product${available ? '' : ' is-unavailable'}" data-menu-product="${product.id}"${product.selectedMeat ? ` data-product-meat="${product.selectedMeat}"` : ''}>
+      ${available ? `<button class="menu-product__link" type="button" data-open-product="${product.id}"${product.selectedMeat ? ` data-product-meat="${product.selectedMeat}" data-lock-meat="true"` : ''} aria-label="Открыть ${product.name}"></button>` : ''}
+      <div class="menu-product__media">${media}${badge}${available ? '' : '<span class="menu-product__unavailable">Нет в наличии</span>'}</div>
       <div class="menu-product__content">
         <div>
           <h3>${product.name}</h3>

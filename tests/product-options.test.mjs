@@ -141,6 +141,29 @@ test('соус в каталоге отображается строкой бе�
   assert.doesNotMatch(markup, /<img/);
 });
 
+test('товар из стоп-листа остаётся видимым, но его нельзя открыть или добавить', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'nuggets');
+  const markup = createMenuProductCard(product, 0, { available: false });
+
+  assert.match(markup, /is-unavailable/);
+  assert.match(markup, /Нет в наличии/);
+  assert.match(markup, /disabled/);
+  assert.doesNotMatch(markup, /data-open-product=/);
+  assert.doesNotMatch(markup, /data-request-product=/);
+  assert.doesNotMatch(markup, /data-quick-add=/);
+});
+
+test('карточка открытого блюда блокирует покупку после попадания в стоп-лист', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'nuggets');
+  const markup = createProductSheetMarkup(product, {}, 0, {
+    available: false,
+  });
+
+  assert.match(markup, /product-sheet__unavailable/);
+  assert.match(markup, /Нет в наличии/);
+  assert.doesNotMatch(markup, /data-sheet-add/);
+});
+
 test('несколько соусов входят в идентичность позиции корзины', () => {
   const base = {
     productId: 'classic-shawarma',

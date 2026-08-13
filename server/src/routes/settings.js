@@ -5,6 +5,21 @@ import { authenticateRequest, requireRole } from '../auth/middleware.js';
 const settingsSchema = z.object({ acceptingOrders: z.boolean() });
 const availabilitySchema = z.object({ available: z.boolean() });
 
+export const createPublicCatalogStatusRouter = ({ settings }) => {
+  const router = Router();
+  router.get('/', async (_request, response) => {
+    const value = await settings.get();
+    response.set('Cache-Control', 'no-store');
+    response.json({
+      acceptingOrders: value.acceptingOrders !== false,
+      stoppedProductIds: Array.isArray(value.stoppedProductIds)
+        ? value.stoppedProductIds.map(String)
+        : [],
+    });
+  });
+  return router;
+};
+
 export const createSettingsRouter = ({ authService, settings }) => {
   const router = Router();
   router.use(authenticateRequest(authService));
