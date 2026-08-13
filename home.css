@@ -140,12 +140,22 @@ a:focus-visible {
   object-fit: contain;
 }
 
-.brand-wordmark {
+.brand-wordmarks {
   display: block;
   width: 118px;
   height: 42px;
   justify-self: center;
+}
+
+.brand-wordmark {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+}
+
+.brand-wordmark--dark {
+  display: none;
 }
 
 .icon-button {
@@ -571,6 +581,46 @@ a:focus-visible {
   margin-bottom: 14px;
 }
 
+.ordering-status {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  color: var(--color-ink);
+  background: var(--color-soft);
+  border: 1px solid var(--color-line);
+  border-radius: 18px;
+}
+
+.ordering-status[hidden] {
+  display: none;
+}
+
+.ordering-status > .icon {
+  width: 22px;
+  height: 22px;
+  margin: auto;
+  color: var(--color-brand);
+}
+
+.ordering-status div {
+  display: grid;
+  gap: 2px;
+}
+
+.ordering-status strong {
+  font-size: 13px;
+  line-height: 17px;
+}
+
+.ordering-status span {
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 15px;
+}
+
 .menu-section__heading h2 {
   margin: 0;
   font-size: 24px;
@@ -928,6 +978,12 @@ a:focus-visible {
   object-position: center 27%;
 }
 
+.product-card__media picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .product-label {
   position: absolute;
   top: 12px;
@@ -1223,34 +1279,65 @@ a:focus-visible {
 }
 
 .client-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  gap: 24px;
   padding: 22px 16px 104px;
   color: var(--color-muted);
+  background: var(--color-surface);
   border-top: 1px solid var(--color-line);
 }
 
-.client-footer > strong {
-  color: var(--color-ink);
-  font-size: 14px;
+.client-footer__brand {
+  display: grid;
+  gap: 8px;
 }
 
-.client-footer__links {
+.client-footer__brand img {
+  width: 118px;
+  height: auto;
+}
+
+.client-footer__brand p,
+.client-footer__group > strong {
+  margin: 0;
+}
+
+.client-footer__brand p {
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.client-footer__group {
+  display: grid;
+  gap: 8px;
+}
+
+.client-footer__group > strong {
+  color: var(--color-ink);
+  font-size: 13px;
+}
+
+.client-footer__links,
+.client-footer .client-footer__legal {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 8px 16px;
 }
 
-.client-footer__links a {
+.client-footer__links a,
+.client-footer .client-footer__legal a {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
   color: var(--color-ink);
   font-size: 13px;
   text-underline-offset: 4px;
+}
+
+.client-footer .client-footer__legal {
+  margin: 0;
+  padding: 0;
+  border-top: 0;
 }
 
 .add-button--small {
@@ -1480,7 +1567,7 @@ a:focus-visible {
     height: 48px;
   }
 
-  .brand-wordmark {
+  .brand-wordmarks {
     width: 142px;
     height: 48px;
     justify-self: start;
@@ -1583,10 +1670,6 @@ a:focus-visible {
     min-height: 58px;
   }
 
-  #popular .product-card__media img {
-    object-position: center top;
-  }
-
   .active-order-strip {
     top: 24px;
     right: 32px;
@@ -1682,7 +1765,17 @@ a:focus-visible {
 
   .client-footer {
     order: 6;
+    grid-template-columns: minmax(220px, 360px) minmax(140px, 180px) minmax(180px, 220px);
+    align-items: start;
+    justify-content: space-between;
+    gap: clamp(32px, 5vw, 72px);
     padding: 28px clamp(24px, 3vw, 44px) 36px;
+  }
+
+  .client-footer__links,
+  .client-footer .client-footer__legal {
+    flex-direction: column;
+    gap: 0;
   }
 
   .catalog-section {
@@ -1694,16 +1787,23 @@ a:focus-visible {
     line-height: 38px;
   }
 
-  .product-card {
+  #popular .product-card {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(320px, .6fr);
+    grid-template-columns: minmax(0, 62fr) minmax(320px, 38fr);
   }
 
-  .product-card__media {
+  #popular .product-card__media {
     height: 360px;
+    background: #f7f4ef;
   }
 
-  .product-card__body {
+  #popular .product-card__media img {
+    padding: 0;
+    object-fit: cover;
+    object-position: center 38%;
+  }
+
+  #popular .product-card__body {
     min-height: 360px;
     padding: 28px;
   }

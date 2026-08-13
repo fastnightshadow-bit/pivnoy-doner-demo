@@ -9,7 +9,7 @@ import {
   getMenuProducts,
   normalizeMenuMeat,
   resolveMenuProductLine,
-} from './home-menu.js?v=2026081301';
+} from './home-menu.js?v=2026081402';
 import {
   addCartLine,
   changeCartLineQuantity,
@@ -32,16 +32,16 @@ import {
   loadActiveOrder,
   loadActiveOrderAccess,
   subscribeToActiveOrder,
-} from './order-storage.js?v=2026081301';
+} from './order-storage.js?v=2026081402';
 import {
   loadPreferredProductLines,
   resolvePreferredProductLine,
   savePreferredProductLine,
 } from './product-preference-storage.js';
-import { initProductSheet } from './product-sheet.js?v=2026081301';
-import { createReviewService } from './review-service.js?v=2026081301';
-import { createReviewsSectionMarkup } from './review-view.js?v=2026081301';
-import { clientApi } from './client-api.js?v=2026081301';
+import { initProductSheet } from './product-sheet.js?v=2026081402';
+import { createReviewService } from './review-service.js?v=2026081402';
+import { createReviewsSectionMarkup } from './review-view.js?v=2026081402';
+import { clientApi } from './client-api.js?v=2026081402';
 import { useProductionApi } from './runtime-mode.js';
 
 export function selectCategory(labels, activeIndex) {
@@ -98,6 +98,7 @@ function initHomeScreen() {
     '[data-active-order-meta]',
   );
   const reviewsRoot = document.querySelector('[data-home-reviews]');
+  const orderingStatus = document.querySelector('[data-ordering-status]');
   const savedFulfillment = loadFulfillment(window.localStorage);
   const productionApi = useProductionApi();
 
@@ -112,12 +113,17 @@ function initHomeScreen() {
     },
     lines: storedLines,
     quantities: {},
+    acceptingOrders: true,
     stoppedProductIds: new Set(),
   };
   let toastTimer;
   let hasRenderedHome = false;
   const isProductAvailable = (productId) =>
-    !state.stoppedProductIds.has(String(productId));
+    state.acceptingOrders && !state.stoppedProductIds.has(String(productId));
+  const getUnavailableLabel = (productId) =>
+    state.stoppedProductIds.has(String(productId))
+      ? 'Нет в наличии'
+      : 'Приём заказов закрыт';
 
   const renderReviews = async () => {
     if (!reviewsRoot) return;
@@ -252,7 +258,10 @@ function initHomeScreen() {
       product,
       state.quantities[product.id] || 0,
       'featured',
-      { available: isProductAvailable(product.id) },
+      {
+        available: isProductAvailable(product.id),
+        unavailableLabel: getUnavailableLabel(product.id),
+      },
     );
   };
 
@@ -271,7 +280,10 @@ function initHomeScreen() {
           product,
           quantity,
           namespace,
-          { available: isProductAvailable(product.id) },
+          {
+            available: isProductAvailable(product.id),
+            unavailableLabel: getUnavailableLabel(product.id),
+          },
         ).trim();
         const replacement = template.content.firstElementChild;
         if (!replacement) return;
@@ -313,7 +325,10 @@ function initHomeScreen() {
             createMenuProductCard(
               product,
               getProductViewLine(product)?.quantity ?? 0,
-              { available: isProductAvailable(product.id) },
+              {
+                available: isProductAvailable(product.id),
+                unavailableLabel: getUnavailableLabel(product.id),
+              },
             ),
           )
           .join('');
@@ -360,7 +375,7 @@ function initHomeScreen() {
         badge = document.createElement('span');
         badge.className = 'product-unavailable-badge';
         badge.dataset.unavailableBadge = '';
-        badge.textContent = 'Нет в наличии';
+        badge.textContent = getUnavailableLabel(productId);
         (card.querySelector('.product-card__media') || card).append(badge);
       }
       if (available) badge?.remove();
@@ -384,14 +399,17 @@ function initHomeScreen() {
       showToast('Корзина обновлена');
     },
     isProductAvailable,
+    getUnavailableLabel,
   });
 
   const applyCatalogStatus = (status = {}) => {
+    state.acceptingOrders = status.acceptingOrders !== false;
     state.stoppedProductIds = new Set(
       Array.isArray(status.stoppedProductIds)
         ? status.stoppedProductIds.map(String)
         : [],
     );
+    if (orderingStatus) orderingStatus.hidden = state.acceptingOrders;
     renderHomeMenu();
     renderStaticAvailability();
     productSheet.refreshAvailability();

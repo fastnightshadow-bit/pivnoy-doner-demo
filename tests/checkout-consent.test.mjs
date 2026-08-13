@@ -87,6 +87,25 @@ test('оформление называет недоступные товары 
   assert.equal(lines.length, 2);
 });
 
+test('checkout explains that restaurant paused ordering', () => {
+  assert.equal(
+    checkout.isCheckoutOrderingPaused({ acceptingOrders: false }),
+    true,
+  );
+  assert.equal(
+    checkout.isCheckoutOrderingPaused({ acceptingOrders: true }),
+    false,
+  );
+  assert.equal(
+    checkout.getOrderingPausedMessage(),
+    'Приём заказов временно приостановлен. Корзина сохранена.',
+  );
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage({ code: 'ORDERING_PAUSED' }),
+    checkout.getOrderingPausedMessage(),
+  );
+});
+
 test('checkout rejects an unchecked personal-data consent', () => {
   const errors = validateCheckout({
     fulfillment: 'pickup',

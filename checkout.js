@@ -17,7 +17,7 @@ import {
   loadActiveOrder,
   saveActiveOrder,
   saveActiveOrderAccess,
-} from './order-storage.js?v=2026081301';
+} from './order-storage.js?v=2026081402';
 import { loadPayment, savePayment } from './payment-storage.js';
 import { getPromoResult } from './promo-state.js';
 import { getDeliveryMinimumRemaining } from './delivery-policy.js';
@@ -27,7 +27,7 @@ import {
   loadPromo,
   savePromo,
 } from './promo-storage.js';
-import { clientApi } from './client-api.js?v=2026081301';
+import { clientApi } from './client-api.js?v=2026081402';
 import { useProductionApi } from './runtime-mode.js';
 import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 
@@ -209,6 +209,9 @@ export const getCheckoutSubmissionErrorMessage = (error, lines = []) => {
   if (error?.code === 'MINIMUM_ORDER') {
     return 'Минимальная сумма доставки — 300 ₽';
   }
+  if (error?.code === 'ORDERING_PAUSED') {
+    return getOrderingPausedMessage();
+  }
   if (['PRODUCT_NOT_SALEABLE', 'PRODUCT_UNAVAILABLE'].includes(error?.code)) {
     const names = new Map(
       (Array.isArray(lines) ? lines : []).map((line) => [
@@ -226,6 +229,12 @@ export const getCheckoutSubmissionErrorMessage = (error, lines = []) => {
   }
   return 'Не удалось оформить заказ. Проверьте интернет и повторите.';
 };
+
+export const isCheckoutOrderingPaused = (status = {}) =>
+  status?.acceptingOrders === false;
+
+export const getOrderingPausedMessage = () =>
+  'Приём заказов временно приостановлен. Корзина сохранена.';
 
 export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
   const stopped = new Set(
@@ -756,6 +765,12 @@ const initCheckout = () => {
     });
     try {
       const catalogStatus = await clientApi.getCatalogStatus();
+      if (isCheckoutOrderingPaused(catalogStatus)) {
+        confirmButton.classList.remove('is-loading');
+        confirmButton.disabled = false;
+        showToast(getOrderingPausedMessage());
+        return;
+      }
       const unavailable = getUnavailableCheckoutProducts(lines, catalogStatus);
       if (unavailable.length > 0) {
         confirmButton.classList.remove('is-loading');

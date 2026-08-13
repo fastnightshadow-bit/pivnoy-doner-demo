@@ -10,15 +10,15 @@ import {
   loadActiveOrderAccess,
   saveActiveOrder,
   subscribeToActiveOrder,
-} from './order-storage.js?v=2026081301';
-import { createReviewService } from './review-service.js?v=2026081301';
-import { isReviewableOrder } from './review-state.js?v=2026081301';
+} from './order-storage.js?v=2026081402';
+import { createReviewService } from './review-service.js?v=2026081402';
+import { isReviewableOrder } from './review-state.js?v=2026081402';
 import { formatOptionQuantities } from './option-quantities.js';
 import {
   canUseReviewDemo,
   ensureReviewDemoOrder,
-} from './order-demo.js?v=2026081301';
-import { clientApi } from './client-api.js?v=2026081301';
+} from './order-demo.js?v=2026081402';
+import { clientApi } from './client-api.js?v=2026081402';
 import { useProductionApi } from './runtime-mode.js';
 
 const escapeHtml = (value) =>

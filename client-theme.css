@@ -111,15 +111,36 @@ html[data-theme='dark'] .order-header {
   box-shadow: none;
 }
 
-html[data-theme='dark'] .brand-logo,
-html[data-theme='dark'] .brand-wordmark {
+html[data-theme='dark'] .brand-logo {
   padding: 3px;
   background: #f7f6f3;
   border-radius: 10px;
 }
 
-html[data-theme='dark'] .brand-wordmark {
-  padding-inline: 7px;
+html[data-theme='dark'] .brand-wordmark--light {
+  display: none !important;
+}
+
+html[data-theme='dark'] .brand-wordmark--dark {
+  display: block;
+}
+
+html[data-theme='dark'] .client-footer {
+  color: var(--client-text);
+  background: var(--client-surface);
+  border-color: var(--client-line);
+}
+
+html[data-theme='dark'] .client-footer__brand img {
+  padding: 5px 7px;
+  background: #f7f6f3;
+  border-radius: 10px;
+}
+
+html[data-theme='dark'] .ordering-status {
+  color: var(--client-text);
+  background: var(--client-surface-raised);
+  border-color: var(--client-line);
 }
 
 html[data-theme='dark'] .cart-badge,
@@ -299,6 +320,25 @@ html[data-theme='dark'] textarea::placeholder {
 html[data-theme='dark'] .row-control input {
   background: transparent;
   border-color: transparent;
+}
+
+html[data-theme='dark'] .menu-product__unavailable,
+html[data-theme='dark'] .product-unavailable-badge {
+  color: #171717;
+  background: #f7f7f5;
+  border-color: #d8d5d0;
+}
+
+html[data-theme='dark'] .menu-add.is-unavailable {
+  color: var(--client-muted);
+  background: var(--client-surface-raised);
+  border-color: var(--client-line);
+}
+
+html[data-theme='dark'] .product-sheet__unavailable {
+  color: var(--client-text);
+  background: var(--client-surface-raised);
+  border-color: var(--client-line);
 }
 
 .client-footer__legal {

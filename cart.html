@@ -17,8 +17,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app/apple-touch-icon.png?v=20260805" />
     <script src="theme-preload.js"></script>
     <link rel="stylesheet" href="motion.css" />
-    <link rel="stylesheet" href="cart.css" />
-    <link rel="stylesheet" href="client-theme.css?v=2026081301" />
+    <link rel="stylesheet" href="cart.css?v=2026081402" />
+    <link rel="stylesheet" href="client-theme.css?v=2026081402" />
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -64,56 +64,60 @@
         <span aria-hidden="true"></span>
       </header>
 
-      <main class="cart-main">
-        <div data-filled-cart>
-          <section class="cart-lines" aria-label="Товары в корзине" data-cart-lines></section>
+      <div class="cart-layout">
+        <main class="cart-main">
+          <div data-filled-cart>
+            <section class="cart-lines" aria-label="Товары в корзине" data-cart-lines></section>
 
-          <section class="cart-recommendations" aria-labelledby="recommendations-title">
-            <header>
-              <span>Можно добавить</span>
-              <h2 id="recommendations-title">Часто добавляют</h2>
-            </header>
-            <div class="recommendation-list" data-recommendations></div>
-          </section>
+            <section class="cart-recommendations" aria-labelledby="recommendations-title">
+              <header>
+                <span>Можно добавить</span>
+                <h2 id="recommendations-title">Часто добавляют</h2>
+              </header>
+              <div class="recommendation-list" data-recommendations></div>
+            </section>
 
-          <section class="cart-summary" aria-labelledby="summary-title">
-            <h2 id="summary-title">Ваш заказ</h2>
-            <dl>
-              <div><dt>Товары</dt><dd data-items-total>0 ₽</dd></div>
-              <div><dt data-delivery-label>Самовывоз</dt><dd data-delivery-total>0 ₽</dd></div>
-              <div class="cart-summary__total">
-                <dt>Итого</dt>
-                <dd aria-live="polite" data-grand-total>0 ₽</dd>
-              </div>
-            </dl>
-          </section>
-        </div>
-
-        <section class="empty-cart" hidden data-empty-cart>
-          <div class="empty-cart__illustration" aria-hidden="true">
-            <svg class="icon"><use href="#cart-i-bag"></use></svg>
+            <section class="cart-summary" aria-labelledby="summary-title">
+              <h2 id="summary-title">Ваш заказ</h2>
+              <dl>
+                <div><dt>Товары</dt><dd data-items-total>0 ₽</dd></div>
+                <div><dt data-delivery-label>Самовывоз</dt><dd data-delivery-total>0 ₽</dd></div>
+                <div class="cart-summary__total">
+                  <dt>Итого</dt>
+                  <dd aria-live="polite" data-grand-total>0 ₽</dd>
+                </div>
+              </dl>
+            </section>
           </div>
-          <h2>В корзине пока пусто</h2>
-          <p>Добавьте блюда из меню — всё появится здесь</p>
-          <a href="home.html#categories">Перейти в меню</a>
-        </section>
-      </main>
 
-      <nav class="client-footer__legal" aria-label="Правовая информация">
-        <a href="seller.html">Продавец</a>
-        <a href="offer.html">Оферта</a>
-        <a href="privacy.html">Политика данных</a>
-        <a href="consent.html">Согласие</a>
-      </nav>
+          <section class="empty-cart" hidden data-empty-cart>
+            <div class="empty-cart__illustration" aria-hidden="true">
+              <svg class="icon"><use href="#cart-i-bag"></use></svg>
+            </div>
+            <h2>В корзине пока пусто</h2>
+            <p>Добавьте блюда из меню — всё появится здесь</p>
+            <a href="home.html#categories">Перейти в меню</a>
+          </section>
+        </main>
 
-      <aside class="cart-checkout" data-checkout-bar>
-        <p class="cart-checkout__fulfillment" data-cart-fulfillment>Самовывоз</p>
-        <div>
-          <span>Итого</span>
-          <strong aria-live="polite" data-checkout-total>0 ₽</strong>
-        </div>
-        <a href="checkout.html" data-checkout>Перейти к оформлению</a>
-      </aside>
+        <aside class="cart-sidebar">
+          <section class="cart-checkout" data-checkout-bar>
+            <p class="cart-checkout__fulfillment" data-cart-fulfillment>Самовывоз</p>
+            <div>
+              <span>Итого</span>
+              <strong aria-live="polite" data-checkout-total>0 ₽</strong>
+            </div>
+            <a href="checkout.html" data-checkout>Перейти к оформлению</a>
+          </section>
+
+          <nav class="client-footer__legal" aria-label="Правовая информация">
+            <a href="seller.html">Продавец</a>
+            <a href="offer.html">Оферта</a>
+            <a href="privacy.html">Политика данных</a>
+            <a href="consent.html">Согласие</a>
+          </nav>
+        </aside>
+      </div>
     </div>
 
     <div class="cart-toast" role="status" aria-live="polite" data-cart-toast></div>

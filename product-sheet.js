@@ -220,11 +220,16 @@ const createAddonMarkup = (productId, selection) => {
     </section>`;
 };
 
-const createPurchaseMarkup = (totalPrice, quantity, available = true) => {
+const createPurchaseMarkup = (
+  totalPrice,
+  quantity,
+  available = true,
+  unavailableLabel = 'Нет в наличии',
+) => {
   if (!available) {
     return `
       <footer class="product-sheet__purchase product-sheet__purchase--unavailable" data-sheet-purchase>
-        <div class="product-sheet__unavailable">Нет в наличии</div>
+        <div class="product-sheet__unavailable">${escapeHtml(unavailableLabel)}</div>
       </footer>`;
   }
   const safeQuantity = Math.max(0, Number(quantity) || 0);
@@ -259,7 +264,11 @@ export const createProductSheetMarkup = (
   product,
   rawSelection = {},
   quantity = 0,
-  { lockMeat = false, available = true } = {},
+  {
+    lockMeat = false,
+    available = true,
+    unavailableLabel = 'Нет в наличии',
+  } = {},
 ) => {
   if (!product?.id) return '';
   const selection = normalizeSelection(product.id, rawSelection);
@@ -310,7 +319,7 @@ export const createProductSheetMarkup = (
         </section>
       </div>
     </div>
-    ${createPurchaseMarkup(totalPrice, quantity, available)}`;
+    ${createPurchaseMarkup(totalPrice, quantity, available, unavailableLabel)}`;
 };
 
 const createSelectionCartLine = (product, selection) =>
@@ -346,6 +355,7 @@ export const initProductSheet = ({
   historyRef = globalThis.history,
   matchMediaRef = globalThis.matchMedia,
   isProductAvailable = () => true,
+  getUnavailableLabel = () => 'Нет в наличии',
 } = {}) => {
   if (!dialog) {
     return {
@@ -411,6 +421,7 @@ export const initProductSheet = ({
       {
         lockMeat: state.lockMeat,
         available: isProductAvailable(state.product.id),
+        unavailableLabel: getUnavailableLabel(state.product.id),
       },
     );
     const scroll = surface.querySelector('[data-sheet-scroll]');

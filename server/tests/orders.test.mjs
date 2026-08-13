@@ -209,6 +209,52 @@ test('HTTP сообщает клиенту конкретные товары и�
   assert.deepEqual(response.body.details, { productIds: ['nuggets'] });
 });
 
+test('new order is rejected while restaurant pauses ordering', async () => {
+  const orders = createRepository();
+  const service = createOrderService({
+    orders,
+    settings,
+    catalogSettings: {
+      get: async () => ({ acceptingOrders: false, stoppedProductIds: [] }),
+    },
+    orderAccessSecret: 'test-order-access-secret',
+  });
+
+  await assert.rejects(
+    () => service.create(validOrderPayload(), 'ordering-paused-1'),
+    (error) => {
+      assert.equal(error.code, 'ORDERING_PAUSED');
+      return true;
+    },
+  );
+  assert.equal(orders.size(), 0);
+  assert.equal(orders.createCalls(), 0);
+});
+
+test('HTTP returns a conflict while restaurant pauses ordering', async () => {
+  const orders = createRepository();
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    orderService: createOrderService({
+      orders,
+      settings,
+      catalogSettings: {
+        get: async () => ({ acceptingOrders: false, stoppedProductIds: [] }),
+      },
+      orderAccessSecret: 'test-order-access-secret',
+    }),
+  });
+
+  const response = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', 'ordering-paused-http')
+    .send(validOrderPayload());
+
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error, 'ORDERING_PAUSED');
+  assert.equal(orders.size(), 0);
+});
+
 test('order without consent is rejected', async () => {
   const orders = createRepository();
   const app = createApp({

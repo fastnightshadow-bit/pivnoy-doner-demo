@@ -14,9 +14,9 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app/apple-touch-icon.png?v=20260805" />
     <script src="theme-preload.js"></script>
     <link rel="stylesheet" href="motion.css" />
-    <link rel="stylesheet" href="home.css?v=2026081301" />
-    <link rel="stylesheet" href="product-sheet.css?v=2026081301" />
-    <link rel="stylesheet" href="client-theme.css?v=2026081301" />
+    <link rel="stylesheet" href="home.css?v=2026081402" />
+    <link rel="stylesheet" href="product-sheet.css?v=2026081402" />
+    <link rel="stylesheet" href="client-theme.css?v=2026081402" />
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -120,13 +120,23 @@
           <a class="brand-logo" href="#home-hero" aria-label="Пивной Донер">
             <img src="assets/mobile-home/logo-transparent.webp" alt="Оригинальный логотип Пивной Донер" />
           </a>
-          <img
-            class="brand-wordmark"
-            src="assets/mobile-home/brand-wordmark.webp"
-            alt="Пивной Донер"
-            width="118"
-            height="42"
-          />
+          <span class="brand-wordmarks">
+            <img
+              class="brand-wordmark brand-wordmark--light"
+              src="assets/mobile-home/brand-wordmark.webp"
+              alt="Пивной Донер"
+              width="118"
+              height="42"
+            />
+            <img
+              class="brand-wordmark brand-wordmark--dark"
+              src="assets/mobile-home/brand-wordmark-dark.webp?v=2026081403"
+              alt=""
+              width="118"
+              height="42"
+              aria-hidden="true"
+            />
+          </span>
           <nav class="desktop-nav" aria-label="Разделы меню" data-home-desktop-nav></nav>
           <div class="desktop-fulfillment fulfillment-switch" aria-label="Способ получения">
             <button class="is-active" type="button" aria-pressed="true" data-fulfillment="pickup">Самовывоз</button>
@@ -201,6 +211,14 @@
           </div>
         </section>
 
+        <div class="ordering-status" role="status" data-ordering-status hidden>
+          <svg class="icon" aria-hidden="true"><use href="#home-i-clock"></use></svg>
+          <div>
+            <strong>Приём заказов временно приостановлен</strong>
+            <span>Меню доступно для просмотра. Корзина сохранится.</span>
+          </div>
+        </div>
+
         <section id="popular" class="catalog-section" aria-labelledby="popular-title">
           <div class="section-heading">
             <div><span>Выбор гостей</span><h2 id="popular-title">Хит</h2></div>
@@ -209,12 +227,18 @@
           <article class="product-card" data-product-card="classic-shawarma">
             <button class="product-card__link" type="button" data-open-product="classic-shawarma" aria-label="Открыть карточку блюда"></button>
             <div class="product-card__media">
-              <img
-                src="assets/mobile-home/hit-sales.webp"
-                alt="Классическая шаурма с курицей и свежими овощами"
-                loading="lazy"
-                decoding="async"
-              />
+              <picture>
+                <source
+                  media="(min-width: 1024px)"
+                  srcset="assets/mobile-home/hit-sales-owner.webp"
+                />
+                <img
+                  src="assets/mobile-home/hit-sales.webp"
+                  alt="Классическая шаурма с курицей и свежими овощами"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
             </div>
             <div class="product-card__body">
               <div>
@@ -292,28 +316,42 @@
         </section>
 
         <footer class="client-footer">
-          <strong>Пивной Донер</strong>
-          <nav
-            class="client-footer__links"
-            aria-label="Пивной Донер в интернете"
-          >
-            <a
-              href="https://t.me/pivnoydoner"
-              target="_blank"
-              rel="noopener noreferrer"
-            >Telegram</a>
-            <a
-              href="https://yandex.ru/maps/org/pivnoy_doner_promkooperatsiya/21845327554/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >Яндекс Карты</a>
-          </nav>
-          <nav class="client-footer__legal" aria-label="Правовая информация">
-            <a href="seller.html">Продавец</a>
-            <a href="offer.html">Оферта</a>
-            <a href="privacy.html">Политика данных</a>
-            <a href="consent.html">Согласие</a>
-          </nav>
+          <div class="client-footer__brand">
+            <img
+              src="assets/mobile-home/brand-wordmark.webp"
+              alt="Пивной Донер"
+              width="118"
+              height="42"
+            />
+            <p>Волоколамское шоссе, 71/22к2</p>
+          </div>
+          <div class="client-footer__group">
+            <strong>Мы в сети</strong>
+            <nav
+              class="client-footer__links"
+              aria-label="Пивной Донер в интернете"
+            >
+              <a
+                href="https://t.me/pivnoydoner"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Telegram</a>
+              <a
+                href="https://yandex.ru/maps/org/pivnoy_doner_promkooperatsiya/21845327554/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Яндекс Карты</a>
+            </nav>
+          </div>
+          <div class="client-footer__group">
+            <strong>Информация</strong>
+            <nav class="client-footer__legal" aria-label="Правовая информация">
+              <a href="seller.html">Продавец</a>
+              <a href="offer.html">Оферта</a>
+              <a href="privacy.html">Политика данных</a>
+              <a href="consent.html">Согласие</a>
+            </nav>
+          </div>
         </footer>
 
       </main>
@@ -336,6 +374,6 @@
     <div class="toast" role="status" aria-live="polite" data-toast>Добавлено в корзину</div>
     <script type="module" src="theme.js"></script>
     <script type="module" src="motion.js"></script>
-    <script type="module" src="home.js?v=2026081301"></script>
+    <script type="module" src="home.js?v=2026081402"></script>
   </body>
 </html>

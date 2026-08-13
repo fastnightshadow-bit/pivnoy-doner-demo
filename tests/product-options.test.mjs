@@ -16,6 +16,19 @@ import { createOrderItemsMarkup } from '../order.js';
 import { normalizeOrder } from '../order-state.js';
 import { getKitchenItemOptions } from '../kitchen-presentation.js';
 
+test('unavailable product can explain that ordering is paused', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'nuggets');
+  const label = 'Приём заказов закрыт';
+  const markup = createMenuProductCard(product, 0, {
+    available: false,
+    unavailableLabel: label,
+  });
+
+  assert.match(markup, new RegExp(label));
+  assert.doesNotMatch(markup, /data-open-product=/);
+  assert.doesNotMatch(markup, /data-request-product=/);
+});
+
 test('список соусов совпадает с утвержденным меню', () => {
   assert.deepEqual(
     Object.values(PRODUCT_SAUCES).map(({ label }) => label),

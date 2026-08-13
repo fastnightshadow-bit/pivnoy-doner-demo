@@ -113,7 +113,7 @@ export const createProductQuantityControl = (
   product,
   quantity = 0,
   namespace = 'menu',
-  { available = true } = {},
+  { available = true, unavailableLabel = 'Нет в наличии' } = {},
 ) => {
   const safeQuantity = Math.max(0, Number(quantity) || 0);
   const variantData = product.selectedMeat
@@ -125,11 +125,11 @@ export const createProductQuantityControl = (
       <button
         class="${namespace}-add is-unavailable"
         type="button"
-        aria-label="${product.name} — нет в наличии"
+        aria-label="${product.name} — ${unavailableLabel.toLocaleLowerCase('ru-RU')}"
         data-product-control="${product.id}"
         data-control-namespace="${namespace}"
         disabled
-      >Нет в наличии</button>`;
+      >${unavailableLabel}</button>`;
   }
 
   if (safeQuantity === 0) {
@@ -171,11 +171,12 @@ export const createProductQuantityControl = (
 export const createMenuProductCard = (
   product,
   quantity = 0,
-  { available = true } = {},
+  { available = true, unavailableLabel = 'Нет в наличии' } = {},
 ) => {
   if (product.textOnly) {
     const control = createProductQuantityControl(product, quantity, 'menu', {
       available,
+      unavailableLabel,
     });
     return `
       <article class="menu-product menu-product--text${available ? '' : ' is-unavailable'}" data-menu-product="${product.id}">
@@ -197,13 +198,14 @@ export const createMenuProductCard = (
     : '';
   const control = createProductQuantityControl(product, quantity, 'menu', {
     available,
+    unavailableLabel,
   });
   const price = `${product.pricePrefix ? `${product.pricePrefix} ` : ''}${product.price} ₽`;
 
   return `
     <article class="menu-product${available ? '' : ' is-unavailable'}" data-menu-product="${product.id}"${product.selectedMeat ? ` data-product-meat="${product.selectedMeat}"` : ''}>
       ${available ? `<button class="menu-product__link" type="button" data-open-product="${product.id}"${product.selectedMeat ? ` data-product-meat="${product.selectedMeat}" data-lock-meat="true"` : ''} aria-label="Открыть ${product.name}"></button>` : ''}
-      <div class="menu-product__media">${media}${badge}${available ? '' : '<span class="menu-product__unavailable">Нет в наличии</span>'}</div>
+      <div class="menu-product__media">${media}${badge}${available ? '' : `<span class="menu-product__unavailable">${unavailableLabel}</span>`}</div>
       <div class="menu-product__content">
         <div>
           <h3>${product.name}</h3>

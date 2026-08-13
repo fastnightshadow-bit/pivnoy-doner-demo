@@ -64,6 +64,9 @@ export const createOrderService = ({
 
       if (catalogSettings?.get) {
         const catalog = await catalogSettings.get();
+        if (catalog?.acceptingOrders === false) {
+          throw new DomainError('ORDERING_PAUSED');
+        }
         const stopped = new Set(
           Array.isArray(catalog?.stoppedProductIds)
             ? catalog.stoppedProductIds.map(String)
