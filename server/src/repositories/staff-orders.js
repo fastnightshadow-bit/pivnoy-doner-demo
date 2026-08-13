@@ -82,11 +82,11 @@ export const createStaffOrdersRepository = (pool) => ({
 
       const updatedResult = await client.query(
         `update orders
-         set status = $2,
+         set status = $2::order_status,
              version = version + 1,
              updated_at = now(),
              closed_at = case
-               when $2 in ('completed', 'cancelled') then now()
+               when $2::order_status in ('completed', 'cancelled') then now()
                else closed_at
              end
          where id = $1

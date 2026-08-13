@@ -70,7 +70,32 @@ test('terminal order transitions stamp closed_at and non-terminal transitions pr
   assert.deepEqual(update.parameters, ['order-1', 'completed']);
   assert.match(
     update.sql,
-    /closed_at\s*=\s*case\s+when\s+\$2\s+in\s*\(\s*'completed'\s*,\s*'cancelled'\s*\)\s+then\s+now\(\)\s+else\s+closed_at\s+end/i,
+    /closed_at\s*=\s*case\s+when\s+\$2::order_status\s+in\s*\(\s*'completed'\s*,\s*'cancelled'\s*\)\s+then\s+now\(\)\s+else\s+closed_at\s+end/i,
+  );
+});
+
+test('status parameter is explicitly cast once before enum update and terminal checks', async () => {
+  const { calls, pool } = createTransitionPool();
+  const repository = createStaffOrdersRepository(pool);
+
+  await repository.transitionStatus({
+    orderId: 'order-1',
+    status: 'completed',
+    version: 4,
+    account: { id: 'owner-1', displayName: 'Владелец', role: 'owner' },
+    reason: '',
+  });
+
+  const update = calls.find(({ sql }) => /update orders/i.test(sql));
+  assert.ok(update);
+  assert.match(
+    update.sql,
+    /status\s*=\s*\$2::order_status/i,
+    'PostgreSQL must not infer $2 as both text and order_status',
+  );
+  assert.match(
+    update.sql,
+    /when\s+\$2::order_status\s+in\s*\(\s*'completed'\s*,\s*'cancelled'\s*\)/i,
   );
 });
 
