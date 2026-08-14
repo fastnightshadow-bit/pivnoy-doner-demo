@@ -183,7 +183,7 @@ test('paid delivery order follows client to kitchen to courier flow', async () =
   assert.equal((await courier.post('/api/auth/login').send({
     role: 'courier', pin: '0000',
   })).status, 204);
-  for (const status of ['courier', 'delivered']) {
+  for (const status of ['courier', 'completed']) {
     const changed = await courier
       .patch(`/api/staff/orders/${created.body.id}/status`)
       .send({ status, version });
@@ -195,6 +195,6 @@ test('paid delivery order follows client to kitchen to courier flow', async () =
     .get(`/api/orders/${created.body.id}`)
     .set('Authorization', `Bearer ${created.body.accessToken}`);
   assert.equal(result.status, 200);
-  assert.equal(result.body.status, 'delivered');
+  assert.equal(result.body.status, 'completed');
   assert.equal(result.body.paymentStatus, 'paid');
 });

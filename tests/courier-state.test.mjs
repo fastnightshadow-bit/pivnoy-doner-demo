@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   filterCourierOrders,
   formatCourierAddress,
+  getCourierAction,
   getCourierReadyLabel,
   normalizeCourierOrder,
   sanitizeCourierPhone,
@@ -16,6 +17,7 @@ const baseOrder = {
   fulfillment: 'delivery',
   createdAt: '2026-08-05T10:00:00.000Z',
   promisedAt: '2026-08-05T10:20:00.000Z',
+  version: 4,
   customer: { phone: '+7 (999) 111-22-33' },
   address: {
     street: 'Волоколамское шоссе, 10',
@@ -44,9 +46,22 @@ test('заказ курьера сохраняет только необходи
     number: '0460',
     status: 'cooking',
     promisedAt: '2026-08-05T10:20:00.000Z',
+    version: 4,
     phone: '+7 (999) 111-22-33',
     address: baseOrder.address,
   });
+});
+
+test('курьер принимает готовый заказ и завершает доставку сам', () => {
+  assert.deepEqual(getCourierAction({ status: 'ready' }), {
+    status: 'courier',
+    label: 'Принять заказ',
+  });
+  assert.deepEqual(getCourierAction({ status: 'handed_to_courier' }), {
+    status: 'completed',
+    label: 'Заказ доставлен',
+  });
+  assert.equal(getCourierAction({ status: 'cooking' }), null);
 });
 
 test('адрес собирается в одну читаемую строку', () => {

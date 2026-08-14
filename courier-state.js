@@ -35,6 +35,7 @@ export const normalizeCourierOrder = (order = {}) => {
     number,
     status: order.status,
     promisedAt,
+    version: Math.max(1, Number(order.version) || 1),
     phone: toText(order.customer?.phone || order.phone),
     address,
   };
@@ -89,3 +90,13 @@ export const getCourierStatusLabel = (status) =>
     ready: 'Готов',
     handed_to_courier: 'Передан вам',
   })[status] ?? 'Подтверждён';
+
+export const getCourierAction = (order = {}) => {
+  if (order.status === 'ready') {
+    return { status: 'courier', label: 'Принять заказ' };
+  }
+  if (order.status === 'handed_to_courier') {
+    return { status: 'completed', label: 'Заказ доставлен' };
+  }
+  return null;
+};

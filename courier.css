@@ -72,6 +72,9 @@ button { cursor: pointer; }
 .courier-call { display: flex; min-height: 52px; align-items: center; justify-content: center; gap: 9px; color: #fff; background: var(--ink); border-radius: 15px; font-size: 14px; font-weight: 750; text-decoration: none; }
 .courier-call:active { transform: scale(.985); }
 .courier-call .icon { width: 20px; height: 20px; }
+.courier-order__action { width: 100%; min-height: 54px; margin-top: 10px; color: #fff; background: var(--brand); border: 0; border-radius: 15px; font-size: 15px; font-weight: 800; }
+.courier-order__action:active { transform: scale(.985); }
+.courier-order__action:disabled { cursor: wait; opacity: .58; }
 .courier-empty, .courier-error { display: grid; min-height: 280px; place-items: center; align-content: center; gap: 8px; padding: 30px; text-align: center; background: var(--surface); border: 1px dashed var(--line); border-radius: 22px; }
 .courier-empty > span { display: grid; width: 52px; height: 52px; place-items: center; color: #1c6b43; background: #e7f6ec; border-radius: 50%; font-size: 23px; }
 .courier-empty h2, .courier-error h2 { margin: 6px 0 0; font-size: 20px; }

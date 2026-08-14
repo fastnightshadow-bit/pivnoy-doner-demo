@@ -3,7 +3,7 @@ const TRANSITIONS = Object.freeze({
   accepted: Object.freeze(['cooking', 'cancelled']),
   cooking: Object.freeze(['ready', 'cancelled']),
   ready: Object.freeze(['courier', 'completed', 'cancelled']),
-  courier: Object.freeze(['delivered', 'cancelled']),
+  courier: Object.freeze(['delivered', 'completed', 'cancelled']),
   delivered: Object.freeze(['completed']),
   completed: Object.freeze([]),
   cancelled: Object.freeze([]),
@@ -20,7 +20,11 @@ const ROLE_TRANSITIONS = Object.freeze({
     'ready:completed',
     'ready:cancelled',
   ]),
-  courier: Object.freeze(['ready:courier', 'courier:delivered']),
+  courier: Object.freeze([
+    'ready:courier',
+    'courier:delivered',
+    'courier:completed',
+  ]),
 });
 
 export const canTransition = (from, to, role) => {

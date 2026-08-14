@@ -101,6 +101,7 @@ test('web container maps each host to its own PWA entry point', async () => {
 
 test('client pages version their changed immutable assets', async () => {
   const releaseKey = '2026081402';
+  const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
   const themeReleaseKey = '2026081405';
   const nginx = await read('deploy/nginx.conf');
@@ -130,11 +131,11 @@ test('client pages version their changed immutable assets', async () => {
   assert.match(homeHtml, new RegExp(`href="product-sheet\\.css\\?v=${releaseKey}"`));
   assert.match(
     homeHtml,
-    new RegExp(`<script\\s+type="module"\\s+src="home\\.js\\?v=${releaseKey}"><\\/script>`),
+    new RegExp(`<script\\s+type="module"\\s+src="home\\.js\\?v=${handoffReleaseKey}"><\\/script>`),
   );
   assert.match(
     orderHtml,
-    new RegExp(`<script\\s+type="module"\\s+src="order\\.js\\?v=${releaseKey}"><\\/script>`),
+    new RegExp(`<script\\s+type="module"\\s+src="order\\.js\\?v=${handoffReleaseKey}"><\\/script>`),
   );
   for (const html of [cartHtml, checkoutHtml, dishHtml, homeHtml, orderHtml]) {
     assert.match(
@@ -157,6 +158,7 @@ test('client pages version their changed immutable assets', async () => {
   );
   assert.deepEqual(getVersionedImports(homeSource), [
     `./home-menu.js?v=${releaseKey}`,
+    `./order-state.js?v=${handoffReleaseKey}`,
     `./order-storage.js?v=${releaseKey}`,
     `./product-sheet.js?v=${releaseKey}`,
     `./review-service.js?v=${releaseKey}`,
@@ -164,6 +166,7 @@ test('client pages version their changed immutable assets', async () => {
     `./client-api.js?v=${releaseKey}`,
   ]);
   assert.deepEqual(getVersionedImports(orderSource), [
+    `./order-state.js?v=${handoffReleaseKey}`,
     `./order-storage.js?v=${releaseKey}`,
     `./review-service.js?v=${releaseKey}`,
     `./review-state.js?v=${releaseKey}`,

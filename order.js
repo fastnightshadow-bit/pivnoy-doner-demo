@@ -4,7 +4,7 @@ import {
   getOrderPresentation,
   getOrderProgress,
   normalizeOrderStatus,
-} from './order-state.js';
+} from './order-state.js?v=2026081404';
 import {
   loadActiveOrder,
   loadActiveOrderAccess,

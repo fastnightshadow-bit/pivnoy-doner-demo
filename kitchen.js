@@ -2,13 +2,13 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js';
+} from './kitchen-api.js?v=2026081404';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js';
+} from './kitchen-model.js?v=2026081404';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
@@ -17,7 +17,7 @@ import { PRODUCTS } from './catalog-data.js';
 import {
   normalizeKitchenSettings,
   toggleStoppedProduct,
-} from './kitchen-settings.js';
+} from './kitchen-settings.js?v=2026081404';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -145,7 +145,9 @@ export const createOrderCardMarkup = (order = {}) => {
           ? `<button class="order-card__action" type="button" data-change-status data-order-id="${orderId}" data-next-status="${escapeKitchenHtml(
               action.status,
             )}">${escapeKitchenHtml(action.label)}</button>`
-          : ''
+          : order.status === 'ready' && order.fulfillment === 'delivery'
+            ? '<span class="order-card__waiting">Ожидает курьера</span>'
+            : ''
       }
     </footer>
   </article>`;
@@ -282,7 +284,9 @@ export const createOrderDetailsMarkup = (order = {}) => {
             )}" data-next-status="${escapeKitchenHtml(
               action.status,
             )}">${escapeKitchenHtml(action.label)}</button>`
-          : ''
+          : order.status === 'ready' && order.fulfillment === 'delivery'
+            ? '<p class="detail-actions__waiting">Заказ готов и ожидает курьера</p>'
+            : ''
       }
       ${
         canCancel
@@ -1245,7 +1249,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081404').catch(() => {});
   }
 
   return {

@@ -12,7 +12,9 @@ test('новый заказ нельзя сразу сделать готовы�
 });
 
 test('курьер меняет только доставочные этапы', () => {
+  assert.equal(canTransition('ready', 'courier', 'kitchen'), false);
   assert.equal(canTransition('ready', 'courier', 'courier'), true);
+  assert.equal(canTransition('courier', 'completed', 'courier'), true);
   assert.equal(canTransition('courier', 'delivered', 'courier'), true);
   assert.equal(canTransition('accepted', 'cooking', 'courier'), false);
 });

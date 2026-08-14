@@ -101,3 +101,16 @@ export const toStaffOrder = (order = {}) => ({
     toStaffHistoryEntry,
   ),
 });
+
+export const toCourierOrder = (order = {}) => ({
+  id: order.id,
+  number: order.number,
+  status: order.status,
+  paymentStatus: order.paymentStatus,
+  fulfillment: order.fulfillment,
+  phone: order.phone,
+  address: order.address,
+  eta: order.eta,
+  version: order.version,
+  createdAt: order.createdAt,
+});

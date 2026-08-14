@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authenticateRequest, requireRole } from '../auth/middleware.js';
 import { DomainError } from '../domain/errors.js';
-import { toStaffOrder } from '../domain/staff-order.js';
+import { toCourierOrder, toStaffOrder } from '../domain/staff-order.js';
 
 const statusSchema = z.object({
   status: z.enum([
@@ -23,9 +23,19 @@ export const createStaffOrdersRouter = ({ authService, orders, statuses }) => {
   router.use(authenticateRequest(authService));
   router.use(requireRole('owner', 'kitchen', 'courier'));
 
-  router.get('/', async (_request, response) => {
+  router.get('/', async (request, response) => {
     const activeOrders = await orders.listActive();
-    response.json({ orders: activeOrders.map(toStaffOrder) });
+    const staffOrders = activeOrders.map(toStaffOrder);
+    const visibleOrders = request.account.role === 'courier'
+      ? staffOrders
+        .filter(
+          (order) =>
+            order.fulfillment === 'delivery' &&
+            ['paid', 'succeeded'].includes(order.paymentStatus),
+        )
+        .map(toCourierOrder)
+      : staffOrders;
+    response.json({ orders: visibleOrders });
   });
 
   router.patch('/:id/status', async (request, response) => {

@@ -2,14 +2,15 @@ import {
   createCourierApi,
   createDemoCourierApi,
   isCourierDemoLocation,
-} from './courier-api.js';
+} from './courier-api.js?v=2026081404';
 import {
   filterCourierOrders,
   formatCourierAddress,
+  getCourierAction,
   getCourierReadyLabel,
   getCourierStatusLabel,
   sanitizeCourierPhone,
-} from './courier-state.js';
+} from './courier-state.js?v=2026081404';
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -22,6 +23,7 @@ const escapeHtml = (value) =>
 export const createCourierOrderMarkup = (order, now = new Date()) => {
   const phone = sanitizeCourierPhone(order.phone);
   const status = getCourierStatusLabel(order.status);
+  const action = getCourierAction(order);
   return `
     <article class="courier-order" data-courier-order="${escapeHtml(order.id)}">
       <header class="courier-order__top">
@@ -34,6 +36,15 @@ export const createCourierOrderMarkup = (order, now = new Date()) => {
         <span>${escapeHtml(formatCourierAddress(order.address))}</span>
       </div>
       ${phone ? `<a class="courier-call" href="tel:${escapeHtml(phone)}"><svg class="icon"><use href="#courier-i-phone"></use></svg>${escapeHtml(order.phone)}</a>` : '<p>Телефон клиента не указан</p>'}
+      ${
+        action
+          ? `<button class="courier-order__action" type="button" data-courier-action data-order-id="${escapeHtml(
+              order.id,
+            )}" data-order-version="${escapeHtml(order.version)}" data-next-status="${escapeHtml(
+              action.status,
+            )}">${escapeHtml(action.label)}</button>`
+          : ''
+      }
     </article>`;
 };
 
@@ -62,7 +73,8 @@ const initCourier = () => {
     : createCourierApi();
   let knownOrderIds = new Set();
   let pollTimer = 0;
-  let loading = false;
+  let loadPromise = null;
+  const pendingOrderIds = new Set();
 
   const showNotification = async (order) => {
     if (globalThis.Notification?.permission !== 'granted') return;
@@ -92,18 +104,21 @@ const initCourier = () => {
   };
 
   const loadOrders = async () => {
-    if (loading || !navigator.onLine) return;
-    loading = true;
+    if (!navigator.onLine) return;
+    if (loadPromise) return loadPromise;
     refs.refresh.disabled = true;
-    try {
-      const result = await api.getOrders();
-      renderOrders(result.orders, result.serverTime);
-    } catch {
-      refs.error.hidden = false;
-    } finally {
-      loading = false;
-      refs.refresh.disabled = false;
-    }
+    loadPromise = (async () => {
+      try {
+        const result = await api.getOrders();
+        renderOrders(result.orders, result.serverTime);
+      } catch {
+        refs.error.hidden = false;
+      } finally {
+        refs.refresh.disabled = false;
+        loadPromise = null;
+      }
+    })();
+    return loadPromise;
   };
 
   const startPolling = () => {
@@ -150,6 +165,47 @@ const initCourier = () => {
   });
   refs.refresh.addEventListener('click', loadOrders);
   refs.retry.addEventListener('click', loadOrders);
+  refs.orders.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-courier-action]');
+    if (!button || button.disabled) return;
+
+    const orderId = String(button.dataset.orderId || '');
+    const status = String(button.dataset.nextStatus || '');
+    const version = Number(button.dataset.orderVersion);
+    if (!orderId || !status || !Number.isInteger(version) || pendingOrderIds.has(orderId)) {
+      return;
+    }
+
+    pendingOrderIds.add(orderId);
+    button.disabled = true;
+    button.textContent = 'Сохраняем…';
+    try {
+      await api.changeStatus(orderId, status, version);
+      if (loadPromise) await loadPromise;
+      await loadOrders();
+    } catch (error) {
+      if (error?.status === 409) {
+        if (loadPromise) await loadPromise;
+        await loadOrders();
+      }
+      refs.error.hidden = false;
+      const heading = refs.error.querySelector('h2');
+      if (heading) {
+        heading.textContent =
+          error?.status === 409
+            ? 'Заказ уже изменился. Обновите список.'
+            : error?.message || 'Не удалось изменить статус';
+      }
+    } finally {
+      pendingOrderIds.delete(orderId);
+      if (button.isConnected) {
+        button.disabled = false;
+        button.textContent = getCourierAction({
+          status: status === 'courier' ? 'ready' : 'handed_to_courier',
+        })?.label || 'Повторить';
+      }
+    }
+  });
   refs.logout.addEventListener('click', async () => {
     await api.logout().catch(() => {});
     window.clearInterval(pollTimer);
@@ -174,7 +230,7 @@ const initCourier = () => {
   setOnlineState();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('courier-sw.js').catch(() => {});
+    navigator.serviceWorker.register('courier-sw.js?v=2026081404').catch(() => {});
   }
 };
 

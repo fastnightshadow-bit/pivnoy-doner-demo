@@ -63,7 +63,7 @@ const normalizeItems = (items) =>
 export const getNextKitchenAction = (order = {}) => {
   if (order.status === 'ready') {
     return order.fulfillment === 'delivery'
-      ? { status: 'handed_to_courier', label: 'Передан курьеру' }
+      ? null
       : { status: 'issued', label: 'Выдан клиенту' };
   }
 

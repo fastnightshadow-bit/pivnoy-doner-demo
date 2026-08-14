@@ -163,8 +163,8 @@ export const createOrderSnapshot = ({
 const getFinalProgressLabel = (status, fulfillment) => {
   if (fulfillment === 'delivery') {
     if (status === 'delivered' || status === 'completed') return 'Доставлен';
-    if (status === 'ready') return 'Готов';
-    return 'В пути';
+    if (status === 'courier') return 'Передан курьеру';
+    return 'Готовится';
   }
   return status === 'completed' ? 'Выдан' : 'Готов';
 };
@@ -224,16 +224,16 @@ export const getOrderPresentation = (order = {}) => {
       eta,
     },
     ready: {
-      title: fulfillment === 'delivery' ? 'Заказ готов' : 'Можно забирать',
+      title: fulfillment === 'delivery' ? 'Готовим ваш заказ' : 'Можно забирать',
       message:
         fulfillment === 'delivery'
           ? 'Скоро передадим заказ курьеру'
           : 'Покажите номер заказа сотруднику',
-      tone: 'success',
+      tone: fulfillment === 'delivery' ? 'active' : 'success',
       eta: '',
     },
     courier: {
-      title: 'Курьер в пути',
+      title: 'Заказ передан курьеру',
       message: `Ориентировочно доставим через ${eta}`,
       tone: 'active',
       eta,
@@ -245,8 +245,8 @@ export const getOrderPresentation = (order = {}) => {
       eta: '',
     },
     completed: {
-      title: 'Заказ завершён',
-      message: 'Спасибо за заказ',
+      title: fulfillment === 'delivery' ? 'Заказ доставлен' : 'Заказ завершён',
+      message: fulfillment === 'delivery' ? 'Доставка завершена' : 'Спасибо за заказ',
       tone: 'success',
       eta: '',
     },

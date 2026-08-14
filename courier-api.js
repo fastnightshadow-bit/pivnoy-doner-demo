@@ -1,5 +1,5 @@
-import { createDemoOrders } from './kitchen-fixtures.js';
-import { normalizeCourierOrder } from './courier-state.js';
+import { createDemoOrders } from './kitchen-fixtures.js?v=2026081404';
+import { normalizeCourierOrder } from './courier-state.js?v=2026081404';
 
 const wait = (milliseconds) =>
   new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
@@ -94,6 +94,10 @@ export const createDemoCourierApi = ({
   delay = () => wait(160),
 } = {}) => {
   let session = false;
+  let orders = createDemoOrders(now()).map((order) => ({
+    ...order,
+    version: Math.max(1, Number(order.version) || 1),
+  }));
 
   return {
     async login(pin) {
@@ -111,10 +115,31 @@ export const createDemoCourierApi = ({
     async getOrders() {
       if (!session) throw new CourierApiError('Введите PIN', 401);
       await delay();
-      const orders = createDemoOrders(now()).filter((order) =>
+      const visibleOrders = orders.filter((order) =>
         Boolean(normalizeCourierOrder(order)),
       );
-      return { orders, serverTime: new Date(now()).toISOString() };
+      return { orders: visibleOrders, serverTime: new Date(now()).toISOString() };
+    },
+    async changeStatus(orderId, status, version) {
+      if (!session) throw new CourierApiError('Введите PIN', 401);
+      await delay();
+      const index = orders.findIndex(({ id }) => id === orderId);
+      if (index < 0) throw new CourierApiError('Заказ не найден', 404);
+      const current = orders[index];
+      if (Number(version) !== Number(current.version)) {
+        throw new CourierApiError('Заказ уже изменился. Обновите список.', 409);
+      }
+      const allowed =
+        (current.status === 'ready' && status === 'courier') ||
+        (current.status === 'handed_to_courier' && status === 'completed');
+      if (!allowed) throw new CourierApiError('Этот статус уже нельзя изменить', 422);
+      const order = {
+        ...current,
+        status: status === 'courier' ? 'handed_to_courier' : status,
+        version: Number(current.version) + 1,
+      };
+      orders[index] = order;
+      return { order };
     },
   };
 };

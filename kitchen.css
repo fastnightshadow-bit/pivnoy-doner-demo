@@ -791,6 +791,30 @@ body[data-kitchen-presentation="scaled-landscape-phone"] .login-view {
   background: #2a2a2a;
 }
 
+.order-card__waiting,
+.detail-actions__waiting {
+  color: var(--kitchen-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.order-card__waiting {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  text-align: center;
+  background: var(--kitchen-soft);
+  border-radius: 10px;
+}
+
+.detail-actions__waiting {
+  margin: 0;
+  padding: 13px 16px;
+  text-align: center;
+  background: var(--kitchen-soft);
+  border-radius: 12px;
+}
+
 .panel-scrim {
   position: fixed;
   z-index: 10;

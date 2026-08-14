@@ -88,7 +88,7 @@ const createStaffApp = () =>
   });
 
 test('staff roles cannot recover a customer bearer token from an order response', async () => {
-  for (const role of ['owner', 'kitchen', 'courier']) {
+  for (const role of ['owner', 'kitchen']) {
     const response = await request(createStaffApp())
       .get('/api/staff/orders')
       .set('Cookie', `pivdoner_session=${role}`);
@@ -159,6 +159,30 @@ test('staff roles cannot recover a customer bearer token from an order response'
       assert.equal(serialized.includes(credential), false, `${role}: ${credential}`);
     }
   }
+});
+
+test('courier receives only delivery contact, address, ETA and status data', async () => {
+  const response = await request(createStaffApp())
+    .get('/api/staff/orders')
+    .set('Cookie', 'pivdoner_session=courier');
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.orders.length, 1);
+  assert.deepEqual(
+    Object.keys(response.body.orders[0]).sort(),
+    [
+      'address',
+      'createdAt',
+      'eta',
+      'fulfillment',
+      'id',
+      'number',
+      'paymentStatus',
+      'phone',
+      'status',
+      'version',
+    ].sort(),
+  );
 });
 
 test('staff order SQL selects only role-safe order and item fields', async () => {

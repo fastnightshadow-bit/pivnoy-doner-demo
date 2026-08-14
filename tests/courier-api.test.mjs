@@ -25,3 +25,27 @@ test('API курьера отдаёт только подтверждённые 
   assert.ok(orders.every(({ address }) =>
     address.entrance && address.floor && address.apartment && address.intercom));
 });
+
+test('демо-курьер принимает и завершает готовую доставку', async () => {
+  const api = createDemoCourierApi({
+    delay: async () => {},
+    now: () => Date.parse('2026-08-05T10:00:00.000Z'),
+  });
+  await api.login('0000');
+  const ready = (await api.getOrders()).orders.find(({ status }) => status === 'ready');
+  assert.ok(ready);
+
+  const accepted = await api.changeStatus(ready.id, 'courier', ready.version);
+  assert.equal(accepted.order.status, 'handed_to_courier');
+
+  const completed = await api.changeStatus(
+    ready.id,
+    'completed',
+    accepted.order.version,
+  );
+  assert.equal(completed.order.status, 'completed');
+  assert.equal(
+    (await api.getOrders()).orders.some(({ id }) => id === ready.id),
+    false,
+  );
+});
