@@ -2,13 +2,13 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026081409';
+} from './kitchen-api.js?v=2026081410';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026081409';
+} from './kitchen-model.js?v=2026081410';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
@@ -17,11 +17,11 @@ import { PRODUCTS } from './catalog-data.js';
 import {
   normalizeKitchenSettings,
   toggleStoppedProduct,
-} from './kitchen-settings.js?v=2026081409';
+} from './kitchen-settings.js?v=2026081410';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026081409';
+} from './staff-live-sync.js?v=2026081410';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -396,6 +396,16 @@ const setElementHidden = (element, hidden) => {
   if (element) element.hidden = hidden;
 };
 
+export const removeMatchingToasts = (container, toastKey) => {
+  let removed = 0;
+  for (const child of Array.from(container?.children || [])) {
+    if (child?.dataset?.toastKey !== toastKey) continue;
+    child.remove();
+    removed += 1;
+  }
+  return removed;
+};
+
 export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   if (!windowRef || !documentRef) return null;
 
@@ -481,9 +491,12 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
 
   const showToast = (message, tone = 'normal', action = null) => {
     if (!refs.toast) return;
+    const toastKey = `${tone}:${String(message || '')}`;
+    removeMatchingToasts(refs.toast, toastKey);
     const toast = documentRef.createElement('div');
     toast.className = 'toast';
     toast.dataset.tone = tone;
+    toast.dataset.toastKey = toastKey;
     const copy = documentRef.createElement('span');
     copy.textContent = message;
     toast.append(copy);
@@ -1311,7 +1324,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081409').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081410').catch(() => {});
   }
 
   return {

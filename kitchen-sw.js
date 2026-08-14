@@ -1,14 +1,14 @@
-const CACHE_NAME = 'pivnoy-doner-kitchen-shell-v8';
+const CACHE_NAME = 'pivnoy-doner-kitchen-shell-v9';
 const SHELL_FILES = [
   'kitchen.html?demo=1',
-  'kitchen.css?v=2026081409',
-  'kitchen.js?v=2026081409',
+  'kitchen.css?v=2026081410',
+  'kitchen.js?v=2026081410',
   'kitchen-presentation.js',
-  'kitchen-model.js?v=2026081409',
-  'kitchen-api.js?v=2026081409',
-  'kitchen-fixtures.js?v=2026081409',
-  'kitchen-settings.js?v=2026081409',
-  'staff-live-sync.js?v=2026081409',
+  'kitchen-model.js?v=2026081410',
+  'kitchen-api.js?v=2026081410',
+  'kitchen-fixtures.js?v=2026081410',
+  'kitchen-settings.js?v=2026081410',
+  'staff-live-sync.js?v=2026081410',
   'preparation-time.js',
   'catalog-data.js',
   'kitchen.webmanifest',
@@ -29,18 +29,25 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key.startsWith('pivnoy-doner-kitchen-shell-'))
-            .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key)),
-        ),
-      ),
+    (async () => {
+      const keys = await caches.keys();
+      const staleKeys = keys
+        .filter((key) => key.startsWith('pivnoy-doner-kitchen-shell-'))
+        .filter((key) => key !== CACHE_NAME);
+      await Promise.all(staleKeys.map((key) => caches.delete(key)));
+      await self.clients.claim();
+      if (!staleKeys.length) return;
+      const clients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+      await Promise.all(
+        clients
+          .filter((client) => client.url.startsWith(self.registration.scope))
+          .map((client) => client.navigate(client.url)),
+      );
+    })(),
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {

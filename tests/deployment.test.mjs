@@ -104,7 +104,7 @@ test('client pages version their changed immutable assets', async () => {
   const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
   const themeReleaseKey = '2026081406';
-  const kitchenReleaseKey = '2026081409';
+  const kitchenReleaseKey = '2026081410';
   const courierReleaseKey = '2026081408';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
@@ -175,7 +175,7 @@ test('client pages version their changed immutable assets', async () => {
     courierSource,
     new RegExp(`staff-live-sync\\.js\\?v=${courierReleaseKey}`),
   );
-  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v8/);
+  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v9/);
   assert.match(courierWorker, /pivnoy-doner-courier-shell-v5/);
 
   const getVersionedImports = (source) => [
