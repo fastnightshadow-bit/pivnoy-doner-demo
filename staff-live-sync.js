@@ -7,18 +7,32 @@ export const createStaffLiveSync = ({
   intervalMs = 5000,
 } = {}) => {
   let refreshPromise = null;
+  let trailingRefreshPromise = null;
   let intervalId = null;
   let unsubscribe = null;
 
-  const sync = () => {
-    if (!isVisible()) return Promise.resolve();
-    if (refreshPromise) return refreshPromise;
+  const startRefresh = () => {
     refreshPromise = Promise.resolve()
       .then(() => refresh())
       .finally(() => {
         refreshPromise = null;
       });
     return refreshPromise;
+  };
+
+  const sync = () => {
+    if (!isVisible()) return Promise.resolve();
+    if (!refreshPromise) return startRefresh();
+    if (!trailingRefreshPromise) {
+      trailingRefreshPromise = refreshPromise
+        .catch(() => undefined)
+        .then(() => {
+          trailingRefreshPromise = null;
+          if (!isVisible()) return undefined;
+          return startRefresh();
+        });
+    }
+    return trailingRefreshPromise;
   };
 
   const stop = () => {

@@ -104,7 +104,7 @@ test('client pages version their changed immutable assets', async () => {
   const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
   const themeReleaseKey = '2026081406';
-  const staffReleaseKey = '2026081407';
+  const kitchenReleaseKey = '2026081409';
   const courierReleaseKey = '2026081408';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
@@ -153,8 +153,8 @@ test('client pages version their changed immutable assets', async () => {
       new RegExp(`href="client-theme\\.css\\?v=${themeReleaseKey}"`),
     );
   }
-  assert.match(kitchenHtml, new RegExp(`href="kitchen\\.css\\?v=${staffReleaseKey}"`));
-  assert.match(kitchenHtml, new RegExp(`src="kitchen\\.js\\?v=${staffReleaseKey}"`));
+  assert.match(kitchenHtml, new RegExp(`href="kitchen\\.css\\?v=${kitchenReleaseKey}"`));
+  assert.match(kitchenHtml, new RegExp(`src="kitchen\\.js\\?v=${kitchenReleaseKey}"`));
   assert.match(courierHtml, new RegExp(`href="courier\\.css\\?v=${courierReleaseKey}"`));
   assert.match(courierHtml, new RegExp(`src="courier\\.js\\?v=${courierReleaseKey}"`));
   for (const source of [
@@ -169,13 +169,13 @@ test('client pages version their changed immutable assets', async () => {
   }
   assert.match(
     kitchenSource,
-    new RegExp(`staff-live-sync\\.js\\?v=${staffReleaseKey}`),
+    new RegExp(`staff-live-sync\\.js\\?v=${kitchenReleaseKey}`),
   );
   assert.match(
     courierSource,
     new RegExp(`staff-live-sync\\.js\\?v=${courierReleaseKey}`),
   );
-  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v7/);
+  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v8/);
   assert.match(courierWorker, /pivnoy-doner-courier-shell-v5/);
 
   const getVersionedImports = (source) => [

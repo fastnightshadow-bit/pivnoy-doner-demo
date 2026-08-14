@@ -2,13 +2,13 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026081407';
+} from './kitchen-api.js?v=2026081409';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026081407';
+} from './kitchen-model.js?v=2026081409';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
@@ -17,11 +17,11 @@ import { PRODUCTS } from './catalog-data.js';
 import {
   normalizeKitchenSettings,
   toggleStoppedProduct,
-} from './kitchen-settings.js?v=2026081407';
+} from './kitchen-settings.js?v=2026081409';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026081407';
+} from './staff-live-sync.js?v=2026081409';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -1311,7 +1311,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081407').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081409').catch(() => {});
   }
 
   return {

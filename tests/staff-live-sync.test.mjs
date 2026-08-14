@@ -41,6 +41,32 @@ test('fallback synchronization refreshes every five seconds without overlapping 
   await sync.sync();
 });
 
+test('an update received during an active refresh queues one trailing refresh', async () => {
+  const firstRefresh = deferred();
+  const secondRefresh = deferred();
+  let refreshCalls = 0;
+  const sync = createStaffLiveSync({
+    refresh: () => {
+      refreshCalls += 1;
+      return refreshCalls === 1 ? firstRefresh.promise : secondRefresh.promise;
+    },
+  });
+
+  const initialSync = sync.sync();
+  await Promise.resolve();
+  assert.equal(refreshCalls, 1);
+
+  const eventSync = sync.sync();
+  const duplicateEventSync = sync.sync();
+  firstRefresh.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(refreshCalls, 2);
+  secondRefresh.resolve();
+  await Promise.all([initialSync, eventSync, duplicateEventSync]);
+  assert.equal(refreshCalls, 2);
+});
+
 test('stopping live synchronization closes events and clears fallback timer', () => {
   const calls = [];
   const sync = createStaffLiveSync({
