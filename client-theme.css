@@ -322,6 +322,12 @@ html[data-theme='dark'] .row-control input {
   border-color: transparent;
 }
 
+html[data-theme='dark'] .address-details input:focus {
+  color: var(--client-text);
+  background: var(--control-surface);
+  border-color: var(--checkout-focus-ring);
+}
+
 html[data-theme='dark'] .menu-product__unavailable,
 html[data-theme='dark'] .product-unavailable-badge {
   color: #171717;

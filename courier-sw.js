@@ -1,12 +1,13 @@
-const CACHE_NAME = 'pivnoy-doner-courier-shell-v3';
+const CACHE_NAME = 'pivnoy-doner-courier-shell-v4';
 const SHELL_FILES = [
   'courier.html?demo=1',
-  'courier.css?v=2026081404',
-  'courier.js?v=2026081404',
-  'courier-state.js?v=2026081404',
-  'courier-api.js?v=2026081404',
+  'courier.css?v=2026081407',
+  'courier.js?v=2026081407',
+  'courier-state.js?v=2026081407',
+  'courier-api.js?v=2026081407',
+  'staff-live-sync.js?v=2026081407',
   'courier.webmanifest',
-  'kitchen-fixtures.js?v=2026081404',
+  'kitchen-fixtures.js?v=2026081407',
   'preparation-time.js',
   'assets/mobile-home/logo-transparent.webp',
   'assets/courier/icon-192.png',

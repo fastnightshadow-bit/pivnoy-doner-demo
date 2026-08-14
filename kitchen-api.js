@@ -2,12 +2,12 @@ import {
   CANCELLATION_REASONS,
   createStatusHistoryEntry,
   getNextKitchenAction,
-} from './kitchen-model.js?v=2026081404';
+} from './kitchen-model.js?v=2026081407';
 import {
   createDemoEmployees,
   createDemoOrders,
-} from './kitchen-fixtures.js?v=2026081404';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026081404';
+} from './kitchen-fixtures.js?v=2026081407';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026081407';
 import { PRODUCTS } from './catalog-data.js';
 import {
   MEAT_LABELS,
@@ -22,10 +22,12 @@ const wait = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export class KitchenApiError extends Error {
-  constructor(message, status = 0) {
+  constructor(message, status = 0, code = '', details = null) {
     super(message);
     this.name = 'KitchenApiError';
     this.status = status;
+    this.code = code;
+    this.details = details;
   }
 }
 
@@ -53,6 +55,8 @@ const requestJson = async (fetchImpl, url, options = {}) => {
     throw new KitchenApiError(
       payload.message || 'Не удалось выполнить действие',
       response.status,
+      payload.error || '',
+      payload.details || null,
     );
   }
   return payload;
@@ -144,20 +148,31 @@ export const createKitchenApi = ({
   const jsonRequest = (path, options) =>
     requestJson(fetchImpl, joinUrl(baseUrl, path), options);
 
+  const toSession = (session) => {
+    if (!session?.authenticated || !session.account) return null;
+    if (!['kitchen', 'owner'].includes(session.account.role)) return null;
+    return {
+      employee: {
+        id: session.account.id,
+        name: session.account.displayName || 'Кухня',
+      },
+      shift: '2 повара',
+    };
+  };
+
   return {
+    async getSession() {
+      return toSession(
+        await jsonRequest('/auth/session', { method: 'GET' }),
+      );
+    },
+
     async login(pin) {
       await jsonRequest('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ role: 'kitchen', pin: String(pin || '') }),
       });
-      const session = await jsonRequest('/auth/session', { method: 'GET' });
-      return {
-        employee: {
-          id: session.account?.id,
-          name: session.account?.displayName || 'Кухня',
-        },
-        shift: '2 повара',
-      };
+      return this.getSession();
     },
 
     logout() {
@@ -245,7 +260,13 @@ export const createKitchenApi = ({
           onConnection(false);
         }
       };
-      ['order.created', 'order.updated', 'order.cancelled', 'settings.updated'].forEach(
+      [
+        'order.created',
+        'order.updated',
+        'order.cancelled',
+        'payment.updated',
+        'settings.updated',
+      ].forEach(
         (type) =>
           source.addEventListener?.(type, (event) => {
             try {
@@ -294,6 +315,15 @@ export const createDemoKitchenApi = ({
   };
 
   return {
+    async getSession() {
+      return session
+        ? {
+            employee: { id: session.id, name: session.name },
+            shift: session.shift,
+          }
+        : null;
+    },
+
     async login(pin) {
       await delay();
       const employee = employees.find((item) => item.pin === String(pin || ''));

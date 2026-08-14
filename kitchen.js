@@ -2,13 +2,13 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026081404';
+} from './kitchen-api.js?v=2026081407';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026081404';
+} from './kitchen-model.js?v=2026081407';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
@@ -17,7 +17,11 @@ import { PRODUCTS } from './catalog-data.js';
 import {
   normalizeKitchenSettings,
   toggleStoppedProduct,
-} from './kitchen-settings.js?v=2026081404';
+} from './kitchen-settings.js?v=2026081407';
+import {
+  createStaffLiveSync,
+  executeVersionedAction,
+} from './staff-live-sync.js?v=2026081407';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -470,7 +474,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     pendingOperations: new Set(),
     failedOperations: new Map(),
   };
-  let stopSubscription = null;
+  let liveSync = null;
   let lastPanelTrigger = null;
   let audioContext = null;
   let audioUnlocked = false;
@@ -808,7 +812,12 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
 
   const replaceOrderFromEvent = (event) => {
     if (event?.type === 'sync.required') {
-      void Promise.all([loadBoard(), loadKitchenSettings()]);
+      void Promise.all([
+        liveSync?.sync() || loadBoard(),
+        event.sourceType === 'settings.updated'
+          ? loadKitchenSettings()
+          : Promise.resolve(),
+      ]);
       return;
     }
     if (event?.type === 'settings.updated') {
@@ -834,6 +843,8 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
         .forEach((order) => newOrderNotifier.notify(order));
     }
     renderBoard();
+    updateConnection(true);
+    return state.orders;
   };
 
   const handleConnectionChange = async (connected) => {
@@ -843,8 +854,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     }
     updateConnection(false, 'Синхронизация…');
     try {
-      await loadBoard();
-      updateConnection(true);
+      await (liveSync?.sync() || loadBoard());
     } catch {
       updateConnection(false);
       showToast('Не удалось синхронизировать заказы', 'error');
@@ -859,8 +869,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     if (state.session) void handleConnectionChange(true);
   };
 
-  const startSession = async (pin) => {
-    const response = await activeApi.login(pin);
+  const activateSession = async (response) => {
     state.session = response;
     if (refs.employee) refs.employee.textContent = response.employee?.name || '';
     if (refs.employeeInitials) {
@@ -879,15 +888,28 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       loadBoard({ seedSounds: true }),
       loadKitchenSettings(),
     ]);
-    stopSubscription = activeApi.subscribe(
+    liveSync?.stop();
+    liveSync = createStaffLiveSync({
+      refresh: () => loadBoard(),
+      subscribe: (...args) => activeApi.subscribe(...args),
+      setIntervalFn: (...args) => windowRef.setInterval(...args),
+      clearIntervalFn: (timer) => windowRef.clearInterval(timer),
+      isVisible: () => documentRef.visibilityState !== 'hidden',
+    });
+    liveSync.start(
       replaceOrderFromEvent,
       (connected) => void handleConnectionChange(connected),
     );
   };
 
+  const startSession = async (pin) => {
+    const response = await activeApi.login(pin);
+    await activateSession(response);
+  };
+
   const endSession = async () => {
-    stopSubscription?.();
-    stopSubscription = null;
+    liveSync?.stop();
+    liveSync = null;
     closePanel();
     try {
       await activeApi.logout();
@@ -935,18 +957,38 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     if (state.selectedOrderId === orderId) renderPanel();
 
     try {
-      const result = await activeApi.changeStatus(
-        orderId,
-        nextStatus,
-        currentOrder.version || 1,
-        operationId,
-      );
+      let attempt = 0;
+      const result = await executeVersionedAction({
+        entityId: orderId,
+        initialVersion: currentOrder.version || 1,
+        execute: (version) =>
+          activeApi.changeStatus(
+            orderId,
+            nextStatus,
+            version,
+            attempt++ === 0
+              ? operationId
+              : createOperationId(orderId, nextStatus, windowRef.crypto),
+          ),
+        refresh: () => loadBoard(),
+        canRetry: (order) =>
+          getNextKitchenAction(order)?.status === nextStatus,
+      });
+      if (result?.alreadyChanged) {
+        showToast('Заказ уже обновлён на другом устройстве');
+        return;
+      }
       replaceOrderFromServer(result?.order, { animate: true });
       if (['issued', 'handed_to_courier'].includes(result?.order?.status)) {
         closePanel();
       }
       showToast('Статус сохранён');
     } catch (error) {
+      if (error?.status === 401) {
+        showToast('Сессия закончилась. Войдите снова', 'error');
+        await endSession();
+        return;
+      }
       state.failedOperations.set(orderId, {
         type: 'status',
         orderId,
@@ -1114,6 +1156,11 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       refs.settingsDialog?.close();
       showToast('Настройки кухни сохранены');
     } catch (error) {
+      if (error?.status === 401) {
+        showToast('Сессия закончилась. Войдите снова', 'error');
+        await endSession();
+        return;
+      }
       showToast(error?.message || 'Настройки не сохранены', 'error');
     } finally {
       state.settingsPending = false;
@@ -1241,15 +1288,30 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   documentRef.addEventListener('pointerdown', unlockAudio, { once: true });
   windowRef.addEventListener('offline', handleWindowOffline);
   windowRef.addEventListener('online', handleWindowOnline);
+  const handleVisibilityChange = () => {
+    if (state.session && documentRef.visibilityState !== 'hidden') {
+      void liveSync?.sync();
+    }
+  };
+  documentRef.addEventListener('visibilitychange', handleVisibilityChange);
   setElementHidden(refs.loginView, false);
   setElementHidden(refs.boardView, true);
-  refs.pinInput?.focus();
+  try {
+    const restoredSession = await activeApi.getSession?.();
+    if (restoredSession) {
+      await activateSession(restoredSession);
+    } else {
+      refs.pinInput?.focus();
+    }
+  } catch {
+    refs.pinInput?.focus();
+  }
 
   if (
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081404').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081407').catch(() => {});
   }
 
   return {
@@ -1258,10 +1320,11 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     openPanel,
     closePanel,
     destroy() {
-      stopSubscription?.();
+      liveSync?.stop();
       windowRef.clearInterval(clockTimer);
       windowRef.removeEventListener('offline', handleWindowOffline);
       windowRef.removeEventListener('online', handleWindowOnline);
+      documentRef.removeEventListener('visibilitychange', handleVisibilityChange);
     },
   };
 };

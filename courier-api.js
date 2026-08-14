@@ -1,14 +1,16 @@
-import { createDemoOrders } from './kitchen-fixtures.js?v=2026081404';
-import { normalizeCourierOrder } from './courier-state.js?v=2026081404';
+import { createDemoOrders } from './kitchen-fixtures.js?v=2026081407';
+import { normalizeCourierOrder } from './courier-state.js?v=2026081407';
 
 const wait = (milliseconds) =>
   new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
 
 export class CourierApiError extends Error {
-  constructor(message, status = 0) {
+  constructor(message, status = 0, code = '', details = null) {
     super(message);
     this.name = 'CourierApiError';
     this.status = status;
+    this.code = code;
+    this.details = details;
   }
 }
 
@@ -24,7 +26,12 @@ const requestJson = async (fetchImpl, url, options = {}) => {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new CourierApiError(payload.message || 'Не удалось выполнить действие', response.status);
+    throw new CourierApiError(
+      payload.message || 'Не удалось выполнить действие',
+      response.status,
+      payload.error || '',
+      payload.details || null,
+    );
   }
   return payload;
 };
@@ -56,14 +63,23 @@ export const normalizeProductionCourierOrder = (order = {}) => {
 export const createCourierApi = ({
   baseUrl = '/api',
   fetchImpl = globalThis.fetch,
+  eventSourceFactory = (url) => new EventSource(url),
 } = {}) => ({
+  async getSession() {
+    const session = await requestJson(fetchImpl, `${baseUrl}/auth/session`);
+    if (!session?.authenticated || !session.account) return null;
+    if (!['courier', 'owner'].includes(session.account.role)) return null;
+    return {
+      courier: { name: session.account.displayName || 'Курьер' },
+    };
+  },
+
   async login(pin) {
     await requestJson(fetchImpl, `${baseUrl}/auth/login`, {
       method: 'POST',
       body: JSON.stringify({ role: 'courier', pin: String(pin || '') }),
     });
-    const session = await requestJson(fetchImpl, `${baseUrl}/auth/session`);
-    return { courier: { name: session.account?.displayName || 'Курьер' } };
+    return this.getSession();
   },
   logout() {
     return requestJson(fetchImpl, `${baseUrl}/auth/logout`, { method: 'POST' });
@@ -87,6 +103,31 @@ export const createCourierApi = ({
       },
     );
   },
+
+  subscribe(onEvent, onConnection = () => {}) {
+    const source = eventSourceFactory(`${baseUrl}/events?scope=staff`);
+    source.onopen = () => onConnection(true);
+    source.onerror = () => onConnection(false);
+    [
+      'order.created',
+      'order.updated',
+      'order.cancelled',
+      'payment.updated',
+    ].forEach((type) =>
+      source.addEventListener?.(type, (event) => {
+        try {
+          onEvent({
+            type: 'sync.required',
+            sourceType: type,
+            payload: JSON.parse(event.data),
+          });
+        } catch {
+          onConnection(false);
+        }
+      }),
+    );
+    return () => source.close();
+  },
 });
 
 export const createDemoCourierApi = ({
@@ -94,12 +135,17 @@ export const createDemoCourierApi = ({
   delay = () => wait(160),
 } = {}) => {
   let session = false;
+  const listeners = new Set();
   let orders = createDemoOrders(now()).map((order) => ({
     ...order,
     version: Math.max(1, Number(order.version) || 1),
   }));
 
   return {
+    async getSession() {
+      return session ? { courier: { name: 'Павел' } } : null;
+    },
+
     async login(pin) {
       await delay();
       if (String(pin || '') !== '0000') {
@@ -139,7 +185,16 @@ export const createDemoCourierApi = ({
         version: Number(current.version) + 1,
       };
       orders[index] = order;
+      for (const listener of listeners) {
+        listener({ type: 'sync.required', sourceType: 'order.updated' });
+      }
       return { order };
+    },
+
+    subscribe(onEvent, onConnection = () => {}) {
+      listeners.add(onEvent);
+      queueMicrotask(() => onConnection(true));
+      return () => listeners.delete(onEvent);
     },
   };
 };

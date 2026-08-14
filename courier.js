@@ -2,7 +2,7 @@ import {
   createCourierApi,
   createDemoCourierApi,
   isCourierDemoLocation,
-} from './courier-api.js?v=2026081404';
+} from './courier-api.js?v=2026081407';
 import {
   filterCourierOrders,
   formatCourierAddress,
@@ -10,7 +10,11 @@ import {
   getCourierReadyLabel,
   getCourierStatusLabel,
   sanitizeCourierPhone,
-} from './courier-state.js?v=2026081404';
+} from './courier-state.js?v=2026081407';
+import {
+  createStaffLiveSync,
+  executeVersionedAction,
+} from './staff-live-sync.js?v=2026081407';
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -72,7 +76,8 @@ const initCourier = () => {
     ? createDemoCourierApi()
     : createCourierApi();
   let knownOrderIds = new Set();
-  let pollTimer = 0;
+  let currentOrders = [];
+  let liveSync = null;
   let loadPromise = null;
   const pendingOrderIds = new Set();
 
@@ -88,6 +93,7 @@ const initCourier = () => {
 
   const renderOrders = (rawOrders, serverTime) => {
     const orders = filterCourierOrders(rawOrders);
+    currentOrders = orders;
     const currentIds = new Set(orders.map(({ id }) => id));
     if (knownOrderIds.size) {
       orders
@@ -111,8 +117,10 @@ const initCourier = () => {
       try {
         const result = await api.getOrders();
         renderOrders(result.orders, result.serverTime);
+        return currentOrders;
       } catch {
         refs.error.hidden = false;
+        return currentOrders;
       } finally {
         refs.refresh.disabled = false;
         loadPromise = null;
@@ -121,14 +129,49 @@ const initCourier = () => {
     return loadPromise;
   };
 
-  const startPolling = () => {
-    window.clearInterval(pollTimer);
-    pollTimer = window.setInterval(loadOrders, 15000);
+  const refreshOrdersAfterCurrent = async () => {
+    if (loadPromise) await loadPromise;
+    await loadOrders();
+    return currentOrders;
+  };
+
+  const activateSession = async (session) => {
+    if (refs.courierName) {
+      refs.courierName.textContent = session?.courier?.name || 'Курьер';
+    }
+    refs.login.hidden = true;
+    refs.app.hidden = false;
+    await loadOrders();
+    liveSync?.stop();
+    liveSync = createStaffLiveSync({
+      refresh: loadOrders,
+      subscribe: (...args) => api.subscribe(...args),
+      setIntervalFn: (...args) => window.setInterval(...args),
+      clearIntervalFn: (timer) => window.clearInterval(timer),
+      isVisible: () => document.visibilityState !== 'hidden',
+    });
+    liveSync.start(
+      () => void liveSync?.sync(),
+      (connected) => {
+        if (connected) void liveSync?.sync();
+      },
+    );
+  };
+
+  const resetSession = () => {
+    liveSync?.stop();
+    liveSync = null;
+    currentOrders = [];
+    knownOrderIds = new Set();
+    refs.app.hidden = true;
+    refs.login.hidden = false;
+    refs.pin.value = '';
+    refs.pin.focus();
   };
 
   const setOnlineState = () => {
     refs.offline.hidden = navigator.onLine;
-    if (navigator.onLine && !refs.app.hidden) loadOrders();
+    if (navigator.onLine && !refs.app.hidden) void liveSync?.sync();
   };
 
   refs.loginForm.addEventListener('submit', async (event) => {
@@ -143,13 +186,7 @@ const initCourier = () => {
     refs.loginButton.textContent = 'Входим…';
     try {
       const session = await api.login(refs.pin.value);
-      if (refs.courierName) {
-        refs.courierName.textContent = session?.courier?.name || 'Курьер';
-      }
-      refs.login.hidden = true;
-      refs.app.hidden = false;
-      await loadOrders();
-      startPolling();
+      await activateSession(session);
     } catch (error) {
       refs.pinError.textContent = error.message || 'Не удалось войти';
       refs.pin.select();
@@ -180,13 +217,24 @@ const initCourier = () => {
     button.disabled = true;
     button.textContent = 'Сохраняем…';
     try {
-      await api.changeStatus(orderId, status, version);
-      if (loadPromise) await loadPromise;
-      await loadOrders();
+      const result = await executeVersionedAction({
+        entityId: orderId,
+        initialVersion: version,
+        execute: (freshVersion) =>
+          api.changeStatus(orderId, status, freshVersion),
+        refresh: refreshOrdersAfterCurrent,
+        canRetry: (order) => getCourierAction(order)?.status === status,
+      });
+      if (result?.alreadyChanged) {
+        refs.error.hidden = true;
+        return;
+      }
+      await refreshOrdersAfterCurrent();
     } catch (error) {
-      if (error?.status === 409) {
-        if (loadPromise) await loadPromise;
-        await loadOrders();
+      if (error?.status === 401) {
+        resetSession();
+        refs.pinError.textContent = 'Сессия закончилась. Войдите снова';
+        return;
       }
       refs.error.hidden = false;
       const heading = refs.error.querySelector('h2');
@@ -208,11 +256,7 @@ const initCourier = () => {
   });
   refs.logout.addEventListener('click', async () => {
     await api.logout().catch(() => {});
-    window.clearInterval(pollTimer);
-    refs.app.hidden = true;
-    refs.login.hidden = false;
-    refs.pin.value = '';
-    refs.pin.focus();
+    resetSession();
   });
   refs.notificationButton.addEventListener('click', async () => {
     if (!('Notification' in globalThis)) {
@@ -227,10 +271,24 @@ const initCourier = () => {
   }
   window.addEventListener('online', setOnlineState);
   window.addEventListener('offline', setOnlineState);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden' && !refs.app.hidden) {
+      void liveSync?.sync();
+    }
+  });
   setOnlineState();
 
+  void api
+    .getSession?.()
+    .then((session) => {
+      if (session) return activateSession(session);
+      refs.pin.focus();
+      return null;
+    })
+    .catch(() => refs.pin.focus());
+
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('courier-sw.js?v=2026081404').catch(() => {});
+    navigator.serviceWorker.register('courier-sw.js?v=2026081407').catch(() => {});
   }
 };
 

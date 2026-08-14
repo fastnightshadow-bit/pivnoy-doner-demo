@@ -1,7 +1,71 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDemoCourierApi } from '../courier-api.js';
+import { createCourierApi, createDemoCourierApi } from '../courier-api.js';
 import { readText } from './helpers.mjs';
+
+const response = (body = {}, status = 200) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => body,
+});
+
+test('courier restores an existing secure server session without a PIN', async () => {
+  const api = createCourierApi({
+    fetchImpl: async () =>
+      response({
+        authenticated: true,
+        account: { id: 'courier', displayName: 'Курьер', role: 'courier' },
+      }),
+  });
+
+  assert.deepEqual(await api.getSession(), {
+    courier: { name: 'Курьер' },
+  });
+});
+
+test('courier reports an expired session as null', async () => {
+  const api = createCourierApi({
+    fetchImpl: async () => response({ authenticated: false }),
+  });
+  assert.equal(await api.getSession(), null);
+});
+
+test('courier keeps status conflict metadata for safe recovery', async () => {
+  const api = createCourierApi({
+    fetchImpl: async () =>
+      response(
+        {
+          error: 'STATUS_CONFLICT',
+          message: 'Заказ уже изменён',
+          details: { currentVersion: 5 },
+        },
+        409,
+      ),
+  });
+
+  await assert.rejects(api.changeStatus('order-1', 'courier', 4), (error) => {
+    assert.equal(error.status, 409);
+    assert.equal(error.code, 'STATUS_CONFLICT');
+    assert.deepEqual(error.details, { currentVersion: 5 });
+    return true;
+  });
+});
+
+test('courier subscribes to staff order and payment events', () => {
+  const listeners = new Map();
+  const events = [];
+  const source = {
+    addEventListener: (type, listener) => listeners.set(type, listener),
+    close: () => {},
+  };
+  const api = createCourierApi({ eventSourceFactory: () => source });
+
+  api.subscribe((event) => events.push(event));
+  listeners.get('payment.updated')({ data: JSON.stringify({ orderId: 'order-1' }) });
+
+  assert.equal(events[0].type, 'sync.required');
+  assert.equal(events[0].sourceType, 'payment.updated');
+});
 
 test('демо-курьер входит только по своему PIN', async () => {
   const api = createDemoCourierApi({ delay: async () => {} });

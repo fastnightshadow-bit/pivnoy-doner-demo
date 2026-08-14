@@ -39,6 +39,15 @@ test('dark theme keeps every unavailable label readable', () => {
   );
 });
 
+test('focused delivery address stays readable in dark theme', () => {
+  const css = readText('client-theme.css');
+
+  assert.match(
+    css,
+    /html\[data-theme='dark'\]\s+\.address-details input:focus\s*\{[^}]*color:\s*var\(--client-text\);[^}]*background:\s*var\(--control-surface\);[^}]*border-color:\s*var\(--checkout-focus-ring\);/s,
+  );
+});
+
 test('featured unavailable control stays inside the product card on narrow screens', () => {
   const css = readText('home.css');
 

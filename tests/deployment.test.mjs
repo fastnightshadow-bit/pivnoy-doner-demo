@@ -103,7 +103,8 @@ test('client pages version their changed immutable assets', async () => {
   const releaseKey = '2026081402';
   const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
-  const themeReleaseKey = '2026081405';
+  const themeReleaseKey = '2026081406';
+  const staffReleaseKey = '2026081407';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
   const checkoutHtml = await read('checkout.html');
@@ -116,6 +117,14 @@ test('client pages version their changed immutable assets', async () => {
   const orderDemoSource = await read('order-demo.js');
   const reviewServiceSource = await read('review-service.js');
   const reviewViewSource = await read('review-view.js');
+  const kitchenHtml = await read('kitchen.html');
+  const courierHtml = await read('courier.html');
+  const kitchenSource = await read('kitchen.js');
+  const courierSource = await read('courier.js');
+  const kitchenApiSource = await read('kitchen-api.js');
+  const courierApiSource = await read('courier-api.js');
+  const kitchenWorker = await read('kitchen-sw.js');
+  const courierWorker = await read('courier-sw.js');
 
   assert.match(
     nginx,
@@ -143,6 +152,30 @@ test('client pages version their changed immutable assets', async () => {
       new RegExp(`href="client-theme\\.css\\?v=${themeReleaseKey}"`),
     );
   }
+  assert.match(kitchenHtml, new RegExp(`href="kitchen\\.css\\?v=${staffReleaseKey}"`));
+  assert.match(kitchenHtml, new RegExp(`src="kitchen\\.js\\?v=${staffReleaseKey}"`));
+  assert.match(courierHtml, new RegExp(`href="courier\\.css\\?v=${staffReleaseKey}"`));
+  assert.match(courierHtml, new RegExp(`src="courier\\.js\\?v=${staffReleaseKey}"`));
+  for (const source of [
+    kitchenSource,
+    courierSource,
+    kitchenApiSource,
+    courierApiSource,
+    kitchenWorker,
+    courierWorker,
+  ]) {
+    assert.doesNotMatch(source, /2026081404/);
+  }
+  assert.match(
+    kitchenSource,
+    new RegExp(`staff-live-sync\\.js\\?v=${staffReleaseKey}`),
+  );
+  assert.match(
+    courierSource,
+    new RegExp(`staff-live-sync\\.js\\?v=${staffReleaseKey}`),
+  );
+  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v7/);
+  assert.match(courierWorker, /pivnoy-doner-courier-shell-v4/);
 
   const getVersionedImports = (source) => [
     ...source.matchAll(/\bfrom\s+['"]([^'"]+\?v=[^'"]+)['"]/g),

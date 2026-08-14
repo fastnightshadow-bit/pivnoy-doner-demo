@@ -92,14 +92,14 @@ test('курьерские immutable-ресурсы используют одн�
     readFile(new URL('../courier-api.js', import.meta.url), 'utf8'),
     readFile(new URL('../courier-sw.js', import.meta.url), 'utf8'),
   ]);
-  const version = '2026081404';
+  const version = '2026081407';
   assert.match(html, new RegExp(`courier\\.css\\?v=${version}`));
   assert.match(html, new RegExp(`courier\\.js\\?v=${version}`));
   assert.match(source, new RegExp(`courier-api\\.js\\?v=${version}`));
   assert.match(source, new RegExp(`courier-state\\.js\\?v=${version}`));
   assert.match(apiSource, new RegExp(`kitchen-fixtures\\.js\\?v=${version}`));
   assert.match(apiSource, new RegExp(`courier-state\\.js\\?v=${version}`));
-  assert.match(worker, /pivnoy-doner-courier-shell-v3/);
+  assert.match(worker, /pivnoy-doner-courier-shell-v4/);
   assert.match(worker, new RegExp(`courier\\.js\\?v=${version}`));
   assert.match(worker, new RegExp(`kitchen-fixtures\\.js\\?v=${version}`));
   assert.match(worker, /preparation-time\.js/);
@@ -125,18 +125,18 @@ test('клиент и кухня получают новую механику с
     readFile(new URL('../kitchen-api.js', import.meta.url), 'utf8'),
     readFile(new URL('../kitchen-sw.js', import.meta.url), 'utf8'),
   ]);
-  const version = '2026081404';
-  assert.match(homeHtml, new RegExp(`home\\.js\\?v=${version}`));
-  assert.match(homeSource, new RegExp(`order-state\\.js\\?v=${version}`));
-  assert.match(orderHtml, new RegExp(`order\\.js\\?v=${version}`));
-  assert.match(orderSource, new RegExp(`order-state\\.js\\?v=${version}`));
+  const version = '2026081407';
+  assert.match(homeHtml, /home\.js\?v=2026081404/);
+  assert.match(homeSource, /order-state\.js\?v=2026081404/);
+  assert.match(orderHtml, /order\.js\?v=2026081404/);
+  assert.match(orderSource, /order-state\.js\?v=2026081404/);
   assert.match(kitchenHtml, new RegExp(`kitchen\\.css\\?v=${version}`));
   assert.match(kitchenHtml, new RegExp(`kitchen\\.js\\?v=${version}`));
   assert.match(kitchenSource, new RegExp(`kitchen-api\\.js\\?v=${version}`));
   assert.match(kitchenSource, new RegExp(`kitchen-model\\.js\\?v=${version}`));
   assert.match(kitchenSource, new RegExp(`kitchen-sw\\.js\\?v=${version}`));
   assert.match(kitchenApiSource, new RegExp(`kitchen-model\\.js\\?v=${version}`));
-  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v6/);
+  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v7/);
   assert.match(kitchenWorker, new RegExp(`kitchen\\.js\\?v=${version}`));
   assert.match(kitchenWorker, new RegExp(`kitchen-model\\.js\\?v=${version}`));
 });
