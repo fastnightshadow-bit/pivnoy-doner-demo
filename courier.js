@@ -2,19 +2,20 @@ import {
   createCourierApi,
   createDemoCourierApi,
   isCourierDemoLocation,
-} from './courier-api.js?v=2026081407';
+} from './courier-api.js?v=2026081408';
 import {
+  applyCourierActionResult,
   filterCourierOrders,
   formatCourierAddress,
   getCourierAction,
   getCourierReadyLabel,
   getCourierStatusLabel,
   sanitizeCourierPhone,
-} from './courier-state.js?v=2026081407';
+} from './courier-state.js?v=2026081408';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026081407';
+} from './staff-live-sync.js?v=2026081408';
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -229,7 +230,8 @@ const initCourier = () => {
         refs.error.hidden = true;
         return;
       }
-      await refreshOrdersAfterCurrent();
+      currentOrders = applyCourierActionResult(currentOrders, orderId, result);
+      renderOrders(currentOrders, new Date().toISOString());
     } catch (error) {
       if (error?.status === 401) {
         resetSession();
@@ -288,7 +290,7 @@ const initCourier = () => {
     .catch(() => refs.pin.focus());
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('courier-sw.js?v=2026081407').catch(() => {});
+    navigator.serviceWorker.register('courier-sw.js?v=2026081408').catch(() => {});
   }
 };
 

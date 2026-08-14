@@ -51,6 +51,30 @@ export const filterCourierOrders = (orders = []) =>
       return Date.parse(left.promisedAt || '') - Date.parse(right.promisedAt || '');
     });
 
+export const applyCourierActionResult = (
+  orders = [],
+  orderId,
+  result = {},
+) => {
+  const updated = result?.order ?? result;
+  if (!updated || updated.id !== orderId || !updated.status) return orders;
+  if (updated.status === 'completed') {
+    return orders.filter(({ id }) => id !== orderId);
+  }
+  const status = updated.status === 'courier'
+    ? 'handed_to_courier'
+    : updated.status;
+  return orders.map((order) =>
+    order.id === orderId
+      ? {
+          ...order,
+          status,
+          version: Math.max(1, Number(updated.version) || order.version),
+        }
+      : order,
+  );
+};
+
 export const formatCourierAddress = (address = {}) =>
   [
     toText(address.street),

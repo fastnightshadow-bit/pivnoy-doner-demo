@@ -1,5 +1,5 @@
-import { createDemoOrders } from './kitchen-fixtures.js?v=2026081407';
-import { normalizeCourierOrder } from './courier-state.js?v=2026081407';
+import { createDemoOrders } from './kitchen-fixtures.js?v=2026081408';
+import { normalizeCourierOrder } from './courier-state.js?v=2026081408';
 
 const wait = (milliseconds) =>
   new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
