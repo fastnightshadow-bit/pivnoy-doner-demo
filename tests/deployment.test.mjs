@@ -101,7 +101,8 @@ test('web container maps each host to its own PWA entry point', async () => {
 
 test('client pages version their changed immutable assets', async () => {
   const releaseKey = '2026081402';
-  const styleReleaseKey = '2026081404';
+  const styleReleaseKey = '2026081405';
+  const themeReleaseKey = '2026081405';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
   const checkoutHtml = await read('checkout.html');
@@ -138,7 +139,7 @@ test('client pages version their changed immutable assets', async () => {
   for (const html of [cartHtml, checkoutHtml, dishHtml, homeHtml, orderHtml]) {
     assert.match(
       html,
-      new RegExp(`href="client-theme\\.css\\?v=${releaseKey}"`),
+      new RegExp(`href="client-theme\\.css\\?v=${themeReleaseKey}"`),
     );
   }
 

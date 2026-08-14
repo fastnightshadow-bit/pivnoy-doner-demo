@@ -329,7 +329,8 @@ html[data-theme='dark'] .product-unavailable-badge {
   border-color: #d8d5d0;
 }
 
-html[data-theme='dark'] .menu-add.is-unavailable {
+html[data-theme='dark'] .menu-add.is-unavailable,
+html[data-theme='dark'] .featured-add.is-unavailable {
   color: var(--client-muted);
   background: var(--client-surface-raised);
   border-color: var(--client-line);

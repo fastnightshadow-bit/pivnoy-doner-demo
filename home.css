@@ -786,15 +786,21 @@ a:focus-visible {
   opacity: .7;
 }
 
-.menu-add.is-unavailable {
+.menu-add.is-unavailable,
+.featured-add.is-unavailable {
   width: auto;
   min-width: 96px;
-  padding-inline: 10px;
+  max-width: 100%;
+  height: auto;
+  min-height: 44px;
+  padding: 8px 10px;
   color: var(--color-muted);
   background: var(--color-soft);
   border: 1px solid var(--color-line);
   font-size: 10px;
   font-weight: 750;
+  line-height: 14px;
+  white-space: nowrap;
 }
 
 .menu-product__content {

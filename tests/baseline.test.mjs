@@ -23,7 +23,7 @@ test('dark theme keeps every unavailable label readable', () => {
   );
   assert.match(
     css,
-    /html\[data-theme='dark'\]\s+\.menu-add\.is-unavailable\s*\{[^}]*color:\s*var\(--client-muted\);[^}]*background:\s*var\(--client-surface-raised\);/s,
+    /html\[data-theme='dark'\]\s+\.menu-add\.is-unavailable,\s*html\[data-theme='dark'\]\s+\.featured-add\.is-unavailable\s*\{[^}]*color:\s*var\(--client-muted\);[^}]*background:\s*var\(--client-surface-raised\);/s,
   );
   assert.match(
     css,
@@ -36,6 +36,15 @@ test('dark theme keeps every unavailable label readable', () => {
   assert.match(
     css,
     /html\[data-theme='dark'\]\s+\.ordering-status\s*\{[^}]*color:\s*var\(--client-text\);/s,
+  );
+});
+
+test('featured unavailable control stays inside the product card on narrow screens', () => {
+  const css = readText('home.css');
+
+  assert.match(
+    css,
+    /\.featured-add\.is-unavailable\s*\{[^}]*width:\s*auto;[^}]*max-width:\s*100%;[^}]*white-space:\s*nowrap;/s,
   );
 });
 
@@ -164,7 +173,7 @@ test('текстовая карточка соуса остаётся компа
   const html = readText('home.html');
   const css = readText('home.css');
 
-  assert.match(html, /href="home\.css\?v=2026081404"/);
+  assert.match(html, /href="home\.css\?v=2026081405"/);
   assert.match(
     css,
     /\.menu-product\.menu-product--text\s*\{[^}]*min-height:\s*76px;/s,
