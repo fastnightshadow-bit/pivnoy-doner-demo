@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app/apple-touch-icon.png?v=20260805" />
     <script src="theme-preload.js"></script>
     <link rel="stylesheet" href="motion.css" />
-    <link rel="stylesheet" href="home.css?v=2026081402" />
+    <link rel="stylesheet" href="home.css?v=2026081404" />
     <link rel="stylesheet" href="product-sheet.css?v=2026081402" />
     <link rel="stylesheet" href="client-theme.css?v=2026081402" />
   </head>
@@ -317,13 +317,27 @@
 
         <footer class="client-footer">
           <div class="client-footer__brand">
-            <img
-              src="assets/mobile-home/brand-wordmark.webp"
-              alt="Пивной Донер"
-              width="118"
-              height="42"
-            />
-            <p>Волоколамское шоссе, 71/22к2</p>
+            <span class="client-footer__wordmarks">
+              <img
+                class="client-footer__wordmark client-footer__wordmark--light"
+                src="assets/mobile-home/brand-wordmark.webp"
+                alt="Пивной Донер"
+                width="118"
+                height="42"
+              />
+              <img
+                class="client-footer__wordmark client-footer__wordmark--dark"
+                src="assets/mobile-home/brand-wordmark-dark.webp?v=2026081403"
+                alt=""
+                width="118"
+                height="42"
+                aria-hidden="true"
+              />
+            </span>
+            <div class="client-footer__address">
+              <span class="client-footer__address-label">Адрес</span>
+              <address class="client-footer__address-value">Волоколамское шоссе, 71/22к2</address>
+            </div>
           </div>
           <div class="client-footer__group">
             <strong>Мы в сети</strong>
@@ -343,8 +357,8 @@
               >Яндекс Карты</a>
             </nav>
           </div>
-          <div class="client-footer__group">
-            <strong>Информация</strong>
+          <div class="client-footer__legal-band">
+            <span>Документы</span>
             <nav class="client-footer__legal" aria-label="Правовая информация">
               <a href="seller.html">Продавец</a>
               <a href="offer.html">Оферта</a>

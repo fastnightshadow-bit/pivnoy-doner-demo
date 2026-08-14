@@ -105,14 +105,27 @@ test('home footer and desktop cart use deliberate responsive structures', () => 
   const cartCss = readText('cart.css');
 
   assert.match(homeHtml, /class="client-footer__brand"/);
-  assert.match(homeHtml, /class="client-footer__group"/);
+  assert.match(homeHtml, /class="client-footer__wordmark client-footer__wordmark--light"/);
+  assert.match(homeHtml, /class="client-footer__wordmark client-footer__wordmark--dark"/);
+  assert.match(homeHtml, /class="client-footer__address-label">Адрес<\/span>/);
+  assert.match(
+    homeHtml,
+    /<address class="client-footer__address-value">Волоколамское шоссе, 71\/22к2<\/address>/,
+  );
+  assert.match(homeHtml, /class="client-footer__legal-band"/);
   assert.match(
     homeCss,
-    /@media \(min-width:\s*1024px\)[\s\S]*?\.client-footer\s*\{[^}]*grid-template-columns:\s*minmax\(220px,\s*360px\)\s+minmax\(140px,\s*180px\)\s+minmax\(180px,\s*220px\);/s,
+    /@media \(min-width:\s*1024px\)[\s\S]*?\.client-footer\s*\{[^}]*grid-template-columns:\s*minmax\(280px,\s*1fr\)\s+auto;/s,
   );
+  assert.match(homeCss, /\.client-footer__legal-band\s*\{[^}]*border-top:\s*1px solid var\(--color-line\);/s);
 
   assert.match(cartHtml, /class="cart-layout"/);
   assert.match(cartHtml, /class="cart-sidebar"/);
+  assert.match(cartHtml, /class="client-footer__legal cart-legal-footer"/);
+  assert.match(
+    cartHtml,
+    /<\/aside>\s*<\/div>\s*<nav class="client-footer__legal cart-legal-footer"/s,
+  );
   assert.match(
     cartCss,
     /@media \(min-width:\s*1024px\)[\s\S]*?\.cart-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(320px,\s*360px\);/s,
@@ -123,7 +136,11 @@ test('home footer and desktop cart use deliberate responsive structures', () => 
   );
   assert.match(
     cartCss,
-    /@media \(min-width:\s*1024px\)[\s\S]*?\.cart-sidebar > \.client-footer__legal\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s,
+    /@media \(min-width:\s*1024px\)[\s\S]*?\.cart-sidebar\s*\{[^}]*position:\s*sticky;[^}]*top:\s*100px;/s,
+  );
+  assert.match(
+    cartCss,
+    /@media \(min-width:\s*1024px\)[\s\S]*?\.cart-checkout\s*\{[^}]*position:\s*static;/s,
   );
 });
 
@@ -147,7 +164,7 @@ test('текстовая карточка соуса остаётся компа
   const html = readText('home.html');
   const css = readText('home.css');
 
-  assert.match(html, /href="home\.css\?v=2026081402"/);
+  assert.match(html, /href="home\.css\?v=2026081404"/);
   assert.match(
     css,
     /\.menu-product\.menu-product--text\s*\{[^}]*min-height:\s*76px;/s,
