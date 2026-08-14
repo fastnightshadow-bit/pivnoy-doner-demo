@@ -75,5 +75,5 @@
 
 - [x] **Step 1: Run the complete root and server suites.**
 - [x] **Step 2: Run syntax, diff, and cache-version checks.**
-- [ ] **Step 3: Commit and push the branch.**
-- [ ] **Step 4: Deploy only the stage web image and verify public pages plus `/api/health` without reading staff/customer data.**
+- [x] **Step 3: Commit and push the branch.**
+- [x] **Step 4: Deploy only the stage web image and verify public pages plus `/api/health` without reading staff/customer data.**
