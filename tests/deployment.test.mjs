@@ -256,6 +256,23 @@ test('client pages version their changed immutable assets', async () => {
   }
 });
 
+test('service worker scripts bypass the immutable asset cache', async () => {
+  const nginx = await read('deploy/nginx.conf');
+  const workerLocation = nginx.match(
+    /location\s+~\*\s+-sw\\\.js\$\s*\{([\s\S]*?)\}/,
+  );
+  assert.ok(workerLocation, 'service workers need a dedicated cache rule');
+  assert.match(workerLocation[1], /expires\s+-1\s*;/);
+  assert.match(
+    workerLocation[1],
+    /Cache-Control\s+"no-cache, no-store, must-revalidate"/,
+  );
+  assert.ok(
+    nginx.indexOf(workerLocation[0]) < nginx.indexOf('location ~* \\.(?:css|js|'),
+    'the service-worker rule must precede the generic immutable JS rule',
+  );
+});
+
 test('deployment template contains placeholders but no production secrets', async () => {
   const env = await read('deploy/.env.example');
   assert.match(env, /POSTGRES_PASSWORD=change-me/);
