@@ -30,7 +30,11 @@ import {
 import { clientApi } from './client-api.js?v=2026081402';
 import { useProductionApi } from './runtime-mode.js';
 import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
-import { MEAT_LABELS, PRODUCT_SAUCES } from './product-config.js';
+import {
+  getAvailableMeats,
+  MEAT_LABELS,
+  PRODUCT_SAUCES,
+} from './product-config.js';
 
 const CHECKOUT_ATTEMPT_STORAGE_KEY = 'pivnoy-doner-checkout-attempt-v1';
 
@@ -228,6 +232,9 @@ export const getCheckoutSubmissionErrorMessage = (error, lines = []) => {
       ? getUnavailableCheckoutMessage(unavailable)
       : 'Один из товаров временно недоступен';
   }
+  if (error?.code === 'PRODUCT_OPTION_UNAVAILABLE') {
+    return 'Один из выбранных вариантов временно недоступен. Вернитесь в корзину и выберите другой.';
+  }
   return 'Не удалось оформить заказ. Проверьте интернет и повторите.';
 };
 
@@ -236,6 +243,17 @@ export const isCheckoutOrderingPaused = (status = {}) =>
 
 export const getOrderingPausedMessage = () =>
   'Приём заказов временно приостановлен. Корзина сохранена.';
+
+export const getCheckoutLineMeatId = (line = {}) => {
+  const availableMeats = getAvailableMeats(String(line?.productId || ''));
+  const savedMeat = String(line?.meat || '');
+  const savedMeatId = Object.entries(MEAT_LABELS).find(
+    ([, label]) => String(label) === savedMeat,
+  )?.[0];
+  return availableMeats.includes(savedMeatId)
+    ? savedMeatId
+    : availableMeats[0] || '';
+};
 
 export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
   const stopped = new Set(
@@ -253,9 +271,6 @@ export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
       ? status.stoppedSauceIds.map(String)
       : [],
   );
-  const meatIdsByLabel = new Map(
-    Object.entries(MEAT_LABELS).map(([id, label]) => [String(label), id]),
-  );
   const sauceIdsByLabel = new Map(
     Object.entries(PRODUCT_SAUCES).map(([id, sauce]) => [
       String(sauce.label),
@@ -265,7 +280,7 @@ export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
   const seen = new Set();
   return (Array.isArray(lines) ? lines : []).reduce((result, line) => {
     const productId = String(line?.productId || '');
-    const meatId = meatIdsByLabel.get(String(line?.meat || ''));
+    const meatId = getCheckoutLineMeatId(line);
     const hasStoppedSauce = Object.entries(line?.sauces || {}).some(
       ([label, quantity]) =>
         Number(quantity) > 0 && stoppedSauces.has(sauceIdsByLabel.get(label)),

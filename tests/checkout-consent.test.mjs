@@ -104,6 +104,36 @@ test('оформление блокирует сохранённую позиц�
   ]);
 });
 
+test('оформление учитывает мясо по умолчанию в старой позиции корзины', () => {
+  const unavailable = checkout.getUnavailableCheckoutProducts(
+    [
+      {
+        productId: 'classic-shawarma',
+        name: 'Классическая шаурма',
+        meat: '',
+      },
+    ],
+    { stoppedMeatIds: ['chicken'] },
+  );
+
+  assert.deepEqual(unavailable, [
+    { productId: 'classic-shawarma', name: 'Классическая шаурма' },
+  ]);
+});
+
+test('ошибка недоступной мясной опции не называется проблемой интернета', () => {
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage(
+      {
+        code: 'PRODUCT_OPTION_UNAVAILABLE',
+        details: { meatIds: ['chicken'], sauceIds: [] },
+      },
+      [{ productId: 'classic-shawarma', name: 'Классическая шаурма' }],
+    ),
+    'Один из выбранных вариантов временно недоступен. Вернитесь в корзину и выберите другой.',
+  );
+});
+
 test('оформление блокирует сохранённую позицию с соусом из стоп-листа', () => {
   const unavailable = checkout.getUnavailableCheckoutProducts(
     [
