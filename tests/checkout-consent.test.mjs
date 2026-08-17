@@ -196,6 +196,22 @@ test('order payload contains current legal versions', () => {
   assert.equal(payload.offerVersion, '2026-08-11');
 });
 
+test('order payload sends the selected beef as the server meat id', () => {
+  const payload = checkout.createCheckoutOrderPayload({
+    lines: [
+      {
+        productId: 'tasty-shawarma',
+        quantity: 1,
+        meat: 'Говядина',
+      },
+    ],
+    phone: '+7 (999) 123-45-67',
+    personalDataConsent: true,
+  });
+
+  assert.equal(payload.items[0].meat, 'beef');
+});
+
 test('retry marker stores only an opaque SHA-256 digest, key and timestamp', async () => {
   const storage = createMemoryStorage();
   const payload = checkout.createCheckoutOrderPayload({

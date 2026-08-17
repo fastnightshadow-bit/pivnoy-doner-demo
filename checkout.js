@@ -60,7 +60,7 @@ export const createCheckoutOrderPayload = ({
   items: (Array.isArray(lines) ? lines : []).map((line) => ({
     productId: String(line.productId || ''),
     quantity: Math.max(1, Number(line.quantity) || 1),
-    meat: String(line.meat || ''),
+    meat: getCheckoutLineMeatId(line),
     size: String(line.size || ''),
     addons: line.addons || {},
     sauces: line.sauces || {},
@@ -247,9 +247,11 @@ export const getOrderingPausedMessage = () =>
 export const getCheckoutLineMeatId = (line = {}) => {
   const availableMeats = getAvailableMeats(String(line?.productId || ''));
   const savedMeat = String(line?.meat || '');
-  const savedMeatId = Object.entries(MEAT_LABELS).find(
-    ([, label]) => String(label) === savedMeat,
-  )?.[0];
+  const savedMeatId = availableMeats.includes(savedMeat)
+    ? savedMeat
+    : Object.entries(MEAT_LABELS).find(
+        ([, label]) => String(label) === savedMeat,
+      )?.[0];
   return availableMeats.includes(savedMeatId)
     ? savedMeatId
     : availableMeats[0] || '';
