@@ -41,20 +41,28 @@ export const getMenuProducts = (categoryId, selectedMeat = 'chicken') => {
   }));
 };
 
-export const createMeatSubgroupSwitch = (categoryId, selectedMeat) => {
+export const createMeatSubgroupSwitch = (
+  categoryId,
+  selectedMeat,
+  { isMeatAvailable = () => true } = {},
+) => {
   const options = getMenuMeatOptions(categoryId);
   if (!options.length) return '';
   const activeMeat = normalizeMenuMeat(categoryId, selectedMeat);
 
   return `
     <div class="menu-meat-switch" role="group" aria-label="Выбор мяса">
-      ${options.map((meat) => `
+      ${options.map((meat) => {
+        const available = isMeatAvailable(meat);
+        return `
         <button
           class="${meat === activeMeat ? 'is-active' : ''}"
           type="button"
           aria-pressed="${meat === activeMeat}"
           data-menu-meat="${meat}"
-        >${MEAT_LABELS[meat]}</button>`).join('')}
+          ${available ? '' : 'disabled'}
+        ><span>${MEAT_LABELS[meat]}</span>${available ? '' : '<small>Нет в наличии</small>'}</button>`;
+      }).join('')}
     </div>`;
 };
 

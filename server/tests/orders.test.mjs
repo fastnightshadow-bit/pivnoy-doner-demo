@@ -209,6 +209,67 @@ test('HTTP сообщает клиенту конкретные товары и�
   assert.deepEqual(response.body.details, { productIds: ['nuggets'] });
 });
 
+test('заказ с остановленным видом мяса отклоняется до сохранения', async () => {
+  const orders = createRepository();
+  const service = createOrderService({
+    orders,
+    settings,
+    catalogSettings: {
+      get: async () => ({ stoppedMeatIds: ['beef'] }),
+    },
+    orderAccessSecret: 'test-order-access-secret',
+  });
+  const payload = validOrderPayload();
+  payload.items = [
+    {
+      productId: 'classic-shawarma',
+      quantity: 1,
+      meat: 'beef',
+      size: 'standard',
+    },
+  ];
+
+  await assert.rejects(
+    () => service.create(payload, 'stopped-meat-1'),
+    (error) => {
+      assert.equal(error.code, 'PRODUCT_OPTION_UNAVAILABLE');
+      assert.deepEqual(error.details, { meatIds: ['beef'], sauceIds: [] });
+      return true;
+    },
+  );
+  assert.equal(orders.createCalls(), 0);
+});
+
+test('заказ с остановленным соусом отклоняется до сохранения', async () => {
+  const orders = createRepository();
+  const service = createOrderService({
+    orders,
+    settings,
+    catalogSettings: {
+      get: async () => ({ stoppedSauceIds: ['tasty'] }),
+    },
+    orderAccessSecret: 'test-order-access-secret',
+  });
+  const payload = validOrderPayload();
+  payload.items = [
+    {
+      productId: 'nuggets',
+      quantity: 1,
+      sauces: { tasty: 2 },
+    },
+  ];
+
+  await assert.rejects(
+    () => service.create(payload, 'stopped-sauce-1'),
+    (error) => {
+      assert.equal(error.code, 'PRODUCT_OPTION_UNAVAILABLE');
+      assert.deepEqual(error.details, { meatIds: [], sauceIds: ['tasty'] });
+      return true;
+    },
+  );
+  assert.equal(orders.createCalls(), 0);
+});
+
 test('new order is rejected while restaurant pauses ordering', async () => {
   const orders = createRepository();
   const service = createOrderService({

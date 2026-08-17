@@ -1,11 +1,16 @@
 export const createSettingsRepository = (pool) => ({
   get: async () => {
-    const [settingsResult, stoppedResult] = await Promise.all([
+    const [settingsResult, stoppedResult, stoppedOptionsResult] = await Promise.all([
       pool.query('select * from restaurant_settings where singleton = true'),
       pool.query(
         `select product_id from catalog_products
          where available = false
          order by product_id`,
+      ),
+      pool.query(
+        `select option_kind, option_id from catalog_option_availability
+         where available = false
+         order by option_kind, option_id`,
       ),
     ]);
     const row = settingsResult.rows[0] || {};
@@ -17,6 +22,12 @@ export const createSettingsRepository = (pool) => ({
       deliveryOpens: String(row.delivery_opens || '11:30').slice(0, 5),
       deliveryCloses: String(row.delivery_closes || '22:30').slice(0, 5),
       stoppedProductIds: stoppedResult.rows.map((item) => item.product_id),
+      stoppedMeatIds: stoppedOptionsResult.rows
+        .filter((item) => item.option_kind === 'meat')
+        .map((item) => item.option_id),
+      stoppedSauceIds: stoppedOptionsResult.rows
+        .filter((item) => item.option_kind === 'sauce')
+        .map((item) => item.option_id),
     };
   },
 
@@ -71,6 +82,38 @@ export const createSettingsRepository = (pool) => ({
           aggregate_type, aggregate_id, event_type, payload
         ) values ('catalog', $1, 'settings.updated', $2)`,
         [product.id, { productId: product.id, available: Boolean(available) }],
+      );
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  setOptionAvailability: async (kind, optionId, available, account) => {
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query(
+        `insert into catalog_option_availability (
+          option_kind, option_id, available, updated_by
+        ) values ($1, $2, $3, $4)
+        on conflict (option_kind, option_id) do update
+        set available = excluded.available,
+            updated_by = excluded.updated_by,
+            updated_at = now()`,
+        [kind, optionId, Boolean(available), account.id],
+      );
+      await client.query(
+        `insert into event_outbox (
+          aggregate_type, aggregate_id, event_type, payload
+        ) values ('catalog-option', $1, 'settings.updated', $2)`,
+        [
+          `${kind}:${optionId}`,
+          { kind, optionId, available: Boolean(available) },
+        ],
       );
       await client.query('commit');
     } catch (error) {

@@ -1,14 +1,14 @@
-const CACHE_NAME = 'pivnoy-doner-kitchen-shell-v9';
+const CACHE_NAME = 'pivnoy-doner-kitchen-shell-v10';
 const SHELL_FILES = [
-  'kitchen.html?demo=1',
-  'kitchen.css?v=2026081410',
-  'kitchen.js?v=2026081410',
+  'kitchen.html',
+  'kitchen.css?v=2026081702',
+  'kitchen.js?v=2026081702',
   'kitchen-presentation.js',
-  'kitchen-model.js?v=2026081410',
-  'kitchen-api.js?v=2026081410',
-  'kitchen-fixtures.js?v=2026081410',
-  'kitchen-settings.js?v=2026081410',
-  'staff-live-sync.js?v=2026081410',
+  'kitchen-model.js?v=2026081702',
+  'kitchen-api.js?v=2026081702',
+  'kitchen-fixtures.js?v=2026081702',
+  'kitchen-settings.js?v=2026081702',
+  'staff-live-sync.js?v=2026081702',
   'preparation-time.js',
   'catalog-data.js',
   'kitchen.webmanifest',

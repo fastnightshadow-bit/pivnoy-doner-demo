@@ -1,6 +1,7 @@
 import {
   PaymentProviderError,
   parseRubles,
+  toMinorUnits,
   validateReceiptAmounts,
 } from './provider.js';
 
@@ -93,6 +94,16 @@ const normalizePayment = (body = {}) => ({
   confirmationUrl: String(body.confirmation?.confirmation_url || ''),
 });
 
+const normalizeRefund = (body = {}) => ({
+  id: String(body.id || ''),
+  status: String(body.status || 'pending'),
+  paymentId: String(body.payment_id || ''),
+  amount: parseRubles(body.amount?.value),
+  currency: String(body.amount?.currency || ''),
+  receiptRegistration: String(body.receipt_registration || ''),
+  cancellationReason: String(body.cancellation_details?.reason || ''),
+});
+
 export class YooKassaPaymentProvider {
   constructor({
     shopId,
@@ -172,5 +183,33 @@ export class YooKassaPaymentProvider {
   async getPayment(paymentId) {
     const id = encodeURIComponent(String(paymentId || ''));
     return normalizePayment(await this.request(`/payments/${id}`));
+  }
+
+
+  async createRefund({
+    paymentId,
+    amount,
+    currency = 'RUB',
+    publicNumber,
+    idempotencyKey,
+  }) {
+    const body = await this.request('/refunds', {
+      method: 'POST',
+      headers: { 'Idempotence-Key': String(idempotencyKey) },
+      body: JSON.stringify({
+        payment_id: String(paymentId),
+        amount: {
+          value: formatMinorUnits(toMinorUnits(amount)),
+          currency: String(currency),
+        },
+        description: `Возврат заказа №${publicNumber}`.slice(0, 128),
+      }),
+    });
+    return normalizeRefund(body);
+  }
+
+  async getRefund(refundId) {
+    const id = encodeURIComponent(String(refundId || ''));
+    return normalizeRefund(await this.request(`/refunds/${id}`));
   }
 }

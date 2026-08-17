@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDemoKitchenApi, createKitchenApi } from '../kitchen-api.js';
+import {
+  createDemoKitchenApi,
+  createKitchenApi,
+  normalizeProductionKitchenOrder,
+} from '../kitchen-api.js';
 import { getKitchenPresentation } from '../kitchen-presentation.js';
 import { readText } from './helpers.mjs';
 
@@ -107,20 +111,147 @@ test('демо-API сохраняет приём заказов и стоп-ли
   assert.deepEqual(await api.getSettings(), {
     acceptingOrders: true,
     stoppedProductIds: [],
+    stoppedMeatIds: [],
+    stoppedSauceIds: [],
   });
   assert.deepEqual(
     await api.updateSettings(
       {
         acceptingOrders: false,
         stoppedProductIds: ['classic-shawarma'],
+        stoppedMeatIds: ['beef'],
+        stoppedSauceIds: ['tasty'],
       },
       'operation-settings-1',
     ),
     {
       acceptingOrders: false,
       stoppedProductIds: ['classic-shawarma'],
+      stoppedMeatIds: ['beef'],
+      stoppedSauceIds: ['tasty'],
     },
   );
+});
+
+test('production kitchen saves stopped meats and sauces through option endpoints', async () => {
+  const calls = [];
+  const api = createKitchenApi({
+    fetchImpl: async (url, options = {}) => {
+      calls.push({ url, method: options.method || 'GET', body: options.body });
+      return response({
+        acceptingOrders: true,
+        stoppedProductIds: [],
+        stoppedMeatIds: ['beef'],
+        stoppedSauceIds: ['tasty'],
+      });
+    },
+  });
+
+  await api.updateSettings({
+    acceptingOrders: true,
+    stoppedProductIds: [],
+    stoppedMeatIds: ['beef'],
+    stoppedSauceIds: ['tasty'],
+  });
+
+  assert.ok(
+    calls.some(
+      ({ url, body }) =>
+        url === '/api/catalog-options/meat/beef' &&
+        JSON.parse(body).available === false,
+    ),
+  );
+  assert.ok(
+    calls.some(
+      ({ url, body }) =>
+        url === '/api/catalog-options/sauce/tasty' &&
+        JSON.parse(body).available === false,
+    ),
+  );
+  assert.ok(
+    calls.some(
+      ({ url, body }) =>
+        url === '/api/catalog-options/meat/chicken' &&
+        JSON.parse(body).available === true,
+    ),
+  );
+});
+
+test('production kitchen loads server order history from the staff endpoint', async () => {
+  const calls = [];
+  const api = createKitchenApi({
+    fetchImpl: async (url, options = {}) => {
+      calls.push({ url, method: options.method || 'GET' });
+      return response({ orders: [] });
+    },
+  });
+
+  await api.getHistory({ query: '24', status: 'completed' });
+
+  assert.deepEqual(calls, [
+    {
+      url: '/api/staff/orders/history?query=24&status=completed',
+      method: 'GET',
+    },
+  ]);
+});
+
+test('production kitchen preserves the refund state in order history', () => {
+  const order = normalizeProductionKitchenOrder({
+    id: 'order-1',
+    public_number: 17,
+    status: 'cancelled',
+    payment_status: 'paid',
+    refundStatus: 'failed',
+    items: [],
+  });
+
+  assert.equal(order.refundStatus, 'failed');
+});
+
+test('production kitchen cancellation sends reason and confirmed order number to refund endpoint', async () => {
+  const requests = [];
+  const api = createKitchenApi({
+    baseUrl: '/api',
+    fetchImpl: async (url, options = {}) => {
+      requests.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          order: {
+            id: 'order-1',
+            public_number: 17,
+            status: 'cancelled',
+            payment_status: 'refunded',
+            version: 5,
+            items: [],
+          },
+          refundStatus: 'succeeded',
+        }),
+      };
+    },
+  });
+
+  const result = await api.cancelOrder(
+    'order-1',
+    {
+      reasonId: 'customer_request',
+      comment: 'Клиент попросил отменить',
+      confirmationNumber: '17',
+    },
+    4,
+  );
+
+  assert.equal(requests[0].url, '/api/staff/orders/order-1/cancel');
+  assert.equal(requests[0].options.method, 'POST');
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
+    version: 4,
+    reasonId: 'customer_request',
+    reason: 'Клиент попросил отменить',
+    confirmationNumber: '17',
+  });
+  assert.equal(result.refundStatus, 'succeeded');
+  assert.equal(result.order.refundStatus, 'succeeded');
 });
 
 test('экран кухни показывает общие настройки без публичного PIN', () => {
@@ -131,6 +262,9 @@ test('экран кухни показывает общие настройки �
   assert.match(html, /data-kitchen-settings-open/);
   assert.match(html, /data-accepting-orders/);
   assert.match(html, /data-stop-list/);
+  assert.match(html, /Курица/);
+  assert.match(html, /Говядина/);
+  assert.match(html, /Соусы донера/);
   assert.match(html, />Выйти</);
 });
 

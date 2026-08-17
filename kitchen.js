@@ -2,26 +2,28 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026081410';
+} from './kitchen-api.js?v=2026081702';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026081410';
+} from './kitchen-model.js?v=2026081702';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
 } from './kitchen-presentation.js';
 import { PRODUCTS } from './catalog-data.js';
+import { MEAT_LABELS, PRODUCT_SAUCES } from './product-config.js';
 import {
   normalizeKitchenSettings,
+  toggleStoppedOption,
   toggleStoppedProduct,
-} from './kitchen-settings.js?v=2026081410';
+} from './kitchen-settings.js?v=2026081702';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026081410';
+} from './staff-live-sync.js?v=2026081702';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -310,6 +312,21 @@ export const createHistoryMarkup = (orders) => {
   return orders
     .map((order) => {
       const status = STATUS_LABELS[order?.status] || order?.status || '—';
+      const refundStatus = String(order?.refundStatus || '');
+      const refundCopy =
+        refundStatus === 'succeeded'
+          ? 'Деньги возвращены'
+          : refundStatus === 'failed'
+            ? 'Возврат не выполнен'
+            : ['pending', 'processing'].includes(refundStatus)
+              ? 'Возврат обрабатывается'
+              : '';
+      const retryControl =
+        refundStatus === 'failed'
+          ? `<button class="history-order__retry" type="button" data-retry-refund data-order-id="${escapeKitchenHtml(
+              order?.id,
+            )}">Повторить возврат</button>`
+          : '';
       return `<article class="history-order" data-history-order data-order-id="${escapeKitchenHtml(
         order?.id,
       )}">
@@ -317,8 +334,15 @@ export const createHistoryMarkup = (orders) => {
         <span><b>${escapeKitchenHtml(status)}</b><br /><small>${escapeKitchenHtml(
           FULFILLMENT_LABELS[order?.fulfillment] || 'Самовывоз',
         )}</small></span>
-        <span>${escapeKitchenHtml(order?.employee || '—')}</span>
+        <span>${escapeKitchenHtml(order?.employee || '—')}${
+          refundCopy
+            ? `<br /><small class="history-order__refund" data-status="${escapeKitchenHtml(
+                refundStatus,
+              )}">${escapeKitchenHtml(refundCopy)}</small>`
+            : ''
+        }</span>
         <b>${escapeKitchenHtml(formatKitchenPrice(order?.total))}</b>
+        ${retryControl}
       </article>`;
     })
     .join('');
@@ -396,6 +420,11 @@ const setElementHidden = (element, hidden) => {
   if (element) element.hidden = hidden;
 };
 
+export const shouldRefreshHistoryForEvent = (event, mode) =>
+  mode === 'history' &&
+  event?.type === 'sync.required' &&
+  event?.sourceType === 'refund.updated';
+
 export const removeMatchingToasts = (container, toastKey) => {
   let removed = 0;
   for (const child of Array.from(container?.children || [])) {
@@ -457,6 +486,8 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     settingsSave: root.querySelector('[data-kitchen-settings-save]'),
     acceptingOrders: root.querySelector('[data-accepting-orders]'),
     stopList: root.querySelector('[data-stop-list]'),
+    stopMeatList: root.querySelector('[data-stop-meat-list]'),
+    stopSauceList: root.querySelector('[data-stop-sauce-list]'),
     cancelDialog: root.querySelector('[data-cancel-dialog]'),
     cancelForm: root.querySelector('[data-cancel-form]'),
     cancelWarning: root.querySelector('[data-cancel-warning]'),
@@ -582,6 +613,27 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
         } ${state.settingsPending ? 'disabled' : ''} />
       </label>`,
     ).join('');
+    const renderOption = (kind, id, label, stoppedIds) =>
+      `<label class="stop-list__item stop-list__item--compact">
+        <span><strong>${escapeKitchenHtml(label)}</strong></span>
+        <input type="checkbox" data-stop-option-kind="${kind}" data-stop-option-id="${escapeKitchenHtml(id)}" ${
+          stoppedIds.has(id) ? 'checked' : ''
+        } ${state.settingsPending ? 'disabled' : ''} />
+      </label>`;
+    if (refs.stopMeatList) {
+      const stoppedMeats = new Set(normalized.stoppedMeatIds);
+      refs.stopMeatList.innerHTML = ['chicken', 'beef']
+        .map((id) => renderOption('meat', id, MEAT_LABELS[id], stoppedMeats))
+        .join('');
+    }
+    if (refs.stopSauceList) {
+      const stoppedSauces = new Set(normalized.stoppedSauceIds);
+      refs.stopSauceList.innerHTML = Object.entries(PRODUCT_SAUCES)
+        .map(([id, option]) =>
+          renderOption('sauce', id, option.label, stoppedSauces),
+        )
+        .join('');
+    }
   };
 
   const loadKitchenSettings = async () => {
@@ -827,6 +879,9 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     if (event?.type === 'sync.required') {
       void Promise.all([
         liveSync?.sync() || loadBoard(),
+        shouldRefreshHistoryForEvent(event, state.mode)
+          ? showHistoryMode()
+          : Promise.resolve(),
         event.sourceType === 'settings.updated'
           ? loadKitchenSettings()
           : Promise.resolve(),
@@ -914,6 +969,10 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       (connected) => void handleConnectionChange(connected),
     );
   };
+
+  const findKnownOrder = (orderId) =>
+    state.orders.find((item) => item.id === orderId) ||
+    state.historyOrders.find((item) => item.id === orderId);
 
   const startSession = async (pin) => {
     const response = await activeApi.login(pin);
@@ -1021,7 +1080,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   };
 
   const openCancellation = (orderId) => {
-    const order = state.orders.find((item) => item.id === orderId);
+    const order = findKnownOrder(orderId);
     if (!order || !refs.cancelDialog || !refs.cancelForm) return;
     state.cancellingOrderId = orderId;
     refs.cancelForm.reset();
@@ -1031,9 +1090,11 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       refs.confirmCancel.disabled = false;
     }
     if (refs.cancelWarning) {
-      refs.cancelWarning.textContent = ['cooking', 'ready'].includes(order.status)
-        ? 'Заказ уже готовится или готов. После отмены будет запущен возврат оплаты.'
-        : 'Заказ будет убран с рабочей доски. Оплата будет возвращена клиенту.';
+      refs.cancelWarning.textContent = order.status === 'cancelled'
+        ? 'Заказ уже отменён. Будет повторена только безопасная попытка возврата.'
+        : ['cooking', 'ready'].includes(order.status)
+          ? 'Заказ уже готовится или готов. После отмены будет запущен возврат оплаты.'
+          : 'Заказ будет убран с рабочей доски. Оплата будет возвращена клиенту.';
     }
     if (refs.cancelError) {
       refs.cancelError.textContent = '';
@@ -1061,13 +1122,17 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     try {
       const result = await activeApi.cancelOrder(
         order.id,
-        { reasonId, comment },
+        { reasonId, comment, confirmationNumber: order.number },
         order.version || 1,
         operationId,
       );
       if (result?.order) {
         replaceOrderFromServer(result.order, { animate: true });
-        state.historyOrders.unshift(result.order);
+        const historyIndex = state.historyOrders.findIndex(
+          (item) => item.id === result.order.id,
+        );
+        if (historyIndex >= 0) state.historyOrders[historyIndex] = result.order;
+        else state.historyOrders.unshift(result.order);
       } else {
         state.orders = state.orders.filter((item) => item.id !== order.id);
         renderBoard();
@@ -1151,6 +1216,16 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     );
     renderKitchenSettings();
   });
+  refs.settingsForm?.addEventListener('change', (event) => {
+    const input = event.target.closest('[data-stop-option-kind]');
+    if (!input) return;
+    state.settings = toggleStoppedOption(
+      state.settings,
+      input.dataset.stopOptionKind,
+      input.dataset.stopOptionId,
+    );
+    renderKitchenSettings();
+  });
   refs.settingsForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (state.settingsPending) return;
@@ -1225,6 +1300,11 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   refs.board?.addEventListener('click', handleOrderInteraction);
   refs.panelContent?.addEventListener('click', handleOrderInteraction);
   refs.historyList?.addEventListener('click', (event) => {
+    const retryButton = event.target.closest('[data-retry-refund]');
+    if (retryButton) {
+      openCancellation(retryButton.dataset.orderId);
+      return;
+    }
     const trigger = event.target.closest('[data-history-order]');
     if (trigger) openPanel(trigger.dataset.orderId, trigger);
   });
@@ -1244,9 +1324,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       return;
     }
     event.preventDefault();
-    const order = state.orders.find(
-      (item) => item.id === state.cancellingOrderId,
-    );
+    const order = findKnownOrder(state.cancellingOrderId);
     if (!order) {
       refs.cancelDialog?.close();
       return;
@@ -1324,7 +1402,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081410').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081702').catch(() => {});
   }
 
   return {

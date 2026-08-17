@@ -18,6 +18,8 @@ test('клиент без входа получает только публич�
     get: async () => ({
       acceptingOrders: false,
       stoppedProductIds: ['tasty-shawarma'],
+      stoppedMeatIds: ['beef'],
+      stoppedSauceIds: ['tasty'],
       deliveryPrice: 200,
       internalNote: 'не публиковать',
     }),
@@ -30,6 +32,8 @@ test('клиент без входа получает только публич�
   assert.deepEqual(response.body, {
     acceptingOrders: false,
     stoppedProductIds: ['tasty-shawarma'],
+    stoppedMeatIds: ['beef'],
+    stoppedSauceIds: ['tasty'],
   });
   assert.equal(response.headers['cache-control'], 'no-store');
 });
@@ -77,6 +81,81 @@ test('кухня может остановить приём заказов и п
   assert.equal(settings.status, 200);
   assert.equal(product.status, 200);
   assert.equal(updates.length, 2);
+});
+
+test('кухня отдельно останавливает курицу, говядину и соусы', async () => {
+  const updates = [];
+  const settingsService = {
+    get: async () => ({
+      acceptingOrders: true,
+      stoppedProductIds: [],
+      stoppedMeatIds: [],
+      stoppedSauceIds: [],
+    }),
+    setOptionAvailability: async (kind, optionId, available, account) => {
+      updates.push({ kind, optionId, available, account });
+      return { kind, optionId, available };
+    },
+  };
+  const app = createApp({ db, authService, settingsService });
+
+  const chicken = await request(app)
+    .patch('/api/catalog-options/meat/chicken')
+    .set('Cookie', 'pivdoner_session=kitchen')
+    .send({ available: false });
+  const sauce = await request(app)
+    .patch('/api/catalog-options/sauce/tasty')
+    .set('Cookie', 'pivdoner_session=kitchen')
+    .send({ available: false });
+
+  assert.equal(chicken.status, 200);
+  assert.equal(sauce.status, 200);
+  assert.deepEqual(
+    updates.map(({ kind, optionId, available }) => ({ kind, optionId, available })),
+    [
+      { kind: 'meat', optionId: 'chicken', available: false },
+      { kind: 'sauce', optionId: 'tasty', available: false },
+    ],
+  );
+});
+
+test('неизвестную опцию нельзя добавить в стоп-лист', async () => {
+  const error = Object.assign(new Error('OPTION_NOT_FOUND'), {
+    code: 'OPTION_NOT_FOUND',
+    status: 404,
+  });
+  const app = createApp({
+    db,
+    authService,
+    settingsService: {
+      setOptionAvailability: async () => {
+        throw error;
+      },
+    },
+  });
+
+  const response = await request(app)
+    .patch('/api/catalog-options/sauce/unknown')
+    .set('Cookie', 'pivdoner_session=kitchen')
+    .send({ available: false });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.error, 'OPTION_NOT_FOUND');
+});
+
+test('курьер не может менять стоп-лист мяса и соусов', async () => {
+  const app = createApp({
+    db,
+    authService,
+    settingsService: { setOptionAvailability: async () => ({}) },
+  });
+
+  const response = await request(app)
+    .patch('/api/catalog-options/meat/beef')
+    .set('Cookie', 'pivdoner_session=courier')
+    .send({ available: false });
+
+  assert.equal(response.status, 403);
 });
 
 test('курьер не может менять настройки ресторана', async () => {

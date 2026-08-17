@@ -101,10 +101,14 @@ test('web container maps each host to its own PWA entry point', async () => {
 
 test('client pages version their changed immutable assets', async () => {
   const releaseKey = '2026081402';
+  const catalogReleaseKey = '2026081702';
+  const checkoutReleaseKey = '2026081702';
   const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
+  const homeStyleReleaseKey = '2026081702';
+  const homeReleaseKey = '2026081702';
   const themeReleaseKey = '2026081406';
-  const kitchenReleaseKey = '2026081410';
+  const kitchenReleaseKey = '2026081702';
   const courierReleaseKey = '2026081408';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
@@ -133,16 +137,13 @@ test('client pages version their changed immutable assets', async () => {
   );
   assert.match(
     checkoutHtml,
-    new RegExp(`<script\\s+type="module"\\s+src="checkout\\.js\\?v=${releaseKey}"><\\/script>`),
+    new RegExp(`<script\\s+type="module"\\s+src="checkout\\.js\\?v=${checkoutReleaseKey}"><\\/script>`),
   );
   assert.match(checkoutHtml, /href="checkout\.css\?v=20260811"/);
   assert.match(cartHtml, new RegExp(`href="cart\\.css\\?v=${styleReleaseKey}"`));
-  assert.match(homeHtml, new RegExp(`href="home\\.css\\?v=${styleReleaseKey}"`));
-  assert.match(homeHtml, new RegExp(`href="product-sheet\\.css\\?v=${releaseKey}"`));
-  assert.match(
-    homeHtml,
-    new RegExp(`<script\\s+type="module"\\s+src="home\\.js\\?v=${handoffReleaseKey}"><\\/script>`),
-  );
+  assert.match(homeHtml, new RegExp(`href="home\\.css\\?v=${homeStyleReleaseKey}"`));
+  assert.match(homeHtml, new RegExp(`src="home\\.js\\?v=${homeReleaseKey}"`));
+  assert.match(homeHtml, new RegExp(`href="product-sheet\\.css\\?v=${catalogReleaseKey}"`));
   assert.match(
     orderHtml,
     new RegExp(`<script\\s+type="module"\\s+src="order\\.js\\?v=${handoffReleaseKey}"><\\/script>`),
@@ -175,7 +176,9 @@ test('client pages version their changed immutable assets', async () => {
     courierSource,
     new RegExp(`staff-live-sync\\.js\\?v=${courierReleaseKey}`),
   );
-  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v9/);
+  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v10/);
+  assert.match(kitchenWorker, /'kitchen\.html'/);
+  assert.doesNotMatch(kitchenWorker, /kitchen\.html\?demo=1/);
   assert.match(courierWorker, /pivnoy-doner-courier-shell-v5/);
 
   const getVersionedImports = (source) => [
@@ -191,10 +194,10 @@ test('client pages version their changed immutable assets', async () => {
     ],
   );
   assert.deepEqual(getVersionedImports(homeSource), [
-    `./home-menu.js?v=${releaseKey}`,
+    `./home-menu.js?v=${catalogReleaseKey}`,
     `./order-state.js?v=${handoffReleaseKey}`,
     `./order-storage.js?v=${releaseKey}`,
-    `./product-sheet.js?v=${releaseKey}`,
+    `./product-sheet.js?v=${catalogReleaseKey}`,
     `./review-service.js?v=${releaseKey}`,
     `./review-view.js?v=${releaseKey}`,
     `./client-api.js?v=${releaseKey}`,

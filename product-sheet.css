@@ -292,6 +292,22 @@
   gap: 8px;
 }
 
+.product-sheet__segments button > span,
+.product-sheet__segments button > small {
+  display: block;
+}
+
+.product-sheet__segments button > small {
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 11px;
+}
+
+.product-sheet__segments button.is-unavailable,
+.product-sheet__sauce.is-unavailable {
+  opacity: 0.58;
+}
+
 .product-sheet__sauce {
   display: flex;
   min-height: 52px;

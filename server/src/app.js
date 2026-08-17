@@ -9,6 +9,7 @@ import { createEventsRouter } from './routes/events.js';
 import { createReviewsRouter } from './routes/reviews.js';
 import {
   createCatalogRouter,
+  createCatalogOptionsRouter,
   createPublicCatalogStatusRouter,
   createSettingsRouter,
 } from './routes/settings.js';
@@ -45,6 +46,7 @@ export const createApp = ({
         authService,
         orders: staffOrders,
         statuses: statusService,
+        paymentService,
       }),
     );
   }
@@ -59,6 +61,10 @@ export const createApp = ({
     app.use(
       '/api/catalog',
       createCatalogRouter({ authService, settings: settingsService }),
+    );
+    app.use(
+      '/api/catalog-options',
+      createCatalogOptionsRouter({ authService, settings: settingsService }),
     );
   }
   if (settingsService) {

@@ -1,6 +1,10 @@
-import { PRODUCTS } from '../../../shared/catalog.js';
+import { PRODUCTS, PRODUCT_SAUCES } from '../../../shared/catalog.js';
 
 const productsById = new Map(PRODUCTS.map((product) => [product.id, product]));
+const allowedOptions = Object.freeze({
+  meat: new Set(['chicken', 'beef']),
+  sauce: new Set(Object.keys(PRODUCT_SAUCES)),
+});
 
 export const createSettingsService = ({ settings }) => ({
   get: () => settings.get(),
@@ -18,5 +22,26 @@ export const createSettingsService = ({ settings }) => ({
     }
     await settings.setAvailability(product, available, account);
     return { productId: product.id, available: Boolean(available) };
+  },
+  setOptionAvailability: async (kind, optionId, available, account) => {
+    const normalizedKind = String(kind);
+    const normalizedOptionId = String(optionId);
+    if (!allowedOptions[normalizedKind]?.has(normalizedOptionId)) {
+      const error = new Error('OPTION_NOT_FOUND');
+      error.code = 'OPTION_NOT_FOUND';
+      error.status = 404;
+      throw error;
+    }
+    await settings.setOptionAvailability(
+      normalizedKind,
+      normalizedOptionId,
+      Boolean(available),
+      account,
+    );
+    return {
+      kind: normalizedKind,
+      optionId: normalizedOptionId,
+      available: Boolean(available),
+    };
   },
 });

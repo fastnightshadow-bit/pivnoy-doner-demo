@@ -87,6 +87,40 @@ test('оформление называет недоступные товары 
   assert.equal(lines.length, 2);
 });
 
+test('оформление блокирует сохранённую позицию с мясом из стоп-листа', () => {
+  const unavailable = checkout.getUnavailableCheckoutProducts(
+    [
+      {
+        productId: 'classic-shawarma',
+        name: 'Классическая шаурма',
+        meat: 'Говядина',
+      },
+    ],
+    { stoppedMeatIds: ['beef'] },
+  );
+
+  assert.deepEqual(unavailable, [
+    { productId: 'classic-shawarma', name: 'Классическая шаурма' },
+  ]);
+});
+
+test('оформление блокирует сохранённую позицию с соусом из стоп-листа', () => {
+  const unavailable = checkout.getUnavailableCheckoutProducts(
+    [
+      {
+        productId: 'nuggets',
+        name: 'Наггетсы',
+        sauces: { Тейсти: 2 },
+      },
+    ],
+    { stoppedSauceIds: ['tasty'] },
+  );
+
+  assert.deepEqual(unavailable, [
+    { productId: 'nuggets', name: 'Наггетсы' },
+  ]);
+});
+
 test('checkout explains that restaurant paused ordering', () => {
   assert.equal(
     checkout.isCheckoutOrderingPaused({ acceptingOrders: false }),

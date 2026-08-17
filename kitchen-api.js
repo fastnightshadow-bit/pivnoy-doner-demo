@@ -2,12 +2,12 @@ import {
   CANCELLATION_REASONS,
   createStatusHistoryEntry,
   getNextKitchenAction,
-} from './kitchen-model.js?v=2026081410';
+} from './kitchen-model.js?v=2026081702';
 import {
   createDemoEmployees,
   createDemoOrders,
-} from './kitchen-fixtures.js?v=2026081410';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026081410';
+} from './kitchen-fixtures.js?v=2026081702';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026081702';
 import { PRODUCTS } from './catalog-data.js';
 import {
   MEAT_LABELS,
@@ -137,6 +137,11 @@ export const normalizeProductionKitchenOrder = (order = {}) => {
       at: entry.at ?? entry.created_at ?? '',
       reason: entry.reason || '',
     })),
+    ...(
+      order.refundStatus !== undefined || order.refund_status !== undefined
+        ? { refundStatus: order.refundStatus ?? order.refund_status }
+        : {}
+    ),
   };
 };
 
@@ -206,6 +211,22 @@ export const createKitchenApi = ({
           }),
         ),
       );
+      const stoppedMeats = new Set(normalized.stoppedMeatIds);
+      const stoppedSauces = new Set(normalized.stoppedSauceIds);
+      await Promise.all([
+        ...['chicken', 'beef'].map((meatId) =>
+          jsonRequest(`/catalog-options/meat/${encodeURIComponent(meatId)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ available: !stoppedMeats.has(meatId) }),
+          }),
+        ),
+        ...Object.keys(PRODUCT_SAUCES).map((sauceId) =>
+          jsonRequest(`/catalog-options/sauce/${encodeURIComponent(sauceId)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ available: !stoppedSauces.has(sauceId) }),
+          }),
+        ),
+      ]);
       return jsonRequest('/settings', { method: 'GET' });
     },
 
@@ -215,7 +236,7 @@ export const createKitchenApi = ({
         if (value && value !== 'all') search.set(key, value);
       }
       const suffix = search.size ? `?${search.toString()}` : '';
-      return jsonRequest(`/history${suffix}`, { method: 'GET' });
+      return jsonRequest(`/staff/orders/history${suffix}`, { method: 'GET' });
     },
 
     async changeStatus(orderId, status, version) {
@@ -236,17 +257,30 @@ export const createKitchenApi = ({
     },
 
     async cancelOrder(orderId, payload, version) {
-      const order = await jsonRequest(
-        `/staff/orders/${encodeURIComponent(orderId)}/status`,
+      const cancellationReason = CANCELLATION_REASONS.find(
+        (item) => item.id === String(payload?.reasonId || '').trim(),
+      );
+      const response = await jsonRequest(
+        `/staff/orders/${encodeURIComponent(orderId)}/cancel`,
         {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: 'cancelled',
-          version,
-          reason: String(payload?.comment || payload?.reasonId || '').trim(),
+          method: 'POST',
+          body: JSON.stringify({
+            version,
+            reasonId: String(payload?.reasonId || '').trim(),
+            reason: String(
+              payload?.comment || cancellationReason?.label || payload?.reasonId || '',
+            ).trim(),
+            confirmationNumber: String(payload?.confirmationNumber || '').trim(),
+          }),
+        },
+      );
+      return {
+        ...response,
+        order: normalizeProductionKitchenOrder({
+          ...response.order,
+          refundStatus: response.refundStatus,
         }),
-      });
-      return { order: normalizeProductionKitchenOrder(order) };
+      };
     },
 
     subscribe(onEvent, onConnection = () => {}) {
@@ -265,6 +299,7 @@ export const createKitchenApi = ({
         'order.updated',
         'order.cancelled',
         'payment.updated',
+        'refund.updated',
         'settings.updated',
       ].forEach(
         (type) =>

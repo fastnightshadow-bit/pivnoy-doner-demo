@@ -40,9 +40,17 @@ export const shouldDismissProductSheet = ({
   distance > 0 &&
   (distance / Math.max(1, height) >= 0.28 || velocity >= 0.7);
 
-const normalizeSelection = (productId, selection = {}) => {
+const normalizeSelection = (
+  productId,
+  selection = {},
+  { isMeatAvailable = () => true } = {},
+) => {
   const meats = getAvailableMeats(productId);
-  const meat = meats.includes(selection.meat) ? selection.meat : meats[0];
+  const availableMeats = meats.filter(isMeatAvailable);
+  const meat =
+    meats.includes(selection.meat) && isMeatAvailable(selection.meat)
+      ? selection.meat
+      : availableMeats[0] ?? meats[0];
   const sizes = getAvailableSizes(productId, meat);
   const size = sizes.includes(selection.size) ? selection.size : sizes[0];
   const allowedAddons = new Set(
@@ -72,7 +80,11 @@ const normalizeSelection = (productId, selection = {}) => {
   };
 };
 
-const createSauceMarkup = (productId, selection) => {
+const createSauceMarkup = (
+  productId,
+  selection,
+  isSauceAvailable = () => true,
+) => {
   const sauceIds = getProductConfiguration(productId)?.sauces ?? [];
   if (sauceIds.length === 0) return '';
 
@@ -87,11 +99,12 @@ const createSauceMarkup = (productId, selection) => {
           .map((sauceId) => {
             const sauce = PRODUCT_SAUCES[sauceId];
             const quantity = selection.sauces[sauceId] ?? 0;
+            const available = isSauceAvailable(sauceId);
             return `
-              <div class="product-sheet__sauce ${quantity ? 'is-active' : ''}">
+              <div class="product-sheet__sauce ${quantity ? 'is-active' : ''}${available ? '' : ' is-unavailable'}">
                 <span>
                   <strong>${sauce?.label ?? sauceId}</strong>
-                  <small>+${formatPrice(sauce?.price ?? 0)} / порция</small>
+                  <small>${available ? `+${formatPrice(sauce?.price ?? 0)} / порция` : 'Нет в наличии'}</small>
                 </span>
                 <div class="product-sheet__addon-quantity" aria-label="Количество соуса ${sauce?.label ?? sauceId}">
                   <button
@@ -105,7 +118,7 @@ const createSauceMarkup = (productId, selection) => {
                     type="button"
                     aria-label="Увеличить количество соуса ${sauce?.label ?? sauceId}"
                     data-sheet-sauce-change="${sauceId}" data-delta="1"
-                    ${quantity >= 5 ? 'disabled' : ''}
+                    ${quantity >= 5 || !available ? 'disabled' : ''}
                   >+</button>
                 </div>
               </div>`;
@@ -126,7 +139,11 @@ const createMediaMarkup = (product) => {
     </span>`;
 };
 
-const createMeatMarkup = (productId, selection) => {
+const createMeatMarkup = (
+  productId,
+  selection,
+  isMeatAvailable = () => true,
+) => {
   const meats = getAvailableMeats(productId);
   if (meats.length < 2) return '';
 
@@ -135,15 +152,17 @@ const createMeatMarkup = (productId, selection) => {
       <h3 id="sheet-meat-title">Мясо</h3>
       <div class="product-sheet__segments" role="group" aria-label="Выбор мяса">
         ${meats
-          .map(
-            (meat) => `
+          .map((meat) => {
+            const available = isMeatAvailable(meat);
+            return `
               <button
-                class="${meat === selection.meat ? 'is-active' : ''}"
+                class="${meat === selection.meat ? 'is-active' : ''}${available ? '' : ' is-unavailable'}"
                 type="button"
                 aria-pressed="${meat === selection.meat}"
                 data-sheet-meat="${meat}"
-              >${MEAT_LABELS[meat]}</button>`,
-          )
+                ${available ? '' : 'disabled'}
+              ><span>${MEAT_LABELS[meat]}</span>${available ? '' : '<small>Нет в наличии</small>'}</button>`;
+          })
           .join('')}
       </div>
     </section>`;
@@ -268,10 +287,19 @@ export const createProductSheetMarkup = (
     lockMeat = false,
     available = true,
     unavailableLabel = 'Нет в наличии',
+    isMeatAvailable = () => true,
+    isSauceAvailable = () => true,
   } = {},
 ) => {
   if (!product?.id) return '';
-  const selection = normalizeSelection(product.id, rawSelection);
+  const selection = normalizeSelection(product.id, rawSelection, {
+    isMeatAvailable,
+  });
+  const configuredOptionsAvailable =
+    isMeatAvailable(selection.meat) &&
+    Object.entries(selection.sauces).every(
+      ([sauceId, quantity]) => Number(quantity) <= 0 || isSauceAvailable(sauceId),
+    );
   const totalPrice =
     calculateProductPrice(product.id, selection) *
     Math.max(1, Number(quantity) || 1);
@@ -302,9 +330,9 @@ export const createProductSheetMarkup = (
           <p data-sheet-description>${escapeHtml(description)}</p>
         </header>
 
-        ${lockMeat ? '' : createMeatMarkup(product.id, selection)}
+        ${lockMeat ? '' : createMeatMarkup(product.id, selection, isMeatAvailable)}
         ${createSizeMarkup(product.id, selection)}
-        ${createSauceMarkup(product.id, selection)}
+        ${createSauceMarkup(product.id, selection, isSauceAvailable)}
         ${createAddonMarkup(product.id, selection)}
 
         <section class="product-sheet__section product-sheet__comment">
@@ -319,7 +347,12 @@ export const createProductSheetMarkup = (
         </section>
       </div>
     </div>
-    ${createPurchaseMarkup(totalPrice, quantity, available, unavailableLabel)}`;
+    ${createPurchaseMarkup(
+      totalPrice,
+      quantity,
+      available && configuredOptionsAvailable,
+      available ? 'Выберите доступные варианты' : unavailableLabel,
+    )}`;
 };
 
 const createSelectionCartLine = (product, selection) =>
@@ -355,6 +388,8 @@ export const initProductSheet = ({
   historyRef = globalThis.history,
   matchMediaRef = globalThis.matchMedia,
   isProductAvailable = () => true,
+  isMeatAvailable = () => true,
+  isSauceAvailable = () => true,
   getUnavailableLabel = () => 'Нет в наличии',
 } = {}) => {
   if (!dialog) {
@@ -421,6 +456,8 @@ export const initProductSheet = ({
       {
         lockMeat: state.lockMeat,
         available: isProductAvailable(state.product.id),
+        isMeatAvailable,
+        isSauceAvailable,
         unavailableLabel: getUnavailableLabel(state.product.id),
       },
     );
@@ -486,11 +523,15 @@ export const initProductSheet = ({
     const comment =
       surface?.querySelector('[data-sheet-comment]')?.value ??
       state.selection.comment;
-    state.selection = normalizeSelection(state.product.id, {
-      ...state.selection,
-      ...change,
-      comment,
-    });
+    state.selection = normalizeSelection(
+      state.product.id,
+      {
+        ...state.selection,
+        ...change,
+        comment,
+      },
+      { isMeatAvailable },
+    );
     syncQuantity();
     render({ keepScroll: true, animatePrice: true });
   };

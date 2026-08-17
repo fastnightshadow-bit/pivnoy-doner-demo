@@ -15,6 +15,12 @@ export const createPublicCatalogStatusRouter = ({ settings }) => {
       stoppedProductIds: Array.isArray(value.stoppedProductIds)
         ? value.stoppedProductIds.map(String)
         : [],
+      stoppedMeatIds: Array.isArray(value.stoppedMeatIds)
+        ? value.stoppedMeatIds.map(String)
+        : [],
+      stoppedSauceIds: Array.isArray(value.stoppedSauceIds)
+        ? value.stoppedSauceIds.map(String)
+        : [],
     });
   });
   return router;
@@ -53,6 +59,34 @@ export const createCatalogRouter = ({ authService, settings }) => {
       );
     } catch (error) {
       if (error?.status) return response.status(error.status).json({ error: error.code });
+      throw error;
+    }
+  });
+  return router;
+};
+
+export const createCatalogOptionsRouter = ({ authService, settings }) => {
+  const router = Router();
+  router.use(authenticateRequest(authService));
+  router.use(requireRole('owner', 'kitchen'));
+  router.patch('/:kind/:id', async (request, response) => {
+    const parsed = availabilitySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return response.status(400).json({ error: 'INVALID_AVAILABILITY' });
+    }
+    try {
+      return response.json(
+        await settings.setOptionAvailability(
+          request.params.kind,
+          request.params.id,
+          parsed.data.available,
+          request.account,
+        ),
+      );
+    } catch (error) {
+      if (error?.status) {
+        return response.status(error.status).json({ error: error.code });
+      }
       throw error;
     }
   });

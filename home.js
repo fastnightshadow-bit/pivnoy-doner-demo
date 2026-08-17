@@ -9,7 +9,7 @@ import {
   getMenuProducts,
   normalizeMenuMeat,
   resolveMenuProductLine,
-} from './home-menu.js?v=2026081402';
+} from './home-menu.js?v=2026081702';
 import {
   addCartLine,
   changeCartLineQuantity,
@@ -38,7 +38,7 @@ import {
   resolvePreferredProductLine,
   savePreferredProductLine,
 } from './product-preference-storage.js';
-import { initProductSheet } from './product-sheet.js?v=2026081402';
+import { initProductSheet } from './product-sheet.js?v=2026081702';
 import { createReviewService } from './review-service.js?v=2026081402';
 import { createReviewsSectionMarkup } from './review-view.js?v=2026081402';
 import { clientApi } from './client-api.js?v=2026081402';
@@ -115,11 +115,24 @@ function initHomeScreen() {
     quantities: {},
     acceptingOrders: true,
     stoppedProductIds: new Set(),
+    stoppedMeatIds: new Set(),
+    stoppedSauceIds: new Set(),
   };
   let toastTimer;
   let hasRenderedHome = false;
-  const isProductAvailable = (productId) =>
-    state.acceptingOrders && !state.stoppedProductIds.has(String(productId));
+  const isMeatAvailable = (meatId) =>
+    !state.stoppedMeatIds.has(String(meatId));
+  const isSauceAvailable = (sauceId) =>
+    !state.stoppedSauceIds.has(String(sauceId));
+  const isProductAvailable = (productId) => {
+    const id = String(productId);
+    const sauceId = id.startsWith('sauce-') ? id.slice('sauce-'.length) : '';
+    return (
+      state.acceptingOrders &&
+      !state.stoppedProductIds.has(id) &&
+      (!sauceId || isSauceAvailable(sauceId))
+    );
+  };
   const getUnavailableLabel = (productId) =>
     state.stoppedProductIds.has(String(productId))
       ? 'Нет в наличии'
@@ -309,6 +322,7 @@ function initHomeScreen() {
     const meatMarkup = createMeatSubgroupSwitch(
       state.category,
       selectedMeat,
+      { isMeatAvailable },
     );
     if (menuTitleRoot) menuTitleRoot.textContent = category?.label ?? '';
     if (meatSwitchRoot) {
@@ -399,6 +413,8 @@ function initHomeScreen() {
       showToast('Корзина обновлена');
     },
     isProductAvailable,
+    isMeatAvailable,
+    isSauceAvailable,
     getUnavailableLabel,
   });
 
@@ -409,6 +425,23 @@ function initHomeScreen() {
         ? status.stoppedProductIds.map(String)
         : [],
     );
+    state.stoppedMeatIds = new Set(
+      Array.isArray(status.stoppedMeatIds)
+        ? status.stoppedMeatIds.map(String)
+        : [],
+    );
+    state.stoppedSauceIds = new Set(
+      Array.isArray(status.stoppedSauceIds)
+        ? status.stoppedSauceIds.map(String)
+        : [],
+    );
+    for (const categoryId of ['shawarma', 'doner']) {
+      if (!isMeatAvailable(state.meatByCategory[categoryId])) {
+        state.meatByCategory[categoryId] = isMeatAvailable('chicken')
+          ? 'chicken'
+          : 'beef';
+      }
+    }
     if (orderingStatus) orderingStatus.hidden = state.acceptingOrders;
     renderHomeMenu();
     renderStaticAvailability();

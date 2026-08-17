@@ -234,6 +234,38 @@ test('карточка закуски показывает количестве�
   assert.match(markup, /Тейсти[\s\S]*?\+50/);
 });
 
+test('стоп-лист мяса отключает вариант в карточке блюда', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'classic-shawarma');
+  const markup = createProductSheetMarkup(product, { meat: 'chicken' }, 0, {
+    isMeatAvailable: (meatId) => meatId !== 'beef',
+  });
+
+  assert.match(
+    markup,
+    /data-sheet-meat="beef"[\s\S]*?disabled[\s\S]*?Говядина[\s\S]*?Нет в наличии/,
+  );
+  assert.doesNotMatch(
+    markup,
+    /data-sheet-meat="chicken"\s+disabled/,
+  );
+});
+
+test('стоп-лист соуса отключает увеличение его количества', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'nuggets');
+  const markup = createProductSheetMarkup(product, {}, 0, {
+    isSauceAvailable: (sauceId) => sauceId !== 'tasty',
+  });
+
+  assert.match(
+    markup,
+    /product-sheet__sauce\s+is-unavailable[\s\S]*?Тейсти[\s\S]*?Нет в наличии/,
+  );
+  assert.match(
+    markup,
+    /data-sheet-sauce-change="tasty" data-delta="1"[\s\S]*?disabled/,
+  );
+});
+
 test('карточки вне закусок не показывают выбор соуса', () => {
   const product = PRODUCTS.find(({ id }) => id === 'classic-shawarma');
   const markup = createProductSheetMarkup(product);

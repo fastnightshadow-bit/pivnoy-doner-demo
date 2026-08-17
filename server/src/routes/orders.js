@@ -162,6 +162,7 @@ export const createOrdersRouter = ({
           'ORDER_ACCESS_TOKEN_UNAVAILABLE',
           'ORDERING_PAUSED',
           'PRODUCT_UNAVAILABLE',
+          'PRODUCT_OPTION_UNAVAILABLE',
         ].includes(error.code)
           ? 409
           : 422;

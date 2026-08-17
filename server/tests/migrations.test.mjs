@@ -123,3 +123,30 @@ test('review retention migration unpublishes legacy reviews without consent proo
     'publication consent columns must exist before reconciliation',
   );
 });
+
+test('kitchen operations migration stores meat and sauce availability separately', async () => {
+  const sql = await readFile(
+    new URL('../src/db/migrations/004_kitchen_operations.sql', import.meta.url),
+    'utf8',
+  ).catch(() => '');
+
+  assert.match(sql, /create table(?: if not exists)? catalog_option_availability/i);
+  assert.match(sql, /option_kind text not null/i);
+  assert.match(sql, /option_id text not null/i);
+  assert.match(sql, /available boolean not null default true/i);
+  assert.match(sql, /primary key\s*\(\s*option_kind\s*,\s*option_id\s*\)/i);
+});
+
+test('kitchen operations migration stores one idempotent refund operation per order', async () => {
+  const sql = await readFile(
+    new URL('../src/db/migrations/004_kitchen_operations.sql', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(sql, /create table(?: if not exists)? refund_operations/i);
+  assert.match(sql, /order_id uuid primary key references orders\(id\)/i);
+  assert.match(sql, /payment_id uuid not null references payments\(id\)/i);
+  assert.match(sql, /idempotency_key text not null unique/i);
+  assert.match(sql, /status text not null check\s*\(status in \('pending', 'succeeded', 'failed'\)\)/i);
+  assert.match(sql, /requested_by uuid references staff_accounts\(id\)/i);
+});

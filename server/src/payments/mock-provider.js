@@ -5,6 +5,8 @@ export class MockPaymentProvider {
     this.createId = createId;
     this.payments = new Map();
     this.paymentsByIdempotencyKey = new Map();
+    this.refunds = new Map();
+    this.refundsByIdempotencyKey = new Map();
   }
 
   async createPayment({ orderId, amount, returnUrl, idempotencyKey }) {
@@ -28,6 +30,29 @@ export class MockPaymentProvider {
 
   async getPayment(paymentId) {
     return this.payments.get(String(paymentId)) ?? null;
+  }
+
+  async createRefund({ paymentId, amount, currency = 'RUB', idempotencyKey }) {
+    const key = String(idempotencyKey ?? '').trim();
+    if (key && this.refundsByIdempotencyKey.has(key)) {
+      return this.refundsByIdempotencyKey.get(key);
+    }
+    const refund = {
+      id: `mock-refund-${this.createId()}`,
+      status: 'succeeded',
+      paymentId: String(paymentId),
+      amount: Math.round(Number(amount) || 0),
+      currency: String(currency),
+      receiptRegistration: 'succeeded',
+      cancellationReason: '',
+    };
+    this.refunds.set(refund.id, refund);
+    if (key) this.refundsByIdempotencyKey.set(key, refund);
+    return refund;
+  }
+
+  async getRefund(refundId) {
+    return this.refunds.get(String(refundId)) ?? null;
   }
 
   setStatus(paymentId, status) {

@@ -100,6 +100,11 @@ export const toStaffOrder = (order = {}) => ({
   history: (Array.isArray(order.history) ? order.history : []).map(
     toStaffHistoryEntry,
   ),
+  ...(
+    order.refundStatus !== undefined || order.refund_status !== undefined
+      ? { refundStatus: order.refundStatus ?? order.refund_status }
+      : {}
+  ),
 });
 
 export const toCourierOrder = (order = {}) => ({

@@ -1038,6 +1038,29 @@ dialog input[type="radio"] {
   gap: 10px;
 }
 
+.history-order__refund {
+  color: var(--kitchen-muted);
+  font-weight: 700;
+}
+
+.history-order__refund[data-status="failed"] {
+  color: var(--kitchen-red);
+}
+
+.history-order__refund[data-status="succeeded"] {
+  color: var(--kitchen-green);
+}
+
+.history-order__retry {
+  min-height: 40px;
+  padding: 0 12px;
+  color: #fff;
+  background: #171717;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .kitchen-mobile-columns {
   display: none;
 }
@@ -1112,6 +1135,43 @@ dialog input[type="radio"] {
   padding-right: 4px;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.stop-list-groups {
+  display: grid;
+  min-height: 0;
+  gap: 16px;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.stop-list-group {
+  display: grid;
+  gap: 8px;
+}
+
+.stop-list-group h4,
+.stop-list-group p {
+  margin: 0;
+}
+
+.stop-list-group p {
+  color: var(--kitchen-muted);
+  font-size: 12px;
+}
+
+.stop-list-groups .stop-list {
+  overflow: visible;
+  padding-right: 0;
+}
+
+.stop-list--options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stop-list__item--compact {
+  min-height: 54px;
 }
 
 .stop-list__item strong,

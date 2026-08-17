@@ -8,6 +8,13 @@ import { DomainError } from '../domain/errors.js';
 import { priceOrder } from '../domain/pricing.js';
 import { toPublicClientOrder } from '../domain/public-order.js';
 import { LEGAL_VERSIONS } from '../../../shared/legal.js';
+import {
+  getAvailableMeats,
+  normalizeOptionQuantities,
+  PRODUCT_SAUCES,
+} from '../../../shared/catalog.js';
+
+const knownSauces = new Set(Object.keys(PRODUCT_SAUCES));
 
 export const createOrderService = ({
   orders,
@@ -81,6 +88,43 @@ export const createOrderService = ({
         ];
         if (productIds.length > 0) {
           throw new DomainError('PRODUCT_UNAVAILABLE', { productIds });
+        }
+
+        const stoppedMeats = new Set(
+          Array.isArray(catalog?.stoppedMeatIds)
+            ? catalog.stoppedMeatIds.map(String)
+            : [],
+        );
+        const stoppedSauces = new Set(
+          Array.isArray(catalog?.stoppedSauceIds)
+            ? catalog.stoppedSauceIds.map(String)
+            : [],
+        );
+        const selectedMeats = new Set();
+        const selectedSauces = new Set();
+        for (const item of input.items) {
+          const availableMeats = getAvailableMeats(String(item.productId));
+          const meat = availableMeats.includes(item.meat)
+            ? item.meat
+            : availableMeats[0];
+          if (meat && stoppedMeats.has(meat)) selectedMeats.add(meat);
+          for (const [sauceId, quantity] of Object.entries(
+            normalizeOptionQuantities(item.sauces),
+          )) {
+            if (
+              quantity > 0 &&
+              knownSauces.has(sauceId) &&
+              stoppedSauces.has(sauceId)
+            ) {
+              selectedSauces.add(sauceId);
+            }
+          }
+        }
+        if (selectedMeats.size > 0 || selectedSauces.size > 0) {
+          throw new DomainError('PRODUCT_OPTION_UNAVAILABLE', {
+            meatIds: [...selectedMeats].sort(),
+            sauceIds: [...selectedSauces].sort(),
+          });
         }
       }
 

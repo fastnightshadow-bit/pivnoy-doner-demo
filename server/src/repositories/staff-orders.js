@@ -54,6 +54,82 @@ export const createStaffOrdersRepository = (pool) => ({
     return result.rows;
   },
 
+  listHistory: async ({ query = '', status = 'all', limit = 100 } = {}) => {
+    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 100));
+    const result = await pool.query(
+      `select
+        o.id,
+        o.public_number,
+        o.status,
+        o.fulfillment,
+        o.payment_status,
+        o.customer_name,
+        o.phone,
+        o.address,
+        o.customer_comment,
+        o.courier_comment,
+        o.items_total,
+        o.delivery_total,
+        o.discount_total,
+        o.total,
+        o.eta_min,
+        o.eta_max,
+        o.version,
+        o.created_at,
+        o.updated_at,
+        r.status as refund_status,
+        coalesce((
+          select json_agg(json_build_object(
+            'id', oi.id,
+            'product_id', oi.product_id,
+            'name', oi.name,
+            'quantity', oi.quantity,
+            'unit_price', oi.unit_price,
+            'configuration', oi.configuration
+          ) order by oi.id)
+          from order_items oi
+          where oi.order_id = o.id
+        ), '[]') as items,
+        coalesce((
+          select json_agg(json_build_object(
+            'from', sh.previous_status,
+            'to', sh.new_status,
+            'employee', sh.actor_name,
+            'at', sh.created_at,
+            'reason', sh.reason
+          ) order by sh.created_at)
+          from status_history sh
+          where sh.order_id = o.id
+        ), '[]') as history
+       from orders o
+       left join refund_operations r on r.order_id = o.id
+       where o.payment_status in ('paid', 'refunded')
+         and o.status in ('completed', 'cancelled')
+         and (
+           $1 = ''
+           or o.public_number::text ilike '%' || $1 || '%'
+           or o.customer_name ilike '%' || $1 || '%'
+           or o.phone ilike '%' || $1 || '%'
+         )
+         and ($2 = 'all' or o.status::text = $2)
+       order by o.closed_at desc
+       limit $3`,
+      [String(query).trim(), String(status), safeLimit],
+    );
+    return result.rows;
+  },
+
+  findCancellationTarget: async (orderId) => {
+    const result = await pool.query(
+      `select id, public_number, status, fulfillment, payment_status,
+              version, total, updated_at
+       from orders
+       where id = $1`,
+      [orderId],
+    );
+    return result.rows[0] ?? null;
+  },
+
   transitionStatus: async ({ orderId, status, version, account, reason }) => {
     const client = await pool.connect();
     try {

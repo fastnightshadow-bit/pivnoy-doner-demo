@@ -94,3 +94,37 @@ test('a repeated kitchen error replaces the matching toast instead of stacking',
   assert.equal(removedCount, 1);
   assert.deepEqual(removed, ['matching']);
 });
+
+test('cancelled history shows a truthful failed refund with retry control', () => {
+  const markup = kitchen.createHistoryMarkup?.([
+    {
+      id: 'order-1',
+      number: '17',
+      status: 'cancelled',
+      fulfillment: 'delivery',
+      total: 300,
+      refundStatus: 'failed',
+    },
+  ]);
+
+  assert.match(markup, /Возврат не выполнен/);
+  assert.match(markup, /data-retry-refund/);
+  assert.match(markup, /data-order-id="order-1"/);
+});
+
+test('refund updates refresh the open history without a manual reload', () => {
+  assert.equal(
+    kitchen.shouldRefreshHistoryForEvent?.(
+      { type: 'sync.required', sourceType: 'refund.updated' },
+      'history',
+    ),
+    true,
+  );
+  assert.equal(
+    kitchen.shouldRefreshHistoryForEvent?.(
+      { type: 'sync.required', sourceType: 'order.updated' },
+      'history',
+    ),
+    false,
+  );
+});

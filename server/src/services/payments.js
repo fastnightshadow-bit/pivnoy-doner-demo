@@ -36,6 +36,35 @@ const toSafeProviderPayload = (payment = {}) => ({
   confirmationUrl: String(payment.confirmationUrl ?? ''),
 });
 
+const toSafeRefundPayload = (refund = {}) => ({
+  id: String(refund.id ?? ''),
+  status: String(refund.status ?? 'pending'),
+  paymentId: String(refund.paymentId ?? ''),
+  amount: refund.amount,
+  currency: String(refund.currency ?? ''),
+  receiptRegistration: String(refund.receiptRegistration ?? ''),
+});
+
+const mapRefundStatus = (status) => {
+  if (status === 'succeeded') return 'succeeded';
+  if (['canceled', 'cancelled', 'failed'].includes(status)) return 'failed';
+  return 'pending';
+};
+
+const assertProviderRefund = (refund, payment) => {
+  if (!String(refund?.id ?? '').trim()) {
+    throw new PaymentProviderError('REFUND_PROVIDER_ID_REQUIRED', {
+      status: 409,
+    });
+  }
+  if (String(refund?.paymentId ?? '') !== payment.providerPaymentId) {
+    throw new PaymentProviderError('REFUND_PAYMENT_MISMATCH', { status: 409 });
+  }
+  if (refund?.amount !== payment.amount || refund?.currency !== payment.currency) {
+    throw new PaymentProviderError('REFUND_AMOUNT_MISMATCH', { status: 409 });
+  }
+};
+
 const assertPaymentOrder = (payment, orderId) => {
   if (payment.orderId !== orderId) {
     throw new PaymentProviderError('PAYMENT_IDEMPOTENCY_CONFLICT', {
@@ -196,6 +225,77 @@ export const createPaymentService = ({
     }
   },
 
+  refundFull: async ({ orderId, reason, account }) => {
+    const normalizedOrderId = String(orderId || '');
+    const order = await orders.findById(normalizedOrderId);
+    if (!order) {
+      return { status: 'failed', error: 'ORDER_NOT_FOUND' };
+    }
+
+    const existing = await payments.findRefundByOrderId(normalizedOrderId);
+    if (existing?.status === 'succeeded') return existing;
+    if ((order.paymentStatus ?? order.payment_status) === 'refunded') {
+      return existing ?? { orderId: normalizedOrderId, status: 'succeeded' };
+    }
+
+    const payment = await payments.findPaidByOrderId(normalizedOrderId);
+    if (!payment) {
+      return { status: 'failed', error: 'PAID_PAYMENT_NOT_FOUND' };
+    }
+    if (
+      payment.orderId !== normalizedOrderId ||
+      payment.amount !== order.total ||
+      payment.currency !== 'RUB' ||
+      !String(payment.providerPaymentId || '').trim()
+    ) {
+      return { status: 'failed', error: 'REFUND_PAYMENT_MISMATCH' };
+    }
+
+    const reservation = await payments.reserveRefund({
+      orderId: normalizedOrderId,
+      paymentId: payment.id,
+      idempotencyKey: createId(),
+      amount: payment.amount,
+      currency: payment.currency,
+      reason: String(reason || '').trim(),
+      requestedBy: account?.id ?? null,
+    });
+    if (!reservation) {
+      return { status: 'failed', error: 'REFUND_RESERVATION_FAILED' };
+    }
+    if (reservation.status === 'succeeded') return reservation;
+
+    try {
+      const providerRefund = await provider.createRefund({
+        paymentId: payment.providerPaymentId,
+        amount: payment.amount,
+        currency: payment.currency,
+        publicNumber: order.number ?? order.public_number,
+        reason: String(reason || '').trim(),
+        idempotencyKey: reservation.idempotencyKey,
+      });
+      assertProviderRefund(providerRefund, payment);
+      const status = mapRefundStatus(providerRefund.status);
+      return (
+        (await payments.completeRefund({
+          orderId: normalizedOrderId,
+          idempotencyKey: reservation.idempotencyKey,
+          providerRefundId: providerRefund.id,
+          status,
+          providerPayload: toSafeRefundPayload(providerRefund),
+        })) ?? { ...reservation, status: 'pending' }
+      );
+    } catch {
+      return (
+        (await payments.noteRefundError({
+          orderId: normalizedOrderId,
+          idempotencyKey: reservation.idempotencyKey,
+          lastError: 'REFUND_PROVIDER_UNAVAILABLE',
+        })) ?? { ...reservation, status: 'pending' }
+      );
+    }
+  },
+
   handleWebhook: async (payload) => {
     const paymentId = getWebhookPaymentId(payload);
     if (!paymentId) {
@@ -203,6 +303,31 @@ export const createPaymentService = ({
         status: 400,
       });
     }
+
+    if (String(payload?.event || '').startsWith('refund.')) {
+      const localRefund = await payments.findRefundByProviderRefundId(paymentId);
+      if (!localRefund) {
+        throw new PaymentProviderError('REFUND_NOT_FOUND', { status: 404 });
+      }
+
+      // Refund webhook fields are untrusted too. YooKassa is queried directly
+      // before any local order/payment state is changed.
+      const verifiedRefund = await provider.getRefund(paymentId);
+      if (!verifiedRefund) {
+        throw new PaymentProviderError('REFUND_NOT_FOUND', { status: 404 });
+      }
+      assertProviderRefund(verifiedRefund, localRefund);
+      return (
+        (await payments.completeRefund({
+          orderId: localRefund.orderId,
+          idempotencyKey: localRefund.idempotencyKey,
+          providerRefundId: verifiedRefund.id,
+          status: mapRefundStatus(verifiedRefund.status),
+          providerPayload: toSafeRefundPayload(verifiedRefund),
+        })) ?? { applied: false }
+      );
+    }
+
     const local = await payments.findByProviderPaymentId(paymentId);
     if (!local) {
       throw new PaymentProviderError('PAYMENT_NOT_FOUND', { status: 404 });

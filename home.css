@@ -661,6 +661,21 @@ a:focus-visible {
   gap: 12px;
 }
 
+.menu-meat-switch button > span,
+.menu-meat-switch button > small {
+  display: block;
+}
+
+.menu-meat-switch button > small {
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 11px;
+}
+
+.menu-meat-switch button:disabled {
+  opacity: 0.55;
+}
+
 [data-home-meat-switch] {
   width: 100%;
 }

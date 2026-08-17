@@ -30,6 +30,7 @@ import {
 import { clientApi } from './client-api.js?v=2026081402';
 import { useProductionApi } from './runtime-mode.js';
 import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
+import { MEAT_LABELS, PRODUCT_SAUCES } from './product-config.js';
 
 const CHECKOUT_ATTEMPT_STORAGE_KEY = 'pivnoy-doner-checkout-attempt-v1';
 
@@ -242,10 +243,38 @@ export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
       ? status.stoppedProductIds.map(String)
       : [],
   );
+  const stoppedMeats = new Set(
+    Array.isArray(status?.stoppedMeatIds)
+      ? status.stoppedMeatIds.map(String)
+      : [],
+  );
+  const stoppedSauces = new Set(
+    Array.isArray(status?.stoppedSauceIds)
+      ? status.stoppedSauceIds.map(String)
+      : [],
+  );
+  const meatIdsByLabel = new Map(
+    Object.entries(MEAT_LABELS).map(([id, label]) => [String(label), id]),
+  );
+  const sauceIdsByLabel = new Map(
+    Object.entries(PRODUCT_SAUCES).map(([id, sauce]) => [
+      String(sauce.label),
+      id,
+    ]),
+  );
   const seen = new Set();
   return (Array.isArray(lines) ? lines : []).reduce((result, line) => {
     const productId = String(line?.productId || '');
-    if (!stopped.has(productId) || seen.has(productId)) return result;
+    const meatId = meatIdsByLabel.get(String(line?.meat || ''));
+    const hasStoppedSauce = Object.entries(line?.sauces || {}).some(
+      ([label, quantity]) =>
+        Number(quantity) > 0 && stoppedSauces.has(sauceIdsByLabel.get(label)),
+    );
+    const unavailable =
+      stopped.has(productId) ||
+      (meatId && stoppedMeats.has(meatId)) ||
+      hasStoppedSauce;
+    if (!unavailable || seen.has(productId)) return result;
     seen.add(productId);
     result.push({
       productId,
