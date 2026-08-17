@@ -7,6 +7,20 @@
   }
 }
 
+# Existing Telegram-bot storefront. It stays on its original containers until
+# the owner explicitly retires it after the new site has passed production QA.
+pivnoy-doner.digital {
+  encode gzip
+
+  handle /api/* {
+    reverse_proxy app:3001
+  }
+
+  handle {
+    reverse_proxy app:3000
+  }
+}
+
 pivdoner.ru, www.pivdoner.ru {
   import pivdoner_app
 }

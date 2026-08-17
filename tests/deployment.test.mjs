@@ -68,6 +68,9 @@ test('retention worker is profile-gated and uses the private API runtime once da
 
 test('Caddy routes client and staff subdomains to the isolated services', async () => {
   const caddy = await read('deploy/Caddyfile.pivdoner');
+  assert.match(caddy, /^pivnoy-doner\.digital\s*\{/m);
+  assert.match(caddy, /reverse_proxy\s+app:3001/);
+  assert.match(caddy, /reverse_proxy\s+app:3000/);
   for (const host of [
     'pivdoner.ru',
     'kitchen.pivdoner.ru',
