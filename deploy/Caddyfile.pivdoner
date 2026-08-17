@@ -24,5 +24,10 @@ owner.pivdoner.ru {
 }
 
 stage.pivdoner.ru {
-  import pivdoner_app
+  handle /api/* {
+    reverse_proxy pivdoner-stage-api:3001
+  }
+  handle {
+    reverse_proxy pivdoner-stage-web:8080
+  }
 }

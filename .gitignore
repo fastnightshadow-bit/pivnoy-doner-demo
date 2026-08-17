@@ -2,3 +2,5 @@ node_modules/
 .pnpm-store/
 .superpowers/
 .worktrees/
+deploy/.env
+deploy/.env.stage

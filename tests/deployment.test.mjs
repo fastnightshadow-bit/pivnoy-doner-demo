@@ -79,6 +79,26 @@ test('Caddy routes client and staff subdomains to the isolated services', async 
   }
   assert.match(caddy, /reverse_proxy\s+pivdoner-api:3001/);
   assert.match(caddy, /reverse_proxy\s+pivdoner-web:8080/);
+  assert.match(
+    caddy,
+    /stage\.pivdoner\.ru\s*\{[\s\S]*?reverse_proxy\s+pivdoner-stage-api:3001[\s\S]*?reverse_proxy\s+pivdoner-stage-web:8080[\s\S]*?\}/,
+  );
+});
+
+test('stage compose has an isolated database and cannot use live YooKassa credentials', async () => {
+  const compose = await read('deploy/docker-compose.stage.yml');
+  const web = composeService(compose, 'web');
+  const api = composeService(compose, 'api');
+  const db = composeService(compose, 'db');
+
+  assert.match(web, /^    container_name:\s*pivdoner-stage-web$/m);
+  assert.match(api, /^    container_name:\s*pivdoner-stage-api$/m);
+  assert.match(db, /^    container_name:\s*pivdoner-stage-db$/m);
+  assert.match(api, /^      PAYMENT_PROVIDER:\s*mock$/m);
+  assert.match(api, /^      PUBLIC_BASE_URL:\s*https:\/\/stage\.pivdoner\.ru$/m);
+  assert.match(compose, /pivdoner_stage_pg_data/);
+  assert.doesNotMatch(compose, /YOOKASSA_(?:SHOP_ID|SECRET_KEY)/);
+  assert.doesNotMatch(db, /^    ports:/m);
 });
 
 test('stage Caddy rollout preserves the legacy site and exposes only the test host', async () => {

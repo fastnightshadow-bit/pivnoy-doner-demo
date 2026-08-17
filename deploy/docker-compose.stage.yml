@@ -1,0 +1,73 @@
+services:
+  web:
+    container_name: pivdoner-stage-web
+    build:
+      context: ..
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/home.html"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    networks:
+      - caddy
+
+  api:
+    container_name: pivdoner-stage-api
+    image: pivdoner-stage-api:local
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    env_file:
+      - .env.stage
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      NODE_ENV: production
+      PORT: 3001
+      PAYMENT_PROVIDER: mock
+      PUBLIC_BASE_URL: https://stage.pivdoner.ru
+    restart: unless-stopped
+    expose:
+      - "3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 4s
+      retries: 8
+      start_period: 20s
+    networks:
+      - internal
+      - caddy
+
+  db:
+    container_name: pivdoner-stage-db
+    image: postgres:16-alpine
+    env_file:
+      - .env.stage
+    restart: unless-stopped
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+networks:
+  internal:
+    internal: true
+  caddy:
+    external: true
+    name: pivnoy_doner_caddy
+
+volumes:
+  pg_data:
+    name: pivdoner_stage_pg_data
