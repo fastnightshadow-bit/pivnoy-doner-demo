@@ -48,6 +48,16 @@ test('focused delivery address stays readable in dark theme', () => {
   );
 });
 
+test('iPhone keeps the product comment field at page scale while typing', () => {
+  const html = readText('home.html');
+  const css = readText('product-sheet.css');
+  const textareaRule = css.match(/\.product-sheet__comment textarea\s*\{([^}]*)\}/)?.[1] ?? '';
+  const fontSize = Number(textareaRule.match(/font-size:\s*([\d.]+)px/)?.[1]);
+
+  assert.ok(fontSize >= 16, `Expected at least 16px, received ${fontSize || 'no font size'}`);
+  assert.doesNotMatch(html, /(?:maximum-scale\s*=\s*1|user-scalable\s*=\s*no)/i);
+});
+
 test('featured unavailable control stays inside the product card on narrow screens', () => {
   const css = readText('home.css');
 

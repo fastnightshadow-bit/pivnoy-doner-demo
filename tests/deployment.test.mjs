@@ -125,6 +125,7 @@ test('web container maps each host to its own PWA entry point', async () => {
 test('client pages version their changed immutable assets', async () => {
   const releaseKey = '2026081402';
   const catalogReleaseKey = '2026081702';
+  const productSheetStyleReleaseKey = '2026081705';
   const checkoutReleaseKey = '2026081704';
   const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
@@ -169,7 +170,10 @@ test('client pages version their changed immutable assets', async () => {
   assert.match(cartHtml, new RegExp(`href="cart\\.css\\?v=${styleReleaseKey}"`));
   assert.match(homeHtml, new RegExp(`href="home\\.css\\?v=${homeStyleReleaseKey}"`));
   assert.match(homeHtml, new RegExp(`src="home\\.js\\?v=${homeReleaseKey}"`));
-  assert.match(homeHtml, new RegExp(`href="product-sheet\\.css\\?v=${catalogReleaseKey}"`));
+  assert.match(
+    homeHtml,
+    new RegExp(`href="product-sheet\\.css\\?v=${productSheetStyleReleaseKey}"`),
+  );
   assert.match(
     orderHtml,
     new RegExp(`<script\\s+type="module"\\s+src="order\\.js\\?v=${handoffReleaseKey}"><\\/script>`),
