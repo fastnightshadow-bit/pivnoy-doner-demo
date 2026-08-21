@@ -33,6 +33,7 @@ import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 import {
   getAvailableMeats,
   MEAT_LABELS,
+  PRODUCT_ADDONS,
   PRODUCT_SAUCES,
 } from './product-config.js';
 
@@ -273,9 +274,20 @@ export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
       ? status.stoppedSauceIds.map(String)
       : [],
   );
+  const stoppedAddons = new Set(
+    Array.isArray(status?.stoppedAddonIds)
+      ? status.stoppedAddonIds.map(String)
+      : [],
+  );
   const sauceIdsByLabel = new Map(
     Object.entries(PRODUCT_SAUCES).map(([id, sauce]) => [
       String(sauce.label),
+      id,
+    ]),
+  );
+  const addonIdsByLabel = new Map(
+    Object.entries(PRODUCT_ADDONS).map(([id, addon]) => [
+      String(addon.label),
       id,
     ]),
   );
@@ -287,10 +299,15 @@ export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
       ([label, quantity]) =>
         Number(quantity) > 0 && stoppedSauces.has(sauceIdsByLabel.get(label)),
     );
+    const hasStoppedAddon = Object.entries(line?.addons || {}).some(
+      ([label, quantity]) =>
+        Number(quantity) > 0 && stoppedAddons.has(addonIdsByLabel.get(label)),
+    );
     const unavailable =
       stopped.has(productId) ||
       (meatId && stoppedMeats.has(meatId)) ||
-      hasStoppedSauce;
+      hasStoppedSauce ||
+      hasStoppedAddon;
     if (!unavailable || seen.has(productId)) return result;
     seen.add(productId);
     result.push({

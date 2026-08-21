@@ -199,7 +199,11 @@ const createSizeMarkup = (productId, selection) => {
     </section>`;
 };
 
-const createAddonMarkup = (productId, selection) => {
+const createAddonMarkup = (
+  productId,
+  selection,
+  isAddonAvailable = () => true,
+) => {
   const addonIds = getProductConfiguration(productId)?.addons ?? [];
   if (addonIds.length === 0) return '';
 
@@ -211,11 +215,12 @@ const createAddonMarkup = (productId, selection) => {
           .map((addonId) => {
             const addon = PRODUCT_ADDONS[addonId];
             const quantity = selection.addons[addonId] ?? 0;
+            const available = isAddonAvailable(addonId);
             return `
-              <div class="product-sheet__addon ${quantity ? 'is-active' : ''}">
+              <div class="product-sheet__addon ${quantity ? 'is-active' : ''}${available ? '' : ' is-unavailable'}">
                 <span>
                   <strong>${addon.label}</strong>
-                  <small>+${formatPrice(addon.price)} / порция</small>
+                  <small>${available ? `+${formatPrice(addon.price)} / порция` : 'Нет в наличии'}</small>
                 </span>
                 <div class="product-sheet__addon-quantity" aria-label="Количество добавки ${addon.label}">
                   <button
@@ -229,7 +234,7 @@ const createAddonMarkup = (productId, selection) => {
                     type="button"
                     aria-label="Увеличить количество добавки ${addon.label}"
                     data-sheet-addon-change="${addonId}" data-delta="1"
-                    ${quantity >= 5 ? 'disabled' : ''}
+                    ${quantity >= 5 || !available ? 'disabled' : ''}
                   >+</button>
                 </div>
               </div>`;
@@ -289,6 +294,7 @@ export const createProductSheetMarkup = (
     unavailableLabel = 'Нет в наличии',
     isMeatAvailable = () => true,
     isSauceAvailable = () => true,
+    isAddonAvailable = () => true,
   } = {},
 ) => {
   if (!product?.id) return '';
@@ -299,6 +305,9 @@ export const createProductSheetMarkup = (
     isMeatAvailable(selection.meat) &&
     Object.entries(selection.sauces).every(
       ([sauceId, quantity]) => Number(quantity) <= 0 || isSauceAvailable(sauceId),
+    ) &&
+    Object.entries(selection.addons).every(
+      ([addonId, quantity]) => Number(quantity) <= 0 || isAddonAvailable(addonId),
     );
   const totalPrice =
     calculateProductPrice(product.id, selection) *
@@ -333,7 +342,7 @@ export const createProductSheetMarkup = (
         ${lockMeat ? '' : createMeatMarkup(product.id, selection, isMeatAvailable)}
         ${createSizeMarkup(product.id, selection)}
         ${createSauceMarkup(product.id, selection, isSauceAvailable)}
-        ${createAddonMarkup(product.id, selection)}
+        ${createAddonMarkup(product.id, selection, isAddonAvailable)}
 
         <section class="product-sheet__section product-sheet__comment">
           <label for="sheet-comment">Комментарий к заказу</label>
@@ -390,6 +399,7 @@ export const initProductSheet = ({
   isProductAvailable = () => true,
   isMeatAvailable = () => true,
   isSauceAvailable = () => true,
+  isAddonAvailable = () => true,
   getUnavailableLabel = () => 'Нет в наличии',
 } = {}) => {
   if (!dialog) {
@@ -458,6 +468,7 @@ export const initProductSheet = ({
         available: isProductAvailable(state.product.id),
         isMeatAvailable,
         isSauceAvailable,
+        isAddonAvailable,
         unavailableLabel: getUnavailableLabel(state.product.id),
       },
     );
@@ -559,6 +570,7 @@ export const initProductSheet = ({
     if (addonButton) {
       const addon = addonButton.dataset.sheetAddonChange;
       const delta = Number(addonButton.dataset.delta) || 0;
+      if (delta > 0 && !isAddonAvailable(addon)) return;
       const addons = { ...state.selection.addons };
       const quantity = Math.min(5, Math.max(0, (addons[addon] ?? 0) + delta));
       if (quantity > 0) addons[addon] = quantity;

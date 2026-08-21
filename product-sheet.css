@@ -304,7 +304,8 @@
 }
 
 .product-sheet__segments button.is-unavailable,
-.product-sheet__sauce.is-unavailable {
+.product-sheet__sauce.is-unavailable,
+.product-sheet__addon.is-unavailable {
   opacity: 0.58;
 }
 

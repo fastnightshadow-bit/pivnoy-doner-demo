@@ -151,6 +151,23 @@ test('оформление блокирует сохранённую позиц�
   ]);
 });
 
+test('оформление блокирует сохранённую позицию с добавкой из стоп-листа', () => {
+  const unavailable = checkout.getUnavailableCheckoutProducts(
+    [
+      {
+        productId: 'classic-shawarma',
+        name: 'Классическая шаурма',
+        addons: { 'Жареный лук': 2 },
+      },
+    ],
+    { stoppedAddonIds: ['onion'] },
+  );
+
+  assert.deepEqual(unavailable, [
+    { productId: 'classic-shawarma', name: 'Классическая шаурма' },
+  ]);
+});
+
 test('checkout explains that restaurant paused ordering', () => {
   assert.equal(
     checkout.isCheckoutOrderingPaused({ acceptingOrders: false }),

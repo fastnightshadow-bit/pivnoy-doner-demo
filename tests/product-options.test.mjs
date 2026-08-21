@@ -266,6 +266,22 @@ test('стоп-лист соуса отключает увеличение ег�
   );
 });
 
+test('стоп-лист добавки отключает увеличение её количества', () => {
+  const product = PRODUCTS.find(({ id }) => id === 'classic-shawarma');
+  const markup = createProductSheetMarkup(product, {}, 0, {
+    isAddonAvailable: (addonId) => addonId !== 'onion',
+  });
+
+  assert.match(
+    markup,
+    /product-sheet__addon\s+is-unavailable[\s\S]*?Жареный лук[\s\S]*?Нет в наличии/,
+  );
+  assert.match(
+    markup,
+    /data-sheet-addon-change="onion" data-delta="1"[\s\S]*?disabled/,
+  );
+});
+
 test('карточки вне закусок не показывают выбор соуса', () => {
   const product = PRODUCTS.find(({ id }) => id === 'classic-shawarma');
   const markup = createProductSheetMarkup(product);

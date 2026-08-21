@@ -38,7 +38,7 @@ import {
   resolvePreferredProductLine,
   savePreferredProductLine,
 } from './product-preference-storage.js';
-import { initProductSheet } from './product-sheet.js?v=2026081702';
+import { initProductSheet } from './product-sheet.js?v=2026082101';
 import { createReviewService } from './review-service.js?v=2026081402';
 import { createReviewsSectionMarkup } from './review-view.js?v=2026081402';
 import { clientApi } from './client-api.js?v=2026081402';
@@ -117,6 +117,7 @@ function initHomeScreen() {
     stoppedProductIds: new Set(),
     stoppedMeatIds: new Set(),
     stoppedSauceIds: new Set(),
+    stoppedAddonIds: new Set(),
   };
   let toastTimer;
   let hasRenderedHome = false;
@@ -124,6 +125,8 @@ function initHomeScreen() {
     !state.stoppedMeatIds.has(String(meatId));
   const isSauceAvailable = (sauceId) =>
     !state.stoppedSauceIds.has(String(sauceId));
+  const isAddonAvailable = (addonId) =>
+    !state.stoppedAddonIds.has(String(addonId));
   const isProductAvailable = (productId) => {
     const id = String(productId);
     const sauceId = id.startsWith('sauce-') ? id.slice('sauce-'.length) : '';
@@ -415,6 +418,7 @@ function initHomeScreen() {
     isProductAvailable,
     isMeatAvailable,
     isSauceAvailable,
+    isAddonAvailable,
     getUnavailableLabel,
   });
 
@@ -433,6 +437,11 @@ function initHomeScreen() {
     state.stoppedSauceIds = new Set(
       Array.isArray(status.stoppedSauceIds)
         ? status.stoppedSauceIds.map(String)
+        : [],
+    );
+    state.stoppedAddonIds = new Set(
+      Array.isArray(status.stoppedAddonIds)
+        ? status.stoppedAddonIds.map(String)
         : [],
     );
     for (const categoryId of ['shawarma', 'doner']) {

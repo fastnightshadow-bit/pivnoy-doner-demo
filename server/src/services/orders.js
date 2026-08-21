@@ -11,10 +11,12 @@ import { LEGAL_VERSIONS } from '../../../shared/legal.js';
 import {
   getAvailableMeats,
   normalizeOptionQuantities,
+  PRODUCT_ADDONS,
   PRODUCT_SAUCES,
 } from '../../../shared/catalog.js';
 
 const knownSauces = new Set(Object.keys(PRODUCT_SAUCES));
+const knownAddons = new Set(Object.keys(PRODUCT_ADDONS));
 
 export const createOrderService = ({
   orders,
@@ -100,8 +102,14 @@ export const createOrderService = ({
             ? catalog.stoppedSauceIds.map(String)
             : [],
         );
+        const stoppedAddons = new Set(
+          Array.isArray(catalog?.stoppedAddonIds)
+            ? catalog.stoppedAddonIds.map(String)
+            : [],
+        );
         const selectedMeats = new Set();
         const selectedSauces = new Set();
+        const selectedAddons = new Set();
         for (const item of input.items) {
           const availableMeats = getAvailableMeats(String(item.productId));
           const meat = availableMeats.includes(item.meat)
@@ -119,11 +127,27 @@ export const createOrderService = ({
               selectedSauces.add(sauceId);
             }
           }
+          for (const [addonId, quantity] of Object.entries(
+            normalizeOptionQuantities(item.addons),
+          )) {
+            if (
+              quantity > 0 &&
+              knownAddons.has(addonId) &&
+              stoppedAddons.has(addonId)
+            ) {
+              selectedAddons.add(addonId);
+            }
+          }
         }
-        if (selectedMeats.size > 0 || selectedSauces.size > 0) {
+        if (
+          selectedMeats.size > 0 ||
+          selectedSauces.size > 0 ||
+          selectedAddons.size > 0
+        ) {
           throw new DomainError('PRODUCT_OPTION_UNAVAILABLE', {
             meatIds: [...selectedMeats].sort(),
             sauceIds: [...selectedSauces].sort(),
+            addonIds: [...selectedAddons].sort(),
           });
         }
       }

@@ -233,7 +233,7 @@ test('заказ с остановленным видом мяса отклон�
     () => service.create(payload, 'stopped-meat-1'),
     (error) => {
       assert.equal(error.code, 'PRODUCT_OPTION_UNAVAILABLE');
-      assert.deepEqual(error.details, { meatIds: ['beef'], sauceIds: [] });
+      assert.deepEqual(error.details, { meatIds: ['beef'], sauceIds: [], addonIds: [] });
       return true;
     },
   );
@@ -263,7 +263,39 @@ test('заказ с остановленным соусом отклоняетс
     () => service.create(payload, 'stopped-sauce-1'),
     (error) => {
       assert.equal(error.code, 'PRODUCT_OPTION_UNAVAILABLE');
-      assert.deepEqual(error.details, { meatIds: [], sauceIds: ['tasty'] });
+      assert.deepEqual(error.details, { meatIds: [], sauceIds: ['tasty'], addonIds: [] });
+      return true;
+    },
+  );
+  assert.equal(orders.createCalls(), 0);
+});
+
+test('заказ с остановленной добавкой отклоняется до сохранения', async () => {
+  const orders = createRepository();
+  const service = createOrderService({
+    orders,
+    settings,
+    catalogSettings: {
+      get: async () => ({ stoppedAddonIds: ['jalapeno'] }),
+    },
+    orderAccessSecret: 'test-order-access-secret',
+  });
+  const payload = validOrderPayload();
+  payload.items = [
+    {
+      productId: 'classic-shawarma',
+      quantity: 1,
+      meat: 'chicken',
+      size: 'standard',
+      addons: { jalapeno: 2 },
+    },
+  ];
+
+  await assert.rejects(
+    () => service.create(payload, 'stopped-addon-1'),
+    (error) => {
+      assert.equal(error.code, 'PRODUCT_OPTION_UNAVAILABLE');
+      assert.deepEqual(error.details, { meatIds: [], sauceIds: [], addonIds: ['jalapeno'] });
       return true;
     },
   );
