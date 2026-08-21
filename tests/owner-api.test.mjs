@@ -63,3 +63,23 @@ test('владелец меняет только доступность, но н
   assert.equal(calls[0].url, '/api/owner/catalog/classic-shawarma');
   assert.deepEqual(JSON.parse(calls[0].options.body), { available: false });
 });
+
+test('владелец меняет доступность категории одним запросом', async () => {
+  const calls = [];
+  const api = createOwnerApi({ fetchImpl: recordingFetch(calls) });
+
+  await api.setCategoryAvailability('shawarma', false);
+
+  assert.equal(calls[0].url, '/api/owner/categories/shawarma');
+  assert.deepEqual(JSON.parse(calls[0].options.body), { available: false });
+});
+
+test('владелец может остановить отдельную добавку', async () => {
+  const calls = [];
+  const api = createOwnerApi({ fetchImpl: recordingFetch(calls) });
+
+  await api.setOptionAvailability('addon', 'jalapeno', false);
+
+  assert.equal(calls[0].url, '/api/catalog-options/addon/jalapeno');
+  assert.deepEqual(JSON.parse(calls[0].options.body), { available: false });
+});

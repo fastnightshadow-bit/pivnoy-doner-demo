@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta name="theme-color" content="#ffffff" />
-    <title>Пивной Донер — Владелец</title>
+    <title>Пивной Донер — Меню владельца</title>
     <link rel="manifest" href="owner.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app/favicon-32.png" />
     <link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png" />
-    <link rel="stylesheet" href="owner.css" />
-    <script type="module" src="owner.js"></script>
+    <link rel="stylesheet" href="owner.css?v=2026082101" />
+    <script type="module" src="owner.js?v=2026082101"></script>
   </head>
   <body>
     <section class="owner-login" data-owner-login>
@@ -32,42 +32,83 @@
       <header class="owner-header">
         <div class="owner-brand">
           <img src="assets/mobile-home/logo-transparent.webp" alt="" />
-          <div><strong>Пивной Донер</strong><span>Панель владельца</span></div>
+          <div><strong>Пивной Донер</strong><span>Управление меню</span></div>
         </div>
         <div class="owner-header__actions">
-          <button class="owner-button owner-button--light" data-owner-refresh>Обновить</button>
-          <button class="owner-button owner-button--light" data-owner-logout>Выйти</button>
+          <button class="owner-icon-button" type="button" data-owner-refresh aria-label="Обновить">↻</button>
+          <button class="owner-button owner-button--light" type="button" data-owner-logout>Выйти</button>
         </div>
       </header>
 
       <main class="owner-main">
-        <section class="owner-title">
-          <div><span>Текущая смена</span><h1>Контроль ресторана</h1></div>
-          <label class="owner-accepting">
-            <span><strong>Приём заказов</strong><small data-owner-accepting-label>Включён</small></span>
-            <input type="checkbox" data-owner-accepting />
-            <i aria-hidden="true"></i>
+        <section class="owner-view" data-owner-menu-view>
+          <div class="owner-page-title">
+            <div><span>Управление</span><h1>Меню</h1></div>
+            <small>Изменения сразу видны покупателям</small>
+          </div>
+
+          <label class="owner-search">
+            <span aria-hidden="true">⌕</span>
+            <input type="search" placeholder="Поиск по меню" autocomplete="off" data-owner-search />
           </label>
-        </section>
 
-        <section class="owner-stats" aria-label="Показатели смены">
-          <article><span>Активные заказы</span><strong data-owner-active>0</strong></article>
-          <article><span>Просроченные</span><strong data-owner-overdue>0</strong></article>
-          <article><span>Выручка сегодня</span><strong data-owner-revenue>0 ₽</strong></article>
-        </section>
-
-        <div class="owner-grid">
-          <section class="owner-panel">
-            <header><div><span>Меню</span><h2>Стоп-лист</h2></div><small>Цены здесь не меняются</small></header>
-            <div class="owner-products" data-owner-products></div>
+          <section class="owner-service-card">
+            <div><strong>Приём заказов</strong><small data-owner-accepting-label>Включён</small></div>
+            <label class="owner-toggle" aria-label="Приём заказов">
+              <input type="checkbox" data-owner-accepting />
+              <i aria-hidden="true"></i>
+            </label>
           </section>
 
-          <aside class="owner-panel owner-links">
-            <header><div><span>Рабочие экраны</span><h2>Быстрый доступ</h2></div></header>
-            <a href="kitchen.html"><strong>Кухня</strong><span>Заказы и готовность →</span></a>
-            <a href="courier.html"><strong>Курьер</strong><span>Доставки и контакты →</span></a>
-          </aside>
-        </div>
+          <button class="owner-stop-card" type="button" data-owner-open-stopped>
+            <span><strong>Стоп-лист</strong><small data-owner-stopped-count>0 позиций</small></span>
+            <i class="owner-stop-card__bars" aria-hidden="true"><b></b><b></b><b></b><b></b></i>
+            <em aria-hidden="true">›</em>
+          </button>
+
+          <section class="owner-menu-section">
+            <header><h2 data-owner-category-heading>Категории</h2></header>
+            <div class="owner-categories" data-owner-categories></div>
+            <p class="owner-empty" data-owner-search-empty hidden>Ничего не найдено</p>
+          </section>
+
+          <details class="owner-shift-summary">
+            <summary>Сводка смены</summary>
+            <div class="owner-stats">
+              <article><span>Активные</span><strong data-owner-active>0</strong></article>
+              <article><span>Просрочены</span><strong data-owner-overdue>0</strong></article>
+              <article><span>Выручка</span><strong data-owner-revenue>0 ₽</strong></article>
+            </div>
+          </details>
+
+          <nav class="owner-links" aria-label="Рабочие экраны">
+            <a href="kitchen.html"><strong>Кухня</strong><span>Открыть →</span></a>
+            <a href="courier.html"><strong>Курьер</strong><span>Открыть →</span></a>
+          </nav>
+        </section>
+
+        <section class="owner-view" data-owner-category-view hidden>
+          <header class="owner-subheader">
+            <button type="button" data-owner-back aria-label="Назад">‹</button>
+            <h1 data-owner-category-title>Категория</h1>
+          </header>
+          <label class="owner-search owner-search--compact">
+            <span aria-hidden="true">⌕</span>
+            <input type="search" placeholder="Поиск в категории" autocomplete="off" data-owner-category-search />
+          </label>
+          <section class="owner-category-control" data-owner-category-control></section>
+          <div class="owner-product-list" data-owner-product-list></div>
+        </section>
+
+        <section class="owner-view" data-owner-stopped-view hidden>
+          <header class="owner-subheader">
+            <button type="button" data-owner-stopped-back aria-label="Назад">‹</button>
+            <div><h1>Стоп-лист</h1><small data-owner-stopped-title-count>0 позиций</small></div>
+          </header>
+          <div class="owner-stopped-list" data-owner-stopped-list></div>
+          <p class="owner-empty" data-owner-stopped-empty hidden>Стоп-лист пуст</p>
+        </section>
+
         <p class="owner-toast" data-owner-toast hidden></p>
       </main>
     </div>

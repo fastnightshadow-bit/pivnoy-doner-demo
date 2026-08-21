@@ -54,6 +54,24 @@ export const createOwnerApi = ({ fetchImpl = globalThis.fetch } = {}) => ({
         body: JSON.stringify({ available: Boolean(available) }),
       },
     ),
+  setCategoryAvailability: (categoryId, available) =>
+    requestJson(
+      fetchImpl,
+      `/api/owner/categories/${encodeURIComponent(String(categoryId || ''))}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ available: Boolean(available) }),
+      },
+    ),
+  setOptionAvailability: (kind, optionId, available) =>
+    requestJson(
+      fetchImpl,
+      `/api/catalog-options/${encodeURIComponent(String(kind || ''))}/${encodeURIComponent(String(optionId || ''))}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ available: Boolean(available) }),
+      },
+    ),
 });
 
 export const createDemoOwnerApi = () => {
@@ -61,6 +79,9 @@ export const createDemoOwnerApi = () => {
   let settings = {
     acceptingOrders: true,
     stoppedProductIds: [],
+    stoppedMeatIds: [],
+    stoppedSauceIds: [],
+    stoppedAddonIds: [],
   };
   const requireSession = () => {
     if (!authenticated) throw new OwnerApiError('Введите PIN', 401);
@@ -98,6 +119,34 @@ export const createDemoOwnerApi = () => {
       else stopped.add(productId);
       settings = { ...settings, stoppedProductIds: [...stopped] };
       return { productId, available: Boolean(available) };
+    },
+    async setCategoryAvailability(categoryId, available) {
+      requireSession();
+      const { PRODUCTS } = await import('./catalog-data.js');
+      const productIds = PRODUCTS
+        .filter(({ category }) => category === categoryId)
+        .map(({ id }) => id);
+      const stopped = new Set(settings.stoppedProductIds);
+      productIds.forEach((productId) => {
+        if (available) stopped.delete(productId);
+        else stopped.add(productId);
+      });
+      settings = { ...settings, stoppedProductIds: [...stopped] };
+      return { categoryId, available: Boolean(available), productIds };
+    },
+    async setOptionAvailability(kind, optionId, available) {
+      requireSession();
+      const settingKey = {
+        meat: 'stoppedMeatIds',
+        sauce: 'stoppedSauceIds',
+        addon: 'stoppedAddonIds',
+      }[kind];
+      if (!settingKey) throw new OwnerApiError('Неизвестная настройка', 404);
+      const stopped = new Set(settings[settingKey] || []);
+      if (available) stopped.delete(optionId);
+      else stopped.add(optionId);
+      settings = { ...settings, [settingKey]: [...stopped] };
+      return { kind, optionId, available: Boolean(available) };
     },
   };
 };
