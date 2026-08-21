@@ -153,6 +153,30 @@ test('владелец может переключить целую катего
   assert.equal(updates[0].available, false);
 });
 
+test('кухня может переключить целую категорию одним запросом', async () => {
+  const updates = [];
+  const app = createApp({
+    db,
+    authService,
+    settingsService: {
+      setCategoryAvailability: async (categoryId, available, account) => {
+        updates.push({ categoryId, available, account });
+        return { categoryId, available, productIds: ['classic-shawarma'] };
+      },
+    },
+  });
+
+  const response = await request(app)
+    .patch('/api/catalog/categories/shawarma')
+    .set('Cookie', 'pivdoner_session=kitchen')
+    .send({ available: false });
+
+  assert.equal(response.status, 200);
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].categoryId, 'shawarma');
+  assert.equal(updates[0].available, false);
+});
+
 test('неизвестную опцию нельзя добавить в стоп-лист', async () => {
   const error = Object.assign(new Error('OPTION_NOT_FOUND'), {
     code: 'OPTION_NOT_FOUND',

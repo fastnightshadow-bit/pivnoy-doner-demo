@@ -2,28 +2,29 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026081702';
+} from './kitchen-api.js?v=2026082102';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026081702';
+} from './kitchen-model.js?v=2026082102';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
 } from './kitchen-presentation.js';
-import { PRODUCTS } from './catalog-data.js';
-import { MEAT_LABELS, PRODUCT_SAUCES } from './product-config.js';
+import { CATEGORIES, PRODUCTS } from './catalog-data.js';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082102';
+import { buildCategorySummaries } from './owner-menu.js?v=2026082102';
 import {
-  normalizeKitchenSettings,
-  toggleStoppedOption,
-  toggleStoppedProduct,
-} from './kitchen-settings.js?v=2026081702';
+  getKitchenStoppedEntries,
+  renderKitchenMenu,
+  renderKitchenStoppedMenu,
+} from './kitchen-menu.js?v=2026082102';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026081702';
+} from './staff-live-sync.js?v=2026082102';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -480,14 +481,26 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     panelScrim: root.querySelector('[data-panel-scrim]'),
     soundToggle: root.querySelector('[data-sound-toggle]'),
     settingsOpen: root.querySelector('[data-kitchen-settings-open]'),
-    settingsDialog: root.querySelector('[data-kitchen-settings-dialog]'),
-    settingsForm: root.querySelector('[data-kitchen-settings-form]'),
-    settingsClose: root.querySelectorAll('[data-kitchen-settings-close]'),
-    settingsSave: root.querySelector('[data-kitchen-settings-save]'),
+    menuView: root.querySelector('[data-kitchen-menu-view]'),
+    menuClose: root.querySelector('[data-kitchen-menu-close]'),
+    menuSearch: root.querySelector('[data-kitchen-menu-search]'),
+    menuCatalog: root.querySelector('[data-kitchen-menu-catalog]'),
+    menuList: root.querySelector('[data-kitchen-menu-list]'),
+    menuEmpty: root.querySelector('[data-kitchen-menu-empty]'),
     acceptingOrders: root.querySelector('[data-accepting-orders]'),
+    acceptingLabel: root.querySelector('[data-kitchen-accepting-label]'),
+    stoppedCount: root.querySelector('[data-kitchen-stopped-count]'),
+    stoppedTitleCount: root.querySelector('[data-kitchen-stopped-title-count]'),
+    openStopped: root.querySelector('[data-kitchen-open-stopped]'),
+    categoryView: root.querySelector('[data-kitchen-category-view]'),
+    categoryClose: root.querySelector('[data-kitchen-category-close]'),
+    categoryTitle: root.querySelector('[data-kitchen-category-title]'),
+    categoryControl: root.querySelector('[data-kitchen-category-control]'),
     stopList: root.querySelector('[data-stop-list]'),
-    stopMeatList: root.querySelector('[data-stop-meat-list]'),
-    stopSauceList: root.querySelector('[data-stop-sauce-list]'),
+    stoppedView: root.querySelector('[data-kitchen-stopped-view]'),
+    stoppedClose: root.querySelector('[data-kitchen-stopped-close]'),
+    stoppedList: root.querySelector('[data-kitchen-stopped-list]'),
+    stoppedEmpty: root.querySelector('[data-kitchen-stopped-empty]'),
     cancelDialog: root.querySelector('[data-cancel-dialog]'),
     cancelForm: root.querySelector('[data-cancel-form]'),
     cancelWarning: root.querySelector('[data-cancel-warning]'),
@@ -511,6 +524,10 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     soundMuted: false,
     settings: normalizeKitchenSettings(),
     settingsPending: false,
+    menuMode: 'index',
+    menuQuery: '',
+    activeCategoryId: '',
+    expandedProductIds: new Set(),
     cancellingOrderId: '',
     pendingOperations: new Set(),
     failedOperations: new Map(),
@@ -591,49 +608,89 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     isMuted: () => state.soundMuted,
   });
 
+  const settingsCountLabel = (count) => {
+    const value = Math.max(0, Number(count) || 0);
+    const lastTwo = value % 100;
+    const last = value % 10;
+    const word = lastTwo >= 11 && lastTwo <= 14
+      ? 'позиций'
+      : last === 1
+        ? 'позиция'
+        : last >= 2 && last <= 4
+          ? 'позиции'
+          : 'позиций';
+    return `${value} ${word}`;
+  };
+
   const renderKitchenSettings = () => {
     const normalized = normalizeKitchenSettings(state.settings);
     state.settings = normalized;
+    const categories = buildCategorySummaries({
+      categories: CATEGORIES,
+      products: PRODUCTS,
+      stoppedProductIds: normalized.stoppedProductIds,
+    });
+    const stoppedEntries = getKitchenStoppedEntries({
+      products: PRODUCTS,
+      settings: normalized,
+    });
     if (refs.acceptingOrders) {
       refs.acceptingOrders.checked = normalized.acceptingOrders;
       refs.acceptingOrders.disabled = state.settingsPending;
     }
-    if (refs.settingsSave) refs.settingsSave.disabled = state.settingsPending;
-    if (!refs.stopList) return;
-
-    const stopped = new Set(normalized.stoppedProductIds);
-    refs.stopList.innerHTML = PRODUCTS.map(
-      (product) => `<label class="stop-list__item">
-        <span>
-          <strong>${escapeKitchenHtml(product.name)}</strong>
-          <small>${escapeKitchenHtml(product.description)}</small>
-        </span>
-        <input type="checkbox" data-stop-product="${escapeKitchenHtml(product.id)}" ${
-          stopped.has(product.id) ? 'checked' : ''
-        } ${state.settingsPending ? 'disabled' : ''} />
-      </label>`,
-    ).join('');
-    const renderOption = (kind, id, label, stoppedIds) =>
-      `<label class="stop-list__item stop-list__item--compact">
-        <span><strong>${escapeKitchenHtml(label)}</strong></span>
-        <input type="checkbox" data-stop-option-kind="${kind}" data-stop-option-id="${escapeKitchenHtml(id)}" ${
-          stoppedIds.has(id) ? 'checked' : ''
-        } ${state.settingsPending ? 'disabled' : ''} />
-      </label>`;
-    if (refs.stopMeatList) {
-      const stoppedMeats = new Set(normalized.stoppedMeatIds);
-      refs.stopMeatList.innerHTML = ['chicken', 'beef']
-        .map((id) => renderOption('meat', id, MEAT_LABELS[id], stoppedMeats))
-        .join('');
+    if (refs.acceptingLabel) {
+      refs.acceptingLabel.textContent = normalized.acceptingOrders
+        ? 'Включён'
+        : 'Остановлен';
     }
-    if (refs.stopSauceList) {
-      const stoppedSauces = new Set(normalized.stoppedSauceIds);
-      refs.stopSauceList.innerHTML = Object.entries(PRODUCT_SAUCES)
-        .map(([id, option]) =>
-          renderOption('sauce', id, option.label, stoppedSauces),
-        )
-        .join('');
+    if (refs.stoppedCount) {
+      refs.stoppedCount.textContent = settingsCountLabel(stoppedEntries.length);
     }
+    if (refs.stoppedTitleCount) {
+      refs.stoppedTitleCount.textContent = settingsCountLabel(stoppedEntries.length);
+    }
+    if (refs.menuList) {
+      refs.menuList.innerHTML = renderKitchenMenu({
+        categories,
+        settings: normalized,
+        query: state.menuQuery,
+        expandedIds: state.expandedProductIds,
+        showProducts: false,
+      });
+      refs.menuList.querySelectorAll('button').forEach((button) => {
+        button.disabled ||= state.settingsPending;
+      });
+      if (refs.menuEmpty) refs.menuEmpty.hidden = Boolean(refs.menuList.innerHTML);
+    }
+    if (refs.categoryView && state.activeCategoryId) {
+      const category = categories.find(({ id }) => id === state.activeCategoryId);
+      if (refs.categoryTitle) refs.categoryTitle.textContent = category?.label || 'Категория';
+      if (refs.categoryControl) refs.categoryControl.innerHTML = '';
+      if (refs.stopList) {
+        refs.stopList.innerHTML = category
+          ? renderKitchenMenu({
+              categories: [category],
+              settings: normalized,
+              query: state.menuQuery,
+              expandedIds: state.expandedProductIds,
+              showProducts: true,
+            })
+          : '';
+        refs.stopList.querySelectorAll('button').forEach((button) => {
+          button.disabled ||= state.settingsPending;
+        });
+      }
+    }
+    if (refs.stoppedList) {
+      refs.stoppedList.innerHTML = renderKitchenStoppedMenu(stoppedEntries);
+      refs.stoppedList.querySelectorAll('button').forEach((button) => {
+        button.disabled ||= state.settingsPending;
+      });
+    }
+    if (refs.stoppedEmpty) refs.stoppedEmpty.hidden = stoppedEntries.length > 0;
+    setElementHidden(refs.menuCatalog, state.menuMode !== 'index');
+    setElementHidden(refs.categoryView, state.menuMode !== 'category');
+    setElementHidden(refs.stoppedView, state.menuMode !== 'stopped');
   };
 
   const loadKitchenSettings = async () => {
@@ -643,14 +700,57 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   };
 
   const openKitchenSettings = async () => {
-    if (!refs.settingsDialog || state.settingsPending) return;
+    if (!refs.menuView || state.settingsPending) return;
     state.settingsPending = true;
     renderKitchenSettings();
     try {
       await loadKitchenSettings();
-      refs.settingsDialog.showModal();
+      state.menuMode = 'index';
+      state.activeCategoryId = '';
+      setElementHidden(refs.boardView, true);
+      setElementHidden(refs.menuView, false);
+      renderKitchenSettings();
+      refs.menuSearch?.focus();
     } catch (error) {
       showToast(error?.message || 'Не удалось загрузить настройки', 'error');
+    } finally {
+      state.settingsPending = false;
+      renderKitchenSettings();
+    }
+  };
+
+  const closeKitchenSettings = () => {
+    state.menuMode = 'index';
+    state.activeCategoryId = '';
+    state.menuQuery = '';
+    if (refs.menuSearch) refs.menuSearch.value = '';
+    setElementHidden(refs.menuView, true);
+    setElementHidden(refs.boardView, false);
+    if (state.mode === 'history') void showHistoryMode();
+    else showBoardMode();
+    refs.settingsOpen?.focus();
+  };
+
+  const runSettingsAction = async (action, successMessage) => {
+    if (state.settingsPending) return;
+    if (!state.connected) {
+      showToast('Нет соединения. Настройки не сохранены', 'error');
+      return;
+    }
+    state.settingsPending = true;
+    renderKitchenSettings();
+    try {
+      await action();
+      await loadKitchenSettings();
+      showToast(successMessage);
+    } catch (error) {
+      if (error?.status === 401) {
+        showToast('Сессия закончилась. Войдите снова', 'error');
+        await endSession();
+        return;
+      }
+      showToast(error?.message || 'Настройки не сохранены', 'error');
+      await loadKitchenSettings().catch(() => {});
     } finally {
       state.settingsPending = false;
       renderKitchenSettings();
@@ -889,8 +989,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       return;
     }
     if (event?.type === 'settings.updated') {
-      state.settings = normalizeKitchenSettings(event.settings);
-      renderKitchenSettings();
+      void loadKitchenSettings().catch(() => {});
       return;
     }
     const order = event?.order;
@@ -996,12 +1095,18 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     state.urgency = 'all';
     state.settings = normalizeKitchenSettings();
     state.settingsPending = false;
+    state.menuMode = 'index';
+    state.menuQuery = '';
+    state.activeCategoryId = '';
+    state.expandedProductIds.clear();
     state.cancellingOrderId = '';
     state.pendingOperations.clear();
     state.failedOperations.clear();
     newOrderNotifier.reset();
     updateConnection(false);
     if (refs.search) refs.search.value = '';
+    if (refs.menuSearch) refs.menuSearch.value = '';
+    setElementHidden(refs.menuView, true);
     setElementHidden(refs.boardView, true);
     setElementHidden(refs.loginView, false);
     refs.pinInput?.focus();
@@ -1197,62 +1302,78 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
 
   refs.switchEmployee?.addEventListener('click', () => void endSession());
   refs.settingsOpen?.addEventListener('click', () => void openKitchenSettings());
-  refs.settingsClose?.forEach((button) => {
-    button.addEventListener('click', () => refs.settingsDialog?.close());
+  refs.menuClose?.addEventListener('click', closeKitchenSettings);
+  refs.menuSearch?.addEventListener('input', () => {
+    state.menuQuery = refs.menuSearch.value.trim();
+    renderKitchenSettings();
   });
   refs.acceptingOrders?.addEventListener('change', () => {
-    state.settings = normalizeKitchenSettings({
-      ...state.settings,
-      acceptingOrders: refs.acceptingOrders.checked,
-    });
-    renderKitchenSettings();
-  });
-  refs.stopList?.addEventListener('change', (event) => {
-    const input = event.target.closest('[data-stop-product]');
-    if (!input) return;
-    state.settings = toggleStoppedProduct(
-      state.settings,
-      input.dataset.stopProduct,
+    const acceptingOrders = refs.acceptingOrders.checked;
+    void runSettingsAction(
+      () => activeApi.setAcceptingOrders(acceptingOrders),
+      acceptingOrders ? 'Приём заказов включён' : 'Приём заказов остановлен',
     );
+  });
+  refs.openStopped?.addEventListener('click', () => {
+    state.menuMode = 'stopped';
     renderKitchenSettings();
   });
-  refs.settingsForm?.addEventListener('change', (event) => {
-    const input = event.target.closest('[data-stop-option-kind]');
-    if (!input) return;
-    state.settings = toggleStoppedOption(
-      state.settings,
-      input.dataset.stopOptionKind,
-      input.dataset.stopOptionId,
-    );
+  refs.categoryClose?.addEventListener('click', () => {
+    state.menuMode = 'index';
+    state.activeCategoryId = '';
     renderKitchenSettings();
   });
-  refs.settingsForm?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (state.settingsPending) return;
-    if (!state.connected) {
-      showToast('Нет соединения. Настройки не сохранены', 'error');
+  refs.stoppedClose?.addEventListener('click', () => {
+    state.menuMode = 'index';
+    renderKitchenSettings();
+  });
+  refs.menuView?.addEventListener('click', (event) => {
+    const openCategory = event.target.closest('[data-kitchen-open-category]');
+    if (openCategory) {
+      state.activeCategoryId = openCategory.dataset.kitchenOpenCategory;
+      state.menuMode = 'category';
+      renderKitchenSettings();
       return;
     }
-    state.settingsPending = true;
-    renderKitchenSettings();
-    try {
-      const result = await activeApi.updateSettings(
-        state.settings,
-        createOperationId('settings', 'update', windowRef.crypto),
-      );
-      state.settings = normalizeKitchenSettings(result);
-      refs.settingsDialog?.close();
-      showToast('Настройки кухни сохранены');
-    } catch (error) {
-      if (error?.status === 401) {
-        showToast('Сессия закончилась. Войдите снова', 'error');
-        await endSession();
-        return;
+    const expand = event.target.closest('[data-kitchen-expand]');
+    if (expand) {
+      const productId = expand.dataset.kitchenExpand;
+      if (state.expandedProductIds.has(productId)) {
+        state.expandedProductIds.delete(productId);
+      } else {
+        state.expandedProductIds.add(productId);
       }
-      showToast(error?.message || 'Настройки не сохранены', 'error');
-    } finally {
-      state.settingsPending = false;
       renderKitchenSettings();
+      return;
+    }
+    const categoryToggle = event.target.closest('[data-kitchen-category-toggle]');
+    if (categoryToggle) {
+      const categoryId = categoryToggle.dataset.kitchenCategoryToggle;
+      const available = categoryToggle.getAttribute('aria-checked') !== 'true';
+      void runSettingsAction(
+        () => activeApi.setCategoryAvailability(categoryId, available),
+        available ? 'Категория возвращена в меню' : 'Категория добавлена в стоп-лист',
+      );
+      return;
+    }
+    const productToggle = event.target.closest('[data-kitchen-product-toggle]');
+    if (productToggle) {
+      const productId = productToggle.dataset.kitchenProductToggle;
+      const available = productToggle.getAttribute('aria-checked') !== 'true';
+      void runSettingsAction(
+        () => activeApi.setAvailability(productId, available),
+        available ? 'Блюдо возвращено в меню' : 'Блюдо добавлено в стоп-лист',
+      );
+      return;
+    }
+    const optionToggle = event.target.closest('[data-kitchen-option-toggle]');
+    if (optionToggle) {
+      const { kind, id } = optionToggle.dataset;
+      const available = optionToggle.getAttribute('aria-checked') !== 'true';
+      void runSettingsAction(
+        () => activeApi.setOptionAvailability(kind, id, available),
+        available ? 'Опция возвращена в меню' : 'Опция добавлена в стоп-лист',
+      );
     }
   });
   refs.search?.addEventListener('input', () => {
@@ -1402,7 +1523,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026081702').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026082102').catch(() => {});
   }
 
   return {

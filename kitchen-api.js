@@ -2,12 +2,12 @@ import {
   CANCELLATION_REASONS,
   createStatusHistoryEntry,
   getNextKitchenAction,
-} from './kitchen-model.js?v=2026081702';
+} from './kitchen-model.js?v=2026082102';
 import {
   createDemoEmployees,
   createDemoOrders,
-} from './kitchen-fixtures.js?v=2026081702';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026081702';
+} from './kitchen-fixtures.js?v=2026082101';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082102';
 import { PRODUCTS } from './catalog-data.js';
 import {
   MEAT_LABELS,
@@ -196,6 +196,37 @@ export const createKitchenApi = ({
       return jsonRequest('/settings', { method: 'GET' });
     },
 
+    setAcceptingOrders(acceptingOrders) {
+      return jsonRequest('/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ acceptingOrders: Boolean(acceptingOrders) }),
+      });
+    },
+
+    setAvailability(productId, available) {
+      return jsonRequest(`/catalog/${encodeURIComponent(productId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ available: Boolean(available) }),
+      });
+    },
+
+    setCategoryAvailability(categoryId, available) {
+      return jsonRequest(`/catalog/categories/${encodeURIComponent(categoryId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ available: Boolean(available) }),
+      });
+    },
+
+    setOptionAvailability(kind, optionId, available) {
+      return jsonRequest(
+        `/catalog-options/${encodeURIComponent(kind)}/${encodeURIComponent(optionId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ available: Boolean(available) }),
+        },
+      );
+    },
+
     async updateSettings(settings) {
       const normalized = normalizeKitchenSettings(settings);
       await jsonRequest('/settings', {
@@ -213,6 +244,7 @@ export const createKitchenApi = ({
       );
       const stoppedMeats = new Set(normalized.stoppedMeatIds);
       const stoppedSauces = new Set(normalized.stoppedSauceIds);
+      const stoppedAddons = new Set(normalized.stoppedAddonIds);
       await Promise.all([
         ...['chicken', 'beef'].map((meatId) =>
           jsonRequest(`/catalog-options/meat/${encodeURIComponent(meatId)}`, {
@@ -224,6 +256,12 @@ export const createKitchenApi = ({
           jsonRequest(`/catalog-options/sauce/${encodeURIComponent(sauceId)}`, {
             method: 'PATCH',
             body: JSON.stringify({ available: !stoppedSauces.has(sauceId) }),
+          }),
+        ),
+        ...Object.keys(PRODUCT_ADDONS).map((addonId) =>
+          jsonRequest(`/catalog-options/addon/${encodeURIComponent(addonId)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ available: !stoppedAddons.has(addonId) }),
           }),
         ),
       ]);
@@ -385,6 +423,64 @@ export const createDemoKitchenApi = ({
     async getSettings() {
       requireSession();
       await delay();
+      return clone(settings);
+    },
+
+    async setAcceptingOrders(acceptingOrders) {
+      requireSession();
+      await delay();
+      settings = normalizeKitchenSettings({
+        ...settings,
+        acceptingOrders: Boolean(acceptingOrders),
+      });
+      emit({ type: 'settings.updated', settings });
+      return clone(settings);
+    },
+
+    async setAvailability(productId, available) {
+      requireSession();
+      await delay();
+      const stopped = new Set(settings.stoppedProductIds);
+      if (available) stopped.delete(String(productId));
+      else stopped.add(String(productId));
+      settings = normalizeKitchenSettings({
+        ...settings,
+        stoppedProductIds: [...stopped],
+      });
+      emit({ type: 'settings.updated', settings });
+      return clone(settings);
+    },
+
+    async setCategoryAvailability(categoryId, available) {
+      requireSession();
+      await delay();
+      const stopped = new Set(settings.stoppedProductIds);
+      for (const product of PRODUCTS.filter(({ category }) => category === categoryId)) {
+        if (available) stopped.delete(product.id);
+        else stopped.add(product.id);
+      }
+      settings = normalizeKitchenSettings({
+        ...settings,
+        stoppedProductIds: [...stopped],
+      });
+      emit({ type: 'settings.updated', settings });
+      return clone(settings);
+    },
+
+    async setOptionAvailability(kind, optionId, available) {
+      requireSession();
+      await delay();
+      const key = {
+        meat: 'stoppedMeatIds',
+        sauce: 'stoppedSauceIds',
+        addon: 'stoppedAddonIds',
+      }[kind];
+      if (!key) throw new KitchenApiError('Неизвестный тип опции', 400);
+      const stopped = new Set(settings[key]);
+      if (available) stopped.delete(String(optionId));
+      else stopped.add(String(optionId));
+      settings = normalizeKitchenSettings({ ...settings, [key]: [...stopped] });
+      emit({ type: 'settings.updated', settings });
       return clone(settings);
     },
 

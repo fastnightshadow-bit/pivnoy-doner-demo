@@ -125,8 +125,8 @@ test('клиент и кухня получают новую механику с
     readFile(new URL('../kitchen-api.js', import.meta.url), 'utf8'),
     readFile(new URL('../kitchen-sw.js', import.meta.url), 'utf8'),
   ]);
-  const version = '2026081702';
-  assert.match(homeHtml, /home\.js\?v=2026081702/);
+  const version = '2026082102';
+  assert.match(homeHtml, /home\.js\?v=2026082101/);
   assert.match(homeSource, /order-state\.js\?v=2026081404/);
   assert.match(orderHtml, /order\.js\?v=2026081404/);
   assert.match(orderSource, /order-state\.js\?v=2026081404/);
@@ -136,7 +136,7 @@ test('клиент и кухня получают новую механику с
   assert.match(kitchenSource, new RegExp(`kitchen-model\\.js\\?v=${version}`));
   assert.match(kitchenSource, new RegExp(`kitchen-sw\\.js\\?v=${version}`));
   assert.match(kitchenApiSource, new RegExp(`kitchen-model\\.js\\?v=${version}`));
-  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v10/);
+  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v12/);
   assert.match(kitchenWorker, new RegExp(`kitchen\\.js\\?v=${version}`));
   assert.match(kitchenWorker, new RegExp(`kitchen-model\\.js\\?v=${version}`));
 });

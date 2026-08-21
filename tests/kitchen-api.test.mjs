@@ -113,6 +113,7 @@ test('демо-API сохраняет приём заказов и стоп-ли
     stoppedProductIds: [],
     stoppedMeatIds: [],
     stoppedSauceIds: [],
+    stoppedAddonIds: [],
   });
   assert.deepEqual(
     await api.updateSettings(
@@ -121,6 +122,7 @@ test('демо-API сохраняет приём заказов и стоп-ли
         stoppedProductIds: ['classic-shawarma'],
         stoppedMeatIds: ['beef'],
         stoppedSauceIds: ['tasty'],
+        stoppedAddonIds: ['fried-onion'],
       },
       'operation-settings-1',
     ),
@@ -129,6 +131,7 @@ test('демо-API сохраняет приём заказов и стоп-ли
       stoppedProductIds: ['classic-shawarma'],
       stoppedMeatIds: ['beef'],
       stoppedSauceIds: ['tasty'],
+      stoppedAddonIds: ['fried-onion'],
     },
   );
 });
@@ -175,6 +178,52 @@ test('production kitchen saves stopped meats and sauces through option endpoints
         JSON.parse(body).available === true,
     ),
   );
+});
+
+test('production kitchen changes one menu control with one request', async () => {
+  const calls = [];
+  const api = createKitchenApi({
+    fetchImpl: async (url, options = {}) => {
+      calls.push({ url, method: options.method || 'GET', body: options.body });
+      return response({ acceptingOrders: true, stoppedProductIds: [] });
+    },
+  });
+
+  await api.setAcceptingOrders(false);
+  await api.setAvailability('classic-shawarma', false);
+  await api.setCategoryAvailability('shawarma', true);
+  await api.setOptionAvailability('meat', 'beef', false);
+
+  assert.deepEqual(calls.map(({ url }) => url), [
+    '/api/settings',
+    '/api/catalog/classic-shawarma',
+    '/api/catalog/categories/shawarma',
+    '/api/catalog-options/meat/beef',
+  ]);
+  assert.ok(calls.every(({ method }) => method === 'PATCH'));
+  assert.deepEqual(calls.map(({ body }) => JSON.parse(body)), [
+    { acceptingOrders: false },
+    { available: false },
+    { available: true },
+    { available: false },
+  ]);
+});
+
+test('demo kitchen changes products and options independently', async () => {
+  const api = createApi();
+  await api.login('0000');
+
+  await api.setAvailability('classic-shawarma', false);
+  await api.setOptionAvailability('meat', 'beef', false);
+  let settings = await api.getSettings();
+  assert.deepEqual(settings.stoppedProductIds, ['classic-shawarma']);
+  assert.deepEqual(settings.stoppedMeatIds, ['beef']);
+
+  await api.setAvailability('classic-shawarma', true);
+  await api.setOptionAvailability('meat', 'beef', true);
+  settings = await api.getSettings();
+  assert.deepEqual(settings.stoppedProductIds, []);
+  assert.deepEqual(settings.stoppedMeatIds, []);
 });
 
 test('production kitchen loads server order history from the staff endpoint', async () => {
@@ -260,11 +309,9 @@ test('экран кухни показывает общие настройки �
   assert.doesNotMatch(html, /0000|Личный PIN|Демо-PIN/);
   assert.doesNotMatch(portal, /0000|2468|PIN\s*\d{4}/);
   assert.match(html, /data-kitchen-settings-open/);
+  assert.match(html, /data-kitchen-menu-view/);
   assert.match(html, /data-accepting-orders/);
   assert.match(html, /data-stop-list/);
-  assert.match(html, /Курица/);
-  assert.match(html, /Говядина/);
-  assert.match(html, /Соусы донера/);
   assert.match(html, />Выйти</);
 });
 

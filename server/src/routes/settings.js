@@ -49,6 +49,22 @@ export const createCatalogRouter = ({ authService, settings }) => {
   const router = Router();
   router.use(authenticateRequest(authService));
   router.use(requireRole('owner', 'kitchen'));
+  router.patch('/categories/:id', async (request, response) => {
+    const parsed = availabilitySchema.safeParse(request.body);
+    if (!parsed.success) return response.status(400).json({ error: 'INVALID_AVAILABILITY' });
+    try {
+      response.json(
+        await settings.setCategoryAvailability(
+          request.params.id,
+          parsed.data.available,
+          request.account,
+        ),
+      );
+    } catch (error) {
+      if (error?.status) return response.status(error.status).json({ error: error.code });
+      throw error;
+    }
+  });
   router.patch('/:id', async (request, response) => {
     const parsed = availabilitySchema.safeParse(request.body);
     if (!parsed.success) return response.status(400).json({ error: 'INVALID_AVAILABILITY' });

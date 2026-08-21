@@ -125,14 +125,15 @@ test('web container maps each host to its own PWA entry point', async () => {
 test('client pages version their changed immutable assets', async () => {
   const releaseKey = '2026081402';
   const catalogReleaseKey = '2026081702';
-  const productSheetStyleReleaseKey = '2026081705';
-  const checkoutReleaseKey = '2026081704';
+  const productSheetReleaseKey = '2026082101';
+  const productSheetStyleReleaseKey = '2026082101';
+  const checkoutReleaseKey = '2026082101';
   const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
   const homeStyleReleaseKey = '2026081702';
-  const homeReleaseKey = '2026081702';
+  const homeReleaseKey = '2026082101';
   const themeReleaseKey = '2026081406';
-  const kitchenReleaseKey = '2026081702';
+  const kitchenReleaseKey = '2026082102';
   const courierReleaseKey = '2026081408';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
@@ -206,8 +207,9 @@ test('client pages version their changed immutable assets', async () => {
     courierSource,
     new RegExp(`staff-live-sync\\.js\\?v=${courierReleaseKey}`),
   );
-  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v10/);
+  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v12/);
   assert.match(kitchenWorker, /'kitchen\.html'/);
+  assert.match(kitchenWorker, /kitchen-menu\.js\?v=2026082102/);
   assert.doesNotMatch(kitchenWorker, /kitchen\.html\?demo=1/);
   assert.match(courierWorker, /pivnoy-doner-courier-shell-v5/);
 
@@ -227,7 +229,7 @@ test('client pages version their changed immutable assets', async () => {
     `./home-menu.js?v=${catalogReleaseKey}`,
     `./order-state.js?v=${handoffReleaseKey}`,
     `./order-storage.js?v=${releaseKey}`,
-    `./product-sheet.js?v=${catalogReleaseKey}`,
+    `./product-sheet.js?v=${productSheetReleaseKey}`,
     `./review-service.js?v=${releaseKey}`,
     `./review-view.js?v=${releaseKey}`,
     `./client-api.js?v=${releaseKey}`,
