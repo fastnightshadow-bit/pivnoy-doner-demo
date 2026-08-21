@@ -34,6 +34,22 @@ export const createOwnerRouter = ({ authService, dashboard, settings = null }) =
         throw error;
       }
     });
+    router.patch('/categories/:id', async (request, response) => {
+      const parsed = availabilitySchema.safeParse(request.body);
+      if (!parsed.success) return response.status(400).json({ error: 'INVALID_AVAILABILITY' });
+      try {
+        response.json(
+          await settings.setCategoryAvailability(
+            request.params.id,
+            parsed.data.available,
+            request.account,
+          ),
+        );
+      } catch (error) {
+        if (error?.status) return response.status(error.status).json({ error: error.code });
+        throw error;
+      }
+    });
   }
   return router;
 };

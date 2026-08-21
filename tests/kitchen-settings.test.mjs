@@ -13,26 +13,30 @@ test('настройки кухни нормализуют приём заказ
       stoppedProductIds: ['doner', 'doner', '', 'fries'],
       stoppedMeatIds: ['beef', 'beef', ''],
       stoppedSauceIds: ['tasty', 'bbq', 'tasty'],
+      stoppedAddonIds: ['onion', 'onion', ''],
     }),
     {
       acceptingOrders: false,
       stoppedProductIds: ['doner', 'fries'],
       stoppedMeatIds: ['beef'],
       stoppedSauceIds: ['bbq', 'tasty'],
+      stoppedAddonIds: ['onion'],
     },
   );
 });
 
-test('мясо и соусы переключаются независимо от блюд', () => {
+test('мясо, соусы и добавки переключаются независимо от блюд', () => {
   const settings = normalizeKitchenSettings();
   const withoutBeef = toggleStoppedOption(settings, 'meat', 'beef');
   const withoutSauce = toggleStoppedOption(withoutBeef, 'sauce', 'tasty');
+  const withoutAddon = toggleStoppedOption(withoutSauce, 'addon', 'onion');
 
-  assert.deepEqual(withoutSauce.stoppedMeatIds, ['beef']);
-  assert.deepEqual(withoutSauce.stoppedSauceIds, ['tasty']);
-  assert.deepEqual(withoutSauce.stoppedProductIds, []);
+  assert.deepEqual(withoutAddon.stoppedMeatIds, ['beef']);
+  assert.deepEqual(withoutAddon.stoppedSauceIds, ['tasty']);
+  assert.deepEqual(withoutAddon.stoppedAddonIds, ['onion']);
+  assert.deepEqual(withoutAddon.stoppedProductIds, []);
   assert.deepEqual(
-    toggleStoppedOption(withoutSauce, 'meat', 'beef').stoppedMeatIds,
+    toggleStoppedOption(withoutAddon, 'meat', 'beef').stoppedMeatIds,
     [],
   );
 });

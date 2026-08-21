@@ -28,6 +28,9 @@ export const createSettingsRepository = (pool) => ({
       stoppedSauceIds: stoppedOptionsResult.rows
         .filter((item) => item.option_kind === 'sauce')
         .map((item) => item.option_id),
+      stoppedAddonIds: stoppedOptionsResult.rows
+        .filter((item) => item.option_kind === 'addon')
+        .map((item) => item.option_id),
     };
   },
 
@@ -82,6 +85,48 @@ export const createSettingsRepository = (pool) => ({
           aggregate_type, aggregate_id, event_type, payload
         ) values ('catalog', $1, 'settings.updated', $2)`,
         [product.id, { productId: product.id, available: Boolean(available) }],
+      );
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  setCategoryAvailability: async (categoryId, products, available, account) => {
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      for (const product of products) {
+        await client.query(
+          `insert into catalog_products (
+            product_id, name, category, available, configuration, updated_by
+          ) values ($1, $2, $3, $4, $5, $6)
+          on conflict (product_id) do update
+          set available = excluded.available,
+              updated_by = excluded.updated_by,
+              updated_at = now()`,
+          [
+            product.id,
+            product.name,
+            product.category,
+            Boolean(available),
+            product,
+            account.id,
+          ],
+        );
+      }
+      await client.query(
+        `insert into event_outbox (
+          aggregate_type, aggregate_id, event_type, payload
+        ) values ('catalog-category', $1, 'settings.updated', $2)`,
+        [categoryId, {
+          categoryId,
+          productIds: products.map(({ id }) => id),
+          available: Boolean(available),
+        }],
       );
       await client.query('commit');
     } catch (error) {

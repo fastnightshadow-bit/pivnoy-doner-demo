@@ -1,0 +1,69 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { CATEGORIES, PRODUCTS } from '../catalog-data.js';
+import {
+  buildCategorySummaries,
+  filterOwnerMenu,
+  getCategoryProductIds,
+  getProductOptionGroups,
+} from '../owner-menu.js';
+
+test('панель владельца группирует товары по категориям и считает стоп-лист', () => {
+  const categories = buildCategorySummaries({
+    categories: CATEGORIES,
+    products: PRODUCTS,
+    stoppedProductIds: ['classic-shawarma', 'nuggets'],
+  });
+
+  const shawarma = categories.find(({ id }) => id === 'shawarma');
+  const snacks = categories.find(({ id }) => id === 'snacks');
+  const drinks = categories.find(({ id }) => id === 'drinks');
+
+  assert.deepEqual(
+    {
+      productCount: shawarma.productCount,
+      stoppedCount: shawarma.stoppedCount,
+      allAvailable: shawarma.allAvailable,
+    },
+    { productCount: 7, stoppedCount: 1, allAvailable: false },
+  );
+  assert.equal(snacks.stoppedCount, 1);
+  assert.equal(drinks.productCount, 0);
+});
+
+test('поиск находит и категорию, и отдельный товар', () => {
+  const categories = buildCategorySummaries({
+    categories: CATEGORIES,
+    products: PRODUCTS,
+    stoppedProductIds: [],
+  });
+
+  const byCategory = filterOwnerMenu(categories, 'шаурма');
+  const byProduct = filterOwnerMenu(categories, 'наггетсы');
+
+  assert.equal(byCategory.length, 1);
+  assert.equal(byCategory[0].id, 'shawarma');
+  assert.equal(byCategory[0].products.length, 7);
+  assert.equal(byProduct.length, 1);
+  assert.equal(byProduct[0].id, 'snacks');
+  assert.deepEqual(byProduct[0].products.map(({ id }) => id), ['nuggets']);
+});
+
+test('у товара показываются только подходящие группы настроек', () => {
+  const shawarma = getProductOptionGroups('classic-shawarma');
+  const snack = getProductOptionGroups('nuggets');
+  const burger = getProductOptionGroups('burger-standard');
+
+  assert.deepEqual(shawarma.map(({ kind }) => kind), ['meat', 'addon']);
+  assert.equal(shawarma.find(({ kind }) => kind === 'addon').options.length, 5);
+  assert.deepEqual(snack.map(({ kind }) => kind), ['sauce']);
+  assert.equal(snack[0].options.length, 10);
+  assert.deepEqual(burger, []);
+});
+
+test('переключение категории получает точный список её товаров', () => {
+  assert.deepEqual(
+    getCategoryProductIds('doner', PRODUCTS),
+    ['doner', 'doner-box'],
+  );
+});

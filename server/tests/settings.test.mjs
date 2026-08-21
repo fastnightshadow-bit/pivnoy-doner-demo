@@ -20,6 +20,7 @@ test('клиент без входа получает только публич�
       stoppedProductIds: ['tasty-shawarma'],
       stoppedMeatIds: ['beef'],
       stoppedSauceIds: ['tasty'],
+      stoppedAddonIds: ['jalapeno'],
       deliveryPrice: 200,
       internalNote: 'не публиковать',
     }),
@@ -34,6 +35,7 @@ test('клиент без входа получает только публич�
     stoppedProductIds: ['tasty-shawarma'],
     stoppedMeatIds: ['beef'],
     stoppedSauceIds: ['tasty'],
+    stoppedAddonIds: ['jalapeno'],
   });
   assert.equal(response.headers['cache-control'], 'no-store');
 });
@@ -83,7 +85,7 @@ test('кухня может остановить приём заказов и п
   assert.equal(updates.length, 2);
 });
 
-test('кухня отдельно останавливает курицу, говядину и соусы', async () => {
+test('кухня отдельно останавливает мясо, соусы и добавки', async () => {
   const updates = [];
   const settingsService = {
     get: async () => ({
@@ -91,6 +93,7 @@ test('кухня отдельно останавливает курицу, го�
       stoppedProductIds: [],
       stoppedMeatIds: [],
       stoppedSauceIds: [],
+      stoppedAddonIds: [],
     }),
     setOptionAvailability: async (kind, optionId, available, account) => {
       updates.push({ kind, optionId, available, account });
@@ -107,16 +110,47 @@ test('кухня отдельно останавливает курицу, го�
     .patch('/api/catalog-options/sauce/tasty')
     .set('Cookie', 'pivdoner_session=kitchen')
     .send({ available: false });
+  const addon = await request(app)
+    .patch('/api/catalog-options/addon/jalapeno')
+    .set('Cookie', 'pivdoner_session=kitchen')
+    .send({ available: false });
 
   assert.equal(chicken.status, 200);
   assert.equal(sauce.status, 200);
+  assert.equal(addon.status, 200);
   assert.deepEqual(
     updates.map(({ kind, optionId, available }) => ({ kind, optionId, available })),
     [
       { kind: 'meat', optionId: 'chicken', available: false },
       { kind: 'sauce', optionId: 'tasty', available: false },
+      { kind: 'addon', optionId: 'jalapeno', available: false },
     ],
   );
+});
+
+test('владелец может переключить целую категорию', async () => {
+  const updates = [];
+  const app = createApp({
+    db,
+    authService,
+    dashboardService: { get: async () => ({}) },
+    settingsService: {
+      setCategoryAvailability: async (categoryId, available, account) => {
+        updates.push({ categoryId, available, account });
+        return { categoryId, available, productIds: ['doner', 'doner-box'] };
+      },
+    },
+  });
+
+  const response = await request(app)
+    .patch('/api/owner/categories/doner')
+    .set('Cookie', 'pivdoner_session=owner')
+    .send({ available: false });
+
+  assert.equal(response.status, 200);
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].categoryId, 'doner');
+  assert.equal(updates[0].available, false);
 });
 
 test('неизвестную опцию нельзя добавить в стоп-лист', async () => {

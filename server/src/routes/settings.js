@@ -21,6 +21,9 @@ export const createPublicCatalogStatusRouter = ({ settings }) => {
       stoppedSauceIds: Array.isArray(value.stoppedSauceIds)
         ? value.stoppedSauceIds.map(String)
         : [],
+      stoppedAddonIds: Array.isArray(value.stoppedAddonIds)
+        ? value.stoppedAddonIds.map(String)
+        : [],
     });
   });
   return router;

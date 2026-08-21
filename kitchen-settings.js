@@ -12,6 +12,7 @@ export const normalizeKitchenSettings = (value = {}) => ({
   stoppedProductIds: normalizeProductIds(value.stoppedProductIds),
   stoppedMeatIds: normalizeProductIds(value.stoppedMeatIds),
   stoppedSauceIds: normalizeProductIds(value.stoppedSauceIds),
+  stoppedAddonIds: normalizeProductIds(value.stoppedAddonIds),
 });
 
 export const toggleStoppedProduct = (settings = {}, productId = '') => {
@@ -40,7 +41,9 @@ export const toggleStoppedOption = (
       ? 'stoppedMeatIds'
       : kind === 'sauce'
         ? 'stoppedSauceIds'
-        : '';
+        : kind === 'addon'
+          ? 'stoppedAddonIds'
+          : '';
   const id = String(optionId || '').trim();
   if (!key || !id) return normalized;
 
