@@ -121,6 +121,17 @@ test('оформление учитывает мясо по умолчанию �
   ]);
 });
 
+test('оформление блокирует фиксированное куриное блюдо при остановке курицы', () => {
+  const unavailable = checkout.getUnavailableCheckoutProducts(
+    [{ productId: 'nuggets', name: 'Наггетсы' }],
+    { stoppedMeatIds: ['chicken'] },
+  );
+
+  assert.deepEqual(unavailable, [
+    { productId: 'nuggets', name: 'Наггетсы' },
+  ]);
+});
+
 test('ошибка недоступной мясной опции не называется проблемой интернета', () => {
   assert.equal(
     checkout.getCheckoutSubmissionErrorMessage(

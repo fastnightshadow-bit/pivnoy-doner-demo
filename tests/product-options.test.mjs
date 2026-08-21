@@ -6,6 +6,8 @@ import {
   PRODUCT_SAUCES,
   calculateProductPrice,
   getProductConfiguration,
+  getProductMeatIds,
+  isProductAvailableForMeats,
 } from '../product-config.js';
 import { createCartLine, getLineSignature } from '../cart-state.js';
 import { loadCart } from '../cart-storage.js';
@@ -15,6 +17,19 @@ import { createCartLineMarkup } from '../cart.js';
 import { createOrderItemsMarkup } from '../order.js';
 import { normalizeOrder } from '../order-state.js';
 import { getKitchenItemOptions } from '../kitchen-presentation.js';
+
+test('глобальный стоп-лист мяса охватывает всё явно куриное меню', () => {
+  assert.deepEqual(getProductMeatIds('classic-shawarma'), ['chicken', 'beef']);
+  assert.deepEqual(getProductMeatIds('doner'), ['chicken', 'beef']);
+  assert.deepEqual(getProductMeatIds('nuggets'), ['chicken']);
+  assert.deepEqual(getProductMeatIds('hotdog-danish'), ['chicken']);
+  assert.deepEqual(getProductMeatIds('fries'), []);
+
+  assert.equal(isProductAvailableForMeats('nuggets', ['chicken']), false);
+  assert.equal(isProductAvailableForMeats('classic-shawarma', ['chicken']), true);
+  assert.equal(isProductAvailableForMeats('classic-shawarma', ['chicken', 'beef']), false);
+  assert.equal(isProductAvailableForMeats('fries', ['chicken', 'beef']), true);
+});
 
 test('unavailable product can explain that ordering is paused', () => {
   const product = PRODUCTS.find(({ id }) => id === 'nuggets');

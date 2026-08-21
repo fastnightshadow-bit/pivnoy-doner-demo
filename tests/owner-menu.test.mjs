@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readText } from './helpers.mjs';
 import { CATEGORIES, PRODUCTS } from '../catalog-data.js';
 import {
   buildCategorySummaries,
   filterOwnerMenu,
   getCategoryProductIds,
+  getGlobalMeatOptions,
   getProductOptionGroups,
 } from '../owner-menu.js';
 
@@ -66,4 +68,23 @@ test('переключение категории получает точный 
     getCategoryProductIds('doner', PRODUCTS),
     ['doner', 'doner-box'],
   );
+});
+
+test('в начале меню владельца доступны отдельные глобальные переключатели мяса', () => {
+  assert.deepEqual(
+    getGlobalMeatOptions({ stoppedMeatIds: ['beef'] }),
+    [
+      { id: 'chicken', label: 'Курица', available: true },
+      { id: 'beef', label: 'Говядина', available: false },
+    ],
+  );
+});
+
+test('панель владельца содержит отдельный блок мяса и аккуратные шевроны', () => {
+  const html = readText('owner.html');
+  const css = readText('owner.css');
+
+  assert.match(html, /data-owner-global-meats/);
+  assert.match(css, /\.owner-chevron/);
+  assert.match(css, /\.owner-service-card__copy/);
 });

@@ -7,9 +7,10 @@ import {
 import {
   buildCategorySummaries,
   filterOwnerMenu,
+  getGlobalMeatOptions,
   getProductOptionGroups,
-} from './owner-menu.js?v=2026082101';
-import { createDemoOwnerApi, createOwnerApi } from './owner-api.js?v=2026082101';
+} from './owner-menu.js?v=2026082102';
+import { createDemoOwnerApi, createOwnerApi } from './owner-api.js?v=2026082102';
 
 const refs = {
   login: document.querySelector('[data-owner-login]'),
@@ -20,6 +21,7 @@ const refs = {
   refresh: document.querySelector('[data-owner-refresh]'),
   logout: document.querySelector('[data-owner-logout]'),
   accepting: document.querySelector('[data-owner-accepting]'),
+  globalMeats: document.querySelector('[data-owner-global-meats]'),
   acceptingLabel: document.querySelector('[data-owner-accepting-label]'),
   active: document.querySelector('[data-owner-active]'),
   overdue: document.querySelector('[data-owner-overdue]'),
@@ -145,6 +147,16 @@ const showView = (name) => {
 
 const renderMain = () => {
   const settings = getSettings();
+  refs.globalMeats.innerHTML = getGlobalMeatOptions(settings)
+    .map((meat) => `<article class="owner-global-meat">
+      <span><strong>${escapeHtml(meat.label)}</strong><small>${meat.available ? 'Есть в наличии' : 'Полностью отключено'}</small></span>
+      ${switchMarkup({
+        checked: meat.available,
+        label: `${meat.label}: ${meat.available ? 'включено' : 'выключено'}`,
+        attributes: `data-owner-option-toggle data-kind="meat" data-id="${escapeHtml(meat.id)}"`,
+      })}
+    </article>`)
+    .join('');
   const categories = filterOwnerMenu(
     buildCategorySummaries({
       categories: CATEGORIES,
@@ -163,7 +175,7 @@ const renderMain = () => {
         : `${category.productCount} товаров`;
     return `<button class="owner-category-row" type="button" data-owner-open-category="${escapeHtml(category.id)}">
       <span><strong>${escapeHtml(category.label)}</strong><small>${escapeHtml(details)}</small></span>
-      <em aria-hidden="true">›</em>
+      <i class="owner-chevron" aria-hidden="true"></i>
     </button>`;
   }).join('');
   const total = stoppedTotal();
@@ -238,7 +250,7 @@ const renderCategory = () => {
               ? `<img src="${escapeHtml(product.image)}" alt="" loading="lazy" />`
               : '<i aria-hidden="true">•</i>'}</span>
             <span class="owner-product-row__copy"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(productMeta(product))}</small></span>
-            ${groups.length ? `<button class="owner-expand" type="button" data-owner-expand="${escapeHtml(product.id)}" aria-expanded="${expanded}"><span>${groups.reduce((total, group) => total + group.options.length, 0)}</span><i aria-hidden="true">${expanded ? '⌃' : '⌄'}</i></button>` : ''}
+            ${groups.length ? `<button class="owner-expand" type="button" data-owner-expand="${escapeHtml(product.id)}" aria-expanded="${expanded}"><span>${groups.reduce((total, group) => total + group.options.length, 0)}</span><i class="owner-expand__chevron" aria-hidden="true"></i></button>` : ''}
           </div>
           ${renderOptionGroups(product)}
         </article>`;
@@ -361,6 +373,11 @@ refs.accepting.addEventListener('change', () => {
 });
 
 refs.search.addEventListener('input', renderMain);
+refs.globalMeats.addEventListener('click', (event) => {
+  const option = event.target.closest('[data-owner-option-toggle]');
+  if (option) void handleOptionToggle(option);
+});
+
 refs.categorySearch.addEventListener('input', renderCategory);
 refs.categories.addEventListener('click', (event) => {
   const button = event.target.closest('[data-owner-open-category]');

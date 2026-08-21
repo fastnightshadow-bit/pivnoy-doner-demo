@@ -10,6 +10,7 @@ import { toPublicClientOrder } from '../domain/public-order.js';
 import { LEGAL_VERSIONS } from '../../../shared/legal.js';
 import {
   getAvailableMeats,
+  getProductMeatIds,
   normalizeOptionQuantities,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
@@ -116,6 +117,13 @@ export const createOrderService = ({
             ? item.meat
             : availableMeats[0];
           if (meat && stoppedMeats.has(meat)) selectedMeats.add(meat);
+          if (availableMeats.every((meatId) => meatId === 'default')) {
+            for (const productMeatId of getProductMeatIds(String(item.productId))) {
+              if (stoppedMeats.has(productMeatId)) {
+                selectedMeats.add(productMeatId);
+              }
+            }
+          }
           for (const [sauceId, quantity] of Object.entries(
             normalizeOptionQuantities(item.sauces),
           )) {

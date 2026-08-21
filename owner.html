@@ -9,8 +9,8 @@
     <link rel="manifest" href="owner.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app/favicon-32.png" />
     <link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png" />
-    <link rel="stylesheet" href="owner.css?v=2026082101" />
-    <script type="module" src="owner.js?v=2026082101"></script>
+    <link rel="stylesheet" href="owner.css?v=2026082102" />
+    <script type="module" src="owner.js?v=2026082102"></script>
   </head>
   <body>
     <section class="owner-login" data-owner-login>
@@ -53,17 +53,28 @@
           </label>
 
           <section class="owner-service-card">
-            <div><strong>Приём заказов</strong><small data-owner-accepting-label>Включён</small></div>
+            <div class="owner-service-card__copy"><strong>Приём заказов</strong><small data-owner-accepting-label>Включён</small></div>
             <label class="owner-toggle" aria-label="Приём заказов">
               <input type="checkbox" data-owner-accepting />
               <i aria-hidden="true"></i>
             </label>
           </section>
 
+          <section class="owner-global-meats">
+            <header>
+              <div>
+                <span>Общее наличие</span>
+                <h2>Мясо во всём меню</h2>
+              </div>
+              <small>Отключает все блюда и варианты с выбранным мясом</small>
+            </header>
+            <div class="owner-global-meats__grid" data-owner-global-meats></div>
+          </section>
+
           <button class="owner-stop-card" type="button" data-owner-open-stopped>
             <span><strong>Стоп-лист</strong><small data-owner-stopped-count>0 позиций</small></span>
             <i class="owner-stop-card__bars" aria-hidden="true"><b></b><b></b><b></b><b></b></i>
-            <em aria-hidden="true">›</em>
+            <i class="owner-chevron" aria-hidden="true"></i>
           </button>
 
           <section class="owner-menu-section">

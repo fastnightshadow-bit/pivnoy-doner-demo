@@ -240,6 +240,34 @@ test('заказ с остановленным видом мяса отклон�
   assert.equal(orders.createCalls(), 0);
 });
 
+test('глобальная остановка курицы блокирует фиксированное куриное блюдо', async () => {
+  const orders = createRepository();
+  const service = createOrderService({
+    orders,
+    settings,
+    catalogSettings: {
+      get: async () => ({ stoppedMeatIds: ['chicken'] }),
+    },
+    orderAccessSecret: 'test-order-access-secret',
+  });
+  const payload = validOrderPayload();
+  payload.items = [{ productId: 'nuggets', quantity: 1 }];
+
+  await assert.rejects(
+    () => service.create(payload, 'stopped-fixed-chicken-1'),
+    (error) => {
+      assert.equal(error.code, 'PRODUCT_OPTION_UNAVAILABLE');
+      assert.deepEqual(error.details, {
+        meatIds: ['chicken'],
+        sauceIds: [],
+        addonIds: [],
+      });
+      return true;
+    },
+  );
+  assert.equal(orders.createCalls(), 0);
+});
+
 test('заказ с остановленным соусом отклоняется до сохранения', async () => {
   const orders = createRepository();
   const service = createOrderService({

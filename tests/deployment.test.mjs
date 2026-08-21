@@ -227,6 +227,7 @@ test('client pages version their changed immutable assets', async () => {
   );
   assert.deepEqual(getVersionedImports(homeSource), [
     `./home-menu.js?v=${catalogReleaseKey}`,
+    './product-config.js?v=2026082102',
     `./order-state.js?v=${handoffReleaseKey}`,
     `./order-storage.js?v=${releaseKey}`,
     `./product-sheet.js?v=${productSheetReleaseKey}`,

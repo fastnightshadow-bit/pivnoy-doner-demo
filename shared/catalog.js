@@ -4,6 +4,8 @@ export {
   getAvailableMeats,
   getAvailableSizes,
   getProductConfiguration,
+  getProductMeatIds,
+  isProductAvailableForMeats,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
 } from '../product-config.js';

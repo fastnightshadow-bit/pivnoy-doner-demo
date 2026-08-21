@@ -57,6 +57,19 @@ export const filterOwnerMenu = (categories, query) => {
 
 const toOptions = (source, ids) =>
   ids.map((id) => ({ id, label: source[id]?.label || id, price: source[id]?.price || 0 }));
+export const getGlobalMeatOptions = (settings = {}) => {
+  const stopped = new Set(
+    Array.isArray(settings.stoppedMeatIds)
+      ? settings.stoppedMeatIds.map(String)
+      : [],
+  );
+  return ['chicken', 'beef'].map((id) => ({
+    id,
+    label: MEAT_LABELS[id],
+    available: !stopped.has(id),
+  }));
+};
+
 
 export const getProductOptionGroups = (productId) => {
   const configuration = getProductConfiguration(productId);

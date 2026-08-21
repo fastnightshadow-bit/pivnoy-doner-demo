@@ -114,6 +114,33 @@ export const getProductConfiguration = (productId) => {
 export const getAvailableMeats = (productId) =>
   Object.keys(getProductConfiguration(productId)?.prices ?? {});
 
+const FIXED_PRODUCT_MEATS = Object.freeze({
+  'hotdog-danish': Object.freeze(['chicken']),
+  nuggets: Object.freeze(['chicken']),
+});
+
+export const getProductMeatIds = (productId) => {
+  const configurableMeats = getAvailableMeats(productId).filter(
+    (meatId) => meatId !== 'default',
+  );
+  return configurableMeats.length
+    ? configurableMeats
+    : [...(FIXED_PRODUCT_MEATS[productId] || [])];
+};
+
+export const isProductAvailableForMeats = (
+  productId,
+  stoppedMeatIds = [],
+) => {
+  const meatIds = getProductMeatIds(productId);
+  if (meatIds.length === 0) return true;
+  const stopped = stoppedMeatIds instanceof Set
+    ? stoppedMeatIds
+    : new Set(
+        (Array.isArray(stoppedMeatIds) ? stoppedMeatIds : []).map(String),
+      );
+  return meatIds.some((meatId) => !stopped.has(meatId));
+};
 export const getAvailableSizes = (productId, meat) =>
   Object.keys(getProductConfiguration(productId)?.prices?.[meat] ?? {});
 

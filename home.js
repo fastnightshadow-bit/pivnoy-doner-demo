@@ -17,6 +17,7 @@ import {
 } from './cart-state.js';
 import { loadCart, saveCart } from './cart-storage.js';
 import { PRODUCTS } from './catalog-data.js';
+import { isProductAvailableForMeats } from './product-config.js?v=2026082102';
 import { getCatalogCartCount } from './catalog-state.js';
 import {
   loadFulfillment,
@@ -133,11 +134,13 @@ function initHomeScreen() {
     return (
       state.acceptingOrders &&
       !state.stoppedProductIds.has(id) &&
-      (!sauceId || isSauceAvailable(sauceId))
+      (!sauceId || isSauceAvailable(sauceId)) &&
+      isProductAvailableForMeats(id, state.stoppedMeatIds)
     );
   };
   const getUnavailableLabel = (productId) =>
-    state.stoppedProductIds.has(String(productId))
+    state.stoppedProductIds.has(String(productId)) ||
+    !isProductAvailableForMeats(String(productId), state.stoppedMeatIds)
       ? 'Нет в наличии'
       : 'Приём заказов закрыт';
 

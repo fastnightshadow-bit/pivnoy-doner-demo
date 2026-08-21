@@ -32,6 +32,7 @@ import { useProductionApi } from './runtime-mode.js';
 import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 import {
   getAvailableMeats,
+  isProductAvailableForMeats,
   MEAT_LABELS,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
@@ -295,6 +296,9 @@ export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
   return (Array.isArray(lines) ? lines : []).reduce((result, line) => {
     const productId = String(line?.productId || '');
     const meatId = getCheckoutLineMeatId(line);
+    const hasStoppedMeat = meatId && meatId !== 'default'
+      ? stoppedMeats.has(meatId)
+      : !isProductAvailableForMeats(productId, stoppedMeats);
     const hasStoppedSauce = Object.entries(line?.sauces || {}).some(
       ([label, quantity]) =>
         Number(quantity) > 0 && stoppedSauces.has(sauceIdsByLabel.get(label)),
@@ -305,7 +309,7 @@ export const getUnavailableCheckoutProducts = (lines = [], status = {}) => {
     );
     const unavailable =
       stopped.has(productId) ||
-      (meatId && stoppedMeats.has(meatId)) ||
+      hasStoppedMeat ||
       hasStoppedSauce ||
       hasStoppedAddon;
     if (!unavailable || seen.has(productId)) return result;
