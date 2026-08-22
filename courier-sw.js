@@ -8,7 +8,7 @@ const SHELL_FILES = [
   'courier-push.js?v=2026082202',
   'staff-live-sync.js?v=2026082202',
   'courier.webmanifest',
-  'kitchen-fixtures.js?v=2026081408',
+  'kitchen-fixtures.js?v=2026082202',
   'preparation-time.js',
   'assets/mobile-home/logo-transparent.webp',
   'assets/courier/icon-192.png',

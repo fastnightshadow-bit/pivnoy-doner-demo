@@ -92,14 +92,14 @@ test('курьерские immutable-ресурсы используют одн�
     readFile(new URL('../courier-api.js', import.meta.url), 'utf8'),
     readFile(new URL('../courier-sw.js', import.meta.url), 'utf8'),
   ]);
-  const version = '2026081408';
+  const version = '2026082202';
   assert.match(html, new RegExp(`courier\\.css\\?v=${version}`));
   assert.match(html, new RegExp(`courier\\.js\\?v=${version}`));
   assert.match(source, new RegExp(`courier-api\\.js\\?v=${version}`));
   assert.match(source, new RegExp(`courier-state\\.js\\?v=${version}`));
   assert.match(apiSource, new RegExp(`kitchen-fixtures\\.js\\?v=${version}`));
   assert.match(apiSource, new RegExp(`courier-state\\.js\\?v=${version}`));
-  assert.match(worker, /pivnoy-doner-courier-shell-v5/);
+  assert.match(worker, /pivnoy-doner-courier-shell-v7/);
   assert.match(worker, new RegExp(`courier\\.js\\?v=${version}`));
   assert.match(worker, new RegExp(`kitchen-fixtures\\.js\\?v=${version}`));
   assert.match(worker, /preparation-time\.js/);
