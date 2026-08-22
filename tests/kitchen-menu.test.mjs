@@ -15,13 +15,25 @@ test('кухня открывает управление меню отдельн
   assert.doesNotMatch(html, /<dialog class="settings-dialog"/);
 });
 
+test('управление кухни повторяет структуру владельца с глобальным выбором мяса', () => {
+  const html = readText('kitchen.html');
+  const css = readText('kitchen.css');
+
+  assert.match(html, /class="kitchen-menu-service-card__copy"/);
+  assert.match(html, /class="kitchen-menu-global-meats"/);
+  assert.match(html, /data-kitchen-global-meats/);
+  assert.match(html, /Мясо во всём меню/);
+  assert.match(css, /\.kitchen-menu-global-meats__grid/);
+  assert.match(css, /\.kitchen-menu-chevron/);
+});
+
 test('переключатели кухни используют фирменные чёрный и красный цвета', () => {
   const css = readText('kitchen.css');
 
-  assert.match(css, /\.availability-switch\[aria-checked=['"]true['"]\][^{]*\{[^}]*background:\s*#171717/s);
-  assert.match(css, /\.availability-switch\[aria-checked=['"]false['"]\][^{]*\{[^}]*background:\s*var\(--kitchen-red\)/s);
-  assert.match(css, /\.kitchen-menu-toggle input:checked \+ i[^{]*\{[^}]*background:\s*#171717/s);
-  assert.match(css, /\.kitchen-menu-toggle i[^{]*\{[^}]*background:\s*var\(--kitchen-red\)/s);
+  assert.match(css, /\.availability-switch\[aria-checked=['"]true['"]\][^{]*\{[^}]*background:\s*var\(--kitchen-red\)/s);
+  assert.match(css, /\.availability-switch\[aria-checked=['"]false['"]\][^{]*\{[^}]*background:\s*#d0d0cc/s);
+  assert.match(css, /\.kitchen-menu-toggle input:checked \+ i[^{]*\{[^}]*background:\s*var\(--kitchen-red\)/s);
+  assert.match(css, /\.kitchen-menu-toggle i[^{]*\{[^}]*background:\s*#d0d0cc/s);
   assert.match(css, /\.kitchen-menu-view[^\{]*\{[^}]*position:\s*fixed/s);
 });
 

@@ -88,7 +88,7 @@ export const renderKitchenMenu = ({
       <div class="kitchen-menu-category-row">
         <button type="button" data-kitchen-open-category="${escapeHtml(category.id)}">
           <span><strong>${escapeHtml(category.label)}</strong><small>${products.length ? `${products.length} товаров${stoppedCount ? ` · отключено ${stoppedCount}` : ''}` : 'Пока нет позиций'}</small></span>
-          <em aria-hidden="true">›</em>
+          <i class="kitchen-menu-chevron" aria-hidden="true"></i>
         </button>
         ${switchMarkup({
           checked: categoryAvailable,
@@ -113,7 +113,7 @@ export const renderKitchenMenu = ({
               : '<i aria-hidden="true">•</i>'}</span>
             <span class="kitchen-menu-product__copy"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(productMeta(product))}</small></span>
             <span class="availability-state${available ? '' : ' availability-state--stopped'}">${available ? 'В меню' : 'Нет в наличии'}</span>
-            ${optionCount ? `<button class="kitchen-menu-expand" type="button" data-kitchen-expand="${escapeHtml(product.id)}" aria-expanded="${expandedIds.has(product.id)}"><span>${optionCount}</span><i aria-hidden="true">${expandedIds.has(product.id) ? '⌃' : '⌄'}</i></button>` : ''}
+            ${optionCount ? `<button class="kitchen-menu-expand" type="button" data-kitchen-expand="${escapeHtml(product.id)}" aria-expanded="${expandedIds.has(product.id)}"><span>${optionCount}</span><i class="kitchen-menu-expand__chevron" aria-hidden="true"></i></button>` : ''}
           </div>
           ${renderOptionGroups({ product, settings, expandedIds })}
         </article>`;

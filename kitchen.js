@@ -2,29 +2,32 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026082102';
+} from './kitchen-api.js?v=2026082201';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026082102';
+} from './kitchen-model.js?v=2026082201';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
 } from './kitchen-presentation.js';
 import { CATEGORIES, PRODUCTS } from './catalog-data.js';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082102';
-import { buildCategorySummaries } from './owner-menu.js?v=2026082102';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082201';
+import {
+  buildCategorySummaries,
+  getGlobalMeatOptions,
+} from './owner-menu.js?v=2026082201';
 import {
   getKitchenStoppedEntries,
   renderKitchenMenu,
   renderKitchenStoppedMenu,
-} from './kitchen-menu.js?v=2026082102';
+} from './kitchen-menu.js?v=2026082201';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026082102';
+} from './staff-live-sync.js?v=2026082201';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -487,6 +490,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     menuCatalog: root.querySelector('[data-kitchen-menu-catalog]'),
     menuList: root.querySelector('[data-kitchen-menu-list]'),
     menuEmpty: root.querySelector('[data-kitchen-menu-empty]'),
+    globalMeats: root.querySelector('[data-kitchen-global-meats]'),
     acceptingOrders: root.querySelector('[data-accepting-orders]'),
     acceptingLabel: root.querySelector('[data-kitchen-accepting-label]'),
     stoppedCount: root.querySelector('[data-kitchen-stopped-count]'),
@@ -634,6 +638,19 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
       products: PRODUCTS,
       settings: normalized,
     });
+    if (refs.globalMeats) {
+      refs.globalMeats.innerHTML = getGlobalMeatOptions(normalized)
+        .map((meat) => `<article class="kitchen-menu-global-meat">
+          <span><strong>${escapeKitchenHtml(meat.label)}</strong><small>${meat.available ? 'Есть в наличии' : 'Полностью отключено'}</small></span>
+          <button class="availability-switch" type="button" role="switch"
+            aria-checked="${meat.available}"
+            aria-label="${escapeKitchenHtml(`${meat.label}: ${meat.available ? 'включено' : 'выключено'}`)}"
+            data-kitchen-option-toggle="meat:${escapeKitchenHtml(meat.id)}"
+            data-kind="meat" data-id="${escapeKitchenHtml(meat.id)}"
+            ${state.settingsPending ? 'disabled' : ''}><i aria-hidden="true"></i></button>
+        </article>`)
+        .join('');
+    }
     if (refs.acceptingOrders) {
       refs.acceptingOrders.checked = normalized.acceptingOrders;
       refs.acceptingOrders.disabled = state.settingsPending;
@@ -1523,7 +1540,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026082102').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026082201').catch(() => {});
   }
 
   return {

@@ -2,12 +2,12 @@ import {
   CANCELLATION_REASONS,
   createStatusHistoryEntry,
   getNextKitchenAction,
-} from './kitchen-model.js?v=2026082102';
+} from './kitchen-model.js?v=2026082201';
 import {
   createDemoEmployees,
   createDemoOrders,
 } from './kitchen-fixtures.js?v=2026082101';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082102';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082201';
 import { PRODUCTS } from './catalog-data.js';
 import {
   MEAT_LABELS,

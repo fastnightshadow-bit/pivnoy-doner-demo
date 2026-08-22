@@ -9,7 +9,7 @@
     <link rel="manifest" href="kitchen.webmanifest" />
     <link rel="icon" href="assets/kitchen/icon-192.png" />
     <link rel="apple-touch-icon" href="assets/kitchen/icon-192.png" />
-    <link rel="stylesheet" href="kitchen.css?v=2026082102" />
+    <link rel="stylesheet" href="kitchen.css?v=2026082201" />
   </head>
   <body>
     <section class="kitchen-orientation" data-kitchen-orientation hidden aria-hidden="true">
@@ -200,16 +200,28 @@
           </label>
 
           <section class="kitchen-menu-service-card">
-            <span><strong>Приём заказов</strong><small data-kitchen-accepting-label>Включён</small></span>
+            <div class="kitchen-menu-service-card__copy"><strong>Приём заказов</strong><small data-kitchen-accepting-label>Включён</small></div>
             <label class="kitchen-menu-toggle" aria-label="Приём заказов">
               <input type="checkbox" data-accepting-orders />
               <i aria-hidden="true"></i>
             </label>
           </section>
 
+          <section class="kitchen-menu-global-meats">
+            <header>
+              <div>
+                <span>Общее наличие</span>
+                <h2>Мясо во всём меню</h2>
+              </div>
+              <small>Отключает все блюда и варианты с выбранным мясом</small>
+            </header>
+            <div class="kitchen-menu-global-meats__grid" data-kitchen-global-meats></div>
+          </section>
+
           <button class="kitchen-menu-stop-card" type="button" data-kitchen-open-stopped>
             <span><strong>Стоп-лист</strong><small data-kitchen-stopped-count>0 позиций</small></span>
-            <em aria-hidden="true">›</em>
+            <i class="kitchen-menu-stop-card__bars" aria-hidden="true"><b></b><b></b><b></b><b></b></i>
+            <i class="kitchen-menu-chevron" aria-hidden="true"></i>
           </button>
 
           <section class="kitchen-menu-catalog" data-kitchen-menu-catalog>
@@ -319,6 +331,6 @@
       <symbol id="kitchen-i-phone" viewBox="0 0 24 24"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-4-1-2 2a14 14 0 0 1-9-9l2-2-1-4z"></path></symbol>
     </svg>
 
-  <script type="module" src="kitchen.js?v=2026082102"></script>
+  <script type="module" src="kitchen.js?v=2026082201"></script>
   </body>
 </html>
