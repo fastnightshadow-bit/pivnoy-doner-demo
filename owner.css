@@ -122,7 +122,9 @@ button { color: inherit; }
 .owner-links a span { color: var(--muted); font-size: 12px; }
 
 .owner-subheader { min-height: 50px; display: flex; align-items: center; gap: 12px; }
-.owner-subheader > button { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 14px; background: var(--surface); font-size: 32px; line-height: 1; cursor: pointer; }
+.owner-subheader > button { width: 48px; height: 48px; padding: 0; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.owner-back-icon { position: relative; display: block; width: 18px; height: 18px; }
+.owner-back-icon::before { content: ""; position: absolute; top: 50%; left: 50%; width: 9px; height: 9px; border-top: 2px solid currentColor; border-left: 2px solid currentColor; transform: translate(-38%, -50%) rotate(-45deg); }
 .owner-subheader h1 { margin: 0; font-size: 27px; letter-spacing: -.035em; }
 .owner-subheader small { display: block; margin-top: 2px; color: var(--muted); }
 .owner-category-control { min-height: 74px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 19px; }
