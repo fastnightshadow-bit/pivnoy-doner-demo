@@ -11,6 +11,7 @@ const requiredPages = [
   'order.html',
   'kitchen.html',
   'courier.html',
+  'kiosk.html',
 ];
 
 test('свежая демонстрационная версия содержит все основные страницы', () => {
