@@ -15,6 +15,7 @@ import {
 } from './routes/settings.js';
 import { createOwnerRouter } from './routes/owner.js';
 import { createPaymentsRouter } from './routes/payments.js';
+import { createPushRouter } from './routes/push.js';
 
 export const createApp = ({
   db,
@@ -27,6 +28,7 @@ export const createApp = ({
   settingsService = null,
   dashboardService = null,
   paymentService = null,
+  pushService = null,
   nodeEnv = 'development',
 }) => {
   const app = express();
@@ -52,6 +54,9 @@ export const createApp = ({
   }
   if (events && authService) {
     app.use('/api/events', createEventsRouter({ events, authService }));
+  }
+  if (authService && pushService) {
+    app.use('/api/push', createPushRouter({ authService, pushService }));
   }
   if (authService && settingsService) {
     app.use(
