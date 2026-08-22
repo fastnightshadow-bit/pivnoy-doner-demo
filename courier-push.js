@@ -1,3 +1,39 @@
+const PUSH_VIEW_MODELS = {
+  default: {
+    title: 'Не пропускайте заказы',
+    description: 'Включите системные уведомления',
+    button: 'Включить',
+    disabled: false,
+  },
+  subscribed: {
+    title: 'Уведомления включены',
+    description: 'Новые оплаченные доставки придут даже при закрытом приложении',
+    button: 'Отключить',
+    disabled: false,
+  },
+  denied: {
+    title: 'Уведомления заблокированы',
+    description: 'Разрешите их в настройках браузера',
+    button: 'Заблокировано',
+    disabled: true,
+  },
+  unsupported: {
+    title: 'Уведомления недоступны',
+    description: 'Этот браузер не поддерживает фоновые уведомления',
+    button: 'Недоступно',
+    disabled: true,
+  },
+  error: {
+    title: 'Не удалось настроить уведомления',
+    description: 'Заказы продолжат обновляться в приложении',
+    button: 'Повторить',
+    disabled: false,
+  },
+};
+
+export const getCourierPushViewModel = (state) =>
+  PUSH_VIEW_MODELS[state] ?? PUSH_VIEW_MODELS.default;
+
 export const urlBase64ToUint8Array = (value) => {
   const padding = '='.repeat((4 - (value.length % 4)) % 4);
   const base64 = `${value}${padding}`.replaceAll('-', '+').replaceAll('_', '/');

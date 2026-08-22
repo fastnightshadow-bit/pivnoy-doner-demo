@@ -2,7 +2,7 @@ import {
   createCourierApi,
   createDemoCourierApi,
   isCourierDemoLocation,
-} from './courier-api.js?v=2026081408';
+} from './courier-api.js?v=2026082202';
 import {
   applyCourierActionResult,
   filterCourierOrders,
@@ -11,11 +11,15 @@ import {
   getCourierReadyLabel,
   getCourierStatusLabel,
   sanitizeCourierPhone,
-} from './courier-state.js?v=2026081408';
+} from './courier-state.js?v=2026082202';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026081408';
+} from './staff-live-sync.js?v=2026082202';
+import {
+  createCourierPushManager,
+  getCourierPushViewModel,
+} from './courier-push.js?v=2026082202';
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -72,36 +76,23 @@ const initCourier = () => {
     logout: document.querySelector('[data-courier-logout]'),
     notificationCard: document.querySelector('[data-courier-notifications]'),
     notificationButton: document.querySelector('[data-courier-enable-notifications]'),
+    notificationTitle: document.querySelector('[data-courier-notification-title]'),
+    notificationDescription: document.querySelector('[data-courier-notification-description]'),
   };
-  const api = isCourierDemoLocation(window.location)
+  const isDemo = isCourierDemoLocation(window.location);
+  const api = isDemo
     ? createDemoCourierApi()
     : createCourierApi();
-  let knownOrderIds = new Set();
+  const pushManager = isDemo ? null : createCourierPushManager({ api });
   let currentOrders = [];
   let liveSync = null;
   let loadPromise = null;
   const pendingOrderIds = new Set();
 
-  const showNotification = async (order) => {
-    if (globalThis.Notification?.permission !== 'granted') return;
-    const registration = await navigator.serviceWorker?.ready;
-    await registration?.showNotification?.('Новая доставка', {
-      body: `Заказ #${order.number} · ${formatCourierAddress(order.address)}`,
-      icon: 'assets/courier/icon-192.png',
-      tag: `courier-${order.id}`,
-    });
-  };
 
   const renderOrders = (rawOrders, serverTime) => {
     const orders = filterCourierOrders(rawOrders);
     currentOrders = orders;
-    const currentIds = new Set(orders.map(({ id }) => id));
-    if (knownOrderIds.size) {
-      orders
-        .filter(({ id }) => !knownOrderIds.has(id))
-        .forEach(showNotification);
-    }
-    knownOrderIds = currentIds;
     refs.count.textContent = String(orders.length);
     refs.orders.innerHTML = orders
       .map((order) => createCourierOrderMarkup(order, new Date(serverTime)))
@@ -110,6 +101,31 @@ const initCourier = () => {
     refs.error.hidden = true;
   };
 
+
+  const renderPushState = (state) => {
+    const view = getCourierPushViewModel(state);
+    refs.notificationCard.dataset.state = state;
+    refs.notificationTitle.textContent = view.title;
+    refs.notificationDescription.textContent = view.description;
+    refs.notificationButton.textContent = view.button;
+    refs.notificationButton.disabled = view.disabled;
+    refs.notificationButton.setAttribute('aria-pressed', String(state === 'subscribed'));
+  };
+
+  const refreshPushState = async () => {
+    if (!pushManager) {
+      renderPushState('unsupported');
+      return 'unsupported';
+    }
+    try {
+      const { state } = await pushManager.getState();
+      renderPushState(state);
+      return state;
+    } catch {
+      renderPushState('error');
+      return 'error';
+    }
+  };
   const loadOrders = async () => {
     if (!navigator.onLine) return;
     if (loadPromise) return loadPromise;
@@ -143,6 +159,7 @@ const initCourier = () => {
     refs.login.hidden = true;
     refs.app.hidden = false;
     await loadOrders();
+    void refreshPushState();
     liveSync?.stop();
     liveSync = createStaffLiveSync({
       refresh: loadOrders,
@@ -163,7 +180,6 @@ const initCourier = () => {
     liveSync?.stop();
     liveSync = null;
     currentOrders = [];
-    knownOrderIds = new Set();
     refs.app.hidden = true;
     refs.login.hidden = false;
     refs.pin.value = '';
@@ -257,20 +273,24 @@ const initCourier = () => {
     }
   });
   refs.logout.addEventListener('click', async () => {
+    if (pushManager) await pushManager.disable().catch(() => {});
     await api.logout().catch(() => {});
     resetSession();
   });
   refs.notificationButton.addEventListener('click', async () => {
-    if (!('Notification' in globalThis)) {
-      refs.notificationCard.hidden = true;
-      return;
+    if (!pushManager || refs.notificationButton.disabled) return;
+    const currentState = refs.notificationCard.dataset.state;
+    refs.notificationButton.disabled = true;
+    refs.notificationButton.textContent = currentState === 'subscribed' ? 'Отключаем…' : 'Включаем…';
+    try {
+      const result = currentState === 'subscribed'
+        ? await pushManager.disable()
+        : await pushManager.enable();
+      renderPushState(result.state);
+    } catch {
+      renderPushState('error');
     }
-    const permission = await Notification.requestPermission();
-    refs.notificationCard.hidden = permission === 'granted';
   });
-  if (!('Notification' in globalThis) || Notification.permission === 'granted') {
-    refs.notificationCard.hidden = true;
-  }
   window.addEventListener('online', setOnlineState);
   window.addEventListener('offline', setOnlineState);
   document.addEventListener('visibilitychange', () => {
@@ -290,7 +310,7 @@ const initCourier = () => {
     .catch(() => refs.pin.focus());
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('courier-sw.js?v=2026081408').catch(() => {});
+    navigator.serviceWorker.register('courier-sw.js?v=2026082202').catch(() => {});
   }
 };
 

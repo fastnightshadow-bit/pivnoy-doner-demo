@@ -52,6 +52,11 @@ button { cursor: pointer; }
 .notification-card strong { font-size: 13px; }
 .notification-card small { color: var(--muted); font-size: 11px; }
 .notification-card button { min-height: 40px; padding: 0 12px; color: #fff; background: var(--ink); border: 0; border-radius: 12px; font-size: 12px; font-weight: 700; }
+.notification-card[data-state="subscribed"] { border-color: #b8ddc6; background: #f6fcf8; }
+.notification-card[data-state="subscribed"] > .icon { color: #17623d; }
+.notification-card[data-state="subscribed"] button { color: var(--ink); background: transparent; border: 1px solid var(--line); }
+.notification-card[data-state="denied"] > .icon, .notification-card[data-state="error"] > .icon { color: var(--brand); }
+.notification-card button:disabled { cursor: default; opacity: .48; }
 
 .courier-content { padding: 24px 16px calc(32px + env(safe-area-inset-bottom)); }
 .courier-content > header { position: relative; margin-bottom: 16px; }
@@ -84,4 +89,9 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: no-preference) {
   .courier-order { animation: courier-card-in 180ms ease-out both; }
   @keyframes courier-card-in { from { opacity: 0; transform: translateY(8px); } }
+}
+
+@media (max-width: 370px) {
+  .notification-card { grid-template-columns: 34px minmax(0, 1fr); }
+  .notification-card button { grid-column: 2; justify-self: start; }
 }
