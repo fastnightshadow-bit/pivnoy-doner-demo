@@ -150,3 +150,33 @@ test('kitchen operations migration stores one idempotent refund operation per or
   assert.match(sql, /status text not null check\s*\(status in \('pending', 'succeeded', 'failed'\)\)/i);
   assert.match(sql, /requested_by uuid references staff_accounts\(id\)/i);
 });
+
+test('courier push migration stores authenticated browser subscriptions', async () => {
+  const sql = await readFile(
+    new URL('../src/db/migrations/005_courier_push.sql', import.meta.url),
+    'utf8',
+  ).catch(() => '');
+
+  assert.match(sql, /create table(?: if not exists)? push_subscriptions/i);
+  assert.match(sql, /staff_account_id uuid not null references staff_accounts\(id\)/i);
+  assert.match(sql, /endpoint text not null unique/i);
+  assert.match(sql, /p256dh text not null/i);
+  assert.match(sql, /auth text not null/i);
+  assert.match(sql, /active boolean not null default true/i);
+});
+
+test('courier push migration creates an idempotent retryable outbox', async () => {
+  const sql = await readFile(
+    new URL('../src/db/migrations/005_courier_push.sql', import.meta.url),
+    'utf8',
+  ).catch(() => '');
+
+  assert.match(sql, /create table(?: if not exists)? push_jobs/i);
+  assert.match(sql, /event_key text not null unique/i);
+  assert.match(sql, /order_id uuid not null references orders\(id\)/i);
+  assert.match(sql, /payload jsonb not null/i);
+  assert.match(sql, /status text not null(?: default 'pending')?\s*check\s*\(status in \('pending', 'sending', 'sent', 'dead'\)\)/i);
+  assert.match(sql, /attempts integer not null default 0/i);
+  assert.match(sql, /available_at timestamptz not null default now\(\)/i);
+  assert.match(sql, /create index push_jobs_pending_idx[\s\S]*status[\s\S]*available_at/i);
+});
