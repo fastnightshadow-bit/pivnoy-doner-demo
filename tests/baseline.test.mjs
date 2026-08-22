@@ -12,6 +12,7 @@ const requiredPages = [
   'order.html',
   'kitchen.html',
   'courier.html',
+  'kiosk.html',
 ];
 
 test('dark theme keeps every unavailable label readable', () => {
