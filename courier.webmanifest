@@ -3,7 +3,7 @@
   "short_name": "Курьер",
   "description": "Подтверждённые заказы доставки «Пивной Донер»",
   "lang": "ru",
-  "start_url": "./courier.html?demo=1",
+  "start_url": "./courier.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f7f6f3",

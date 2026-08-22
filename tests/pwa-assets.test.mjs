@@ -80,7 +80,7 @@ test('курьерский интерфейс устанавливается о�
   assert.match(html, /assets\/courier\/icon-192\.png\?v=20260805/);
   const manifest = extractJson('courier.webmanifest');
   assert.equal(manifest.name, 'Пивной Донер — Курьер');
-  assert.equal(manifest.start_url, './courier.html?demo=1');
+  assert.equal(manifest.start_url, './courier.html');
   assert.equal(manifest.orientation, 'portrait');
 });
 

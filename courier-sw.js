@@ -1,10 +1,11 @@
-const CACHE_NAME = 'pivnoy-doner-courier-shell-v5';
+const CACHE_NAME = 'pivnoy-doner-courier-shell-v6';
 const SHELL_FILES = [
-  'courier.html?demo=1',
+  'courier.html',
   'courier.css?v=2026081408',
   'courier.js?v=2026081408',
   'courier-state.js?v=2026081408',
   'courier-api.js?v=2026081408',
+  'courier-push.js',
   'staff-live-sync.js?v=2026081408',
   'courier.webmanifest',
   'kitchen-fixtures.js?v=2026081408',
@@ -48,7 +49,62 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+const COURIER_PAGE = '/courier.html';
+
+const resolveCourierUrl = (value = COURIER_PAGE) => {
+  const candidate = new URL(value, self.location.origin);
+  if (candidate.origin !== self.location.origin || candidate.pathname !== COURIER_PAGE) {
+    return new URL(COURIER_PAGE, self.location.origin).href;
+  }
+  return candidate.href;
+};
+
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data?.json?.() ?? {};
+  } catch {
+    payload = {};
+  }
+
+  const etaMin = Number(payload.eta?.min);
+  const etaMax = Number(payload.eta?.max);
+  const etaText = Number.isFinite(etaMin) && Number.isFinite(etaMax)
+    ? `${etaMin}–${etaMax} мин`
+    : '';
+  const body = [etaText, String(payload.address || '').trim()]
+    .filter(Boolean)
+    .join(' · ');
+  const number = String(payload.number || '').trim();
+  const orderId = String(payload.orderId || number || 'new');
+
+  event.waitUntil(
+    self.registration.showNotification(number ? `Новый заказ #${number}` : 'Новый заказ', {
+      body: body || 'Откройте приложение курьера',
+      icon: 'assets/courier/icon-192.png',
+      badge: 'assets/courier/icon-192.png',
+      tag: `courier-order-${orderId}`,
+      renotify: false,
+      data: { url: resolveCourierUrl(payload.url) },
+    }),
+  );
+});
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(clients.openWindow('courier.html?demo=1'));
+  const targetUrl = resolveCourierUrl(event.notification.data?.url);
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windows) => {
+        const existing = windows.find((client) => {
+          try {
+            return new URL(client.url).pathname === COURIER_PAGE;
+          } catch {
+            return false;
+          }
+        });
+        return existing ? existing.focus() : self.clients.openWindow(targetUrl);
+      }),
+  );
 });
