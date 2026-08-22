@@ -29,6 +29,7 @@ services:
       PORT: 3001
       PAYMENT_PROVIDER: mock
       PUBLIC_BASE_URL: https://stage.pivdoner.ru
+      # VAPID_* and PUSH_POLL_MS are passed from deploy/.env.stage via env_file.
     restart: unless-stopped
     expose:
       - "3001"

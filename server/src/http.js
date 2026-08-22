@@ -20,6 +20,10 @@ import { createPaymentsRepository } from './repositories/payments.js';
 import { createPaymentService } from './services/payments.js';
 import { MockPaymentProvider } from './payments/mock-provider.js';
 import { YooKassaPaymentProvider } from './payments/yookassa-provider.js';
+import { createPushRepository } from './repositories/push.js';
+import { createPushService } from './services/push.js';
+import { createPushWorker } from './push/worker.js';
+import { createWebPushSender } from './push/web-push-sender.js';
 
 const config = loadConfig();
 
@@ -70,6 +74,24 @@ const paymentService = createPaymentService({
   },
 });
 
+let pushService = null;
+let pushWorker = null;
+if (config.push.enabled) {
+  const pushRepository = createPushRepository(db);
+  pushService = createPushService({
+    repository: pushRepository,
+    publicKey: config.push.publicKey,
+  });
+  pushWorker = createPushWorker({
+    repository: pushRepository,
+    sender: createWebPushSender({
+      publicKey: config.push.publicKey,
+      privateKey: config.push.privateKey,
+      subject: config.push.subject,
+    }),
+  });
+}
+
 const server = createApp({
   db,
   orderService,
@@ -81,13 +103,29 @@ const server = createApp({
   settingsService,
   dashboardService,
   paymentService,
+  pushService,
   nodeEnv: config.nodeEnv,
 }).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);
 });
 
+let pushTimer = null;
+if (pushWorker) {
+  const tick = () =>
+    pushWorker.tick().catch((error) => {
+      console.error('Courier push worker tick failed', error?.name ?? 'Error');
+    });
+  void tick();
+  pushTimer = setInterval(tick, config.push.pollMs);
+  pushTimer.unref?.();
+}
+
 const shutdown = async (signal) => {
   console.log(`Received ${signal}, shutting down`);
+  if (pushTimer) {
+    clearInterval(pushTimer);
+    pushTimer = null;
+  }
   server.close(async () => {
     await db.end();
     process.exit(0);

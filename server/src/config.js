@@ -10,6 +10,10 @@ const configSchema = z.object({
   PUBLIC_BASE_URL: z.string().url().default('http://127.0.0.1:4173'),
   YOOKASSA_SHOP_ID: z.string().default(''),
   YOOKASSA_SECRET_KEY: z.string().default(''),
+  VAPID_PUBLIC_KEY: z.string().default(''),
+  VAPID_PRIVATE_KEY: z.string().default(''),
+  VAPID_SUBJECT: z.string().default(''),
+  PUSH_POLL_MS: z.coerce.number().int().min(500).max(60_000).default(2_000),
 }).superRefine((config, context) => {
   if (
     config.NODE_ENV === 'production' &&
@@ -33,6 +37,31 @@ const configSchema = z.object({
       message: 'ORDER_ACCESS_SECRET must differ from SESSION_SECRET in production',
     });
   }
+
+  const vapidValues = [
+    config.VAPID_PUBLIC_KEY,
+    config.VAPID_PRIVATE_KEY,
+    config.VAPID_SUBJECT,
+  ];
+  const configuredVapidValues = vapidValues.filter(Boolean).length;
+  if (configuredVapidValues !== 0 && configuredVapidValues !== vapidValues.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['VAPID_PUBLIC_KEY'],
+      message: 'VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT must be configured together',
+    });
+  }
+  if (
+    config.VAPID_SUBJECT &&
+    !config.VAPID_SUBJECT.startsWith('mailto:') &&
+    !config.VAPID_SUBJECT.startsWith('https://')
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['VAPID_SUBJECT'],
+      message: 'VAPID_SUBJECT must use mailto: or https:',
+    });
+  }
 });
 
 export const loadConfig = (env = process.env) => {
@@ -48,5 +77,12 @@ export const loadConfig = (env = process.env) => {
     publicBaseUrl: parsed.PUBLIC_BASE_URL,
     yookassaShopId: parsed.YOOKASSA_SHOP_ID,
     yookassaSecretKey: parsed.YOOKASSA_SECRET_KEY,
+    push: Object.freeze({
+      enabled: Boolean(parsed.VAPID_PUBLIC_KEY),
+      publicKey: parsed.VAPID_PUBLIC_KEY,
+      privateKey: parsed.VAPID_PRIVATE_KEY,
+      subject: parsed.VAPID_SUBJECT,
+      pollMs: parsed.PUSH_POLL_MS,
+    }),
   });
 };
