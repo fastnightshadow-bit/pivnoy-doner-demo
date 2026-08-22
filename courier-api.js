@@ -84,6 +84,24 @@ export const createCourierApi = ({
   logout() {
     return requestJson(fetchImpl, `${baseUrl}/auth/logout`, { method: 'POST' });
   },
+  async getPushPublicKey() {
+    const response = await requestJson(fetchImpl, `${baseUrl}/push/public-key`, {
+      method: 'GET',
+    });
+    return response.publicKey;
+  },
+  savePushSubscription(subscription) {
+    return requestJson(fetchImpl, `${baseUrl}/push/subscriptions`, {
+      method: 'POST',
+      body: JSON.stringify(subscription),
+    });
+  },
+  deletePushSubscription(endpoint) {
+    return requestJson(fetchImpl, `${baseUrl}/push/subscriptions`, {
+      method: 'DELETE',
+      body: JSON.stringify({ endpoint }),
+    });
+  },
   async getOrders() {
     const response = await requestJson(fetchImpl, `${baseUrl}/staff/orders`, {
       method: 'GET',
