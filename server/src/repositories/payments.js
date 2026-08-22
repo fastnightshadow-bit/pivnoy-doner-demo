@@ -1,3 +1,14 @@
+const formatCourierPushAddress = (address = {}) =>
+  [
+    String(address.street ?? '').trim(),
+    address.entrance ? `подъезд ${String(address.entrance).trim()}` : '',
+    address.floor ? `этаж ${String(address.floor).trim()}` : '',
+    address.apartment ? `кв. ${String(address.apartment).trim()}` : '',
+    address.intercom ? `домофон ${String(address.intercom).trim()}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
 const mapPayment = (row) =>
   row
     ? {
@@ -300,7 +311,9 @@ export const createPaymentsRepository = (pool) => {
     try {
       await client.query('begin');
       const currentResult = await client.query(
-        `select p.*, o.payment_status as order_payment_status, o.version
+        `select p.*, o.payment_status as order_payment_status, o.version,
+                o.fulfillment, o.public_number, o.address,
+                o.eta_min, o.eta_max
          from payments p
          join orders o on o.id = p.order_id
          where p.provider_payment_id = $1
@@ -346,6 +359,27 @@ export const createPaymentsRepository = (pool) => {
           },
         ],
       );
+      if (status === 'paid' && current.fulfillment === 'delivery') {
+        await client.query(
+          `insert into push_jobs (event_key, order_id, payload)
+           values ($1, $2, $3)
+           on conflict (event_key) do nothing`,
+          [
+            `courier.order_paid:${current.order_id}`,
+            current.order_id,
+            {
+              orderId: current.order_id,
+              number: String(current.public_number),
+              eta: {
+                min: Number(current.eta_min),
+                max: Number(current.eta_max),
+              },
+              address: formatCourierPushAddress(current.address),
+              url: '/courier.html',
+            },
+          ],
+        );
+      }
       await client.query('commit');
       return { applied: true, orderId: current.order_id, status };
     } catch (error) {
