@@ -12,13 +12,16 @@ const escapeHtml = (value = '') => String(value)
   .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const money = (value) => `${new Intl.NumberFormat('ru-RU').format(Number(value) || 0)} ₽`;
 const backIcon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7" /></svg>';
-const cartIcon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4h2l2.3 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L21 8H7m3 11h.01M17 19h.01" /></svg>';
+const cartIcon = `<svg class="kiosk-cart-empty__icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+  <path d="M5.5 8.5h13l-1.1 9.2H6.6L5.5 8.5Z" />
+  <path d="M9 8.5v-1a3 3 0 0 1 6 0v1" />
+</svg>`;
 const brand = '<img class="kiosk-brand" src="assets/mobile-home/brand-wordmark.webp" alt="Пивной Донер" width="244" height="92" />';
 
 const renderRecommendation = (product) => `
   <button class="kiosk-cart-rec kiosk-touch" type="button" data-kiosk-product="${product.id}">
-    <img src="${escapeHtml(product.image)}" alt="" loading="lazy" />
-    <span><strong>${escapeHtml(product.name)}</strong><b>${money(product.price)}</b></span><i>+</i>
+    <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" />
+    <span><strong>${escapeHtml(product.name)}</strong><b>${money(product.price)}</b></span><i aria-hidden="true">+</i>
   </button>`;
 
 export const renderKioskCart = (state, context = {}) => {
@@ -35,7 +38,7 @@ export const renderKioskCart = (state, context = {}) => {
       <main class="kiosk-cart-content">
         ${state.lines.length ? `<div class="kiosk-cart-lines">${state.lines.map((line) => `
           <article class="kiosk-cart-line">
-            <img src="${escapeHtml(line.image || '')}" alt="" />
+            <img src="${escapeHtml(line.image || '')}" alt="${escapeHtml(line.name)}" />
             <div class="kiosk-cart-line__copy"><h2>${escapeHtml(line.name)}</h2>
               <p>${[MEAT_LABELS[line.meat], SIZE_LABELS[line.size], line.sauce ? `Соус: ${sauceLabel(line.sauce)}` : '', ...(line.addons || []).map(addonLabel)].filter(Boolean).map(escapeHtml).join(' · ')}</p>
               <strong>${money(line.unitPrice * line.quantity)}</strong>

@@ -26,6 +26,11 @@ const backIcon = `
     <path d="m15 5-7 7 7 7" />
   </svg>`;
 
+const closeIcon = `
+  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+    <path d="M7 7l10 10M17 7 7 17" />
+  </svg>`;
+
 const brand = `
   <img
     class="kiosk-brand"
@@ -36,7 +41,10 @@ const brand = `
   />`;
 
 const cartIcon = `
-  <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4h2l2.3 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L21 8H7m3 11h.01M17 19h.01" /></svg>`;
+  <svg class="kiosk-cart-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+    <path d="M5.5 8.5h13l-1.1 9.2H6.6L5.5 8.5Z" />
+    <path d="M9 8.5v-1a3 3 0 0 1 6 0v1" />
+  </svg>`;
 
 export const getKioskAvailability = (product, selection = {}, settings = {}) => {
   if (!product) return { available: false, reason: 'Блюдо не найдено' };
@@ -77,8 +85,7 @@ const renderStart = (context) => `
       </button>
     </div>
     <div class="kiosk-start__visual" aria-hidden="true">
-      <div class="kiosk-start__halo"></div>
-      <img src="assets/mobile-home/hero-enhanced.webp" alt="" />
+      <img src="assets/mobile-home/desktop-hero.webp" alt="" />
     </div>
     <div class="kiosk-start__status" aria-label="Статус стойки">
       <span class="kiosk-status-dot${context.connected === false ? ' is-offline' : ''}"></span>
@@ -118,8 +125,8 @@ const renderCategoryTabs = (activeCategory) => `
   </nav>`;
 
 const renderProductCard = (product, settings) => {
-  const config = getProductConfiguration(product.id);
-  const meat = getAvailableMeats(product.id).find((id) => !(settings.stoppedMeatIds || []).includes(id)) || getAvailableMeats(product.id)[0];
+  const meat = getAvailableMeats(product.id)
+    .find((id) => !(settings.stoppedMeatIds || []).includes(id)) || getAvailableMeats(product.id)[0];
   const selection = { meat, size: getAvailableSizes(product.id, meat)[0] };
   const availability = getKioskAvailability(product, selection, settings);
   return `
@@ -127,7 +134,7 @@ const renderProductCard = (product, settings) => {
       data-kiosk-product="${product.id}" ${availability.available ? '' : 'disabled'}>
       <span class="kiosk-product__visual">
         ${product.badge ? `<b>${escapeHtml(product.badge)}</b>` : ''}
-        <img src="${escapeHtml(product.image)}" alt="" loading="lazy" />
+        <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" />
       </span>
       <span class="kiosk-product__body">
         <strong>${escapeHtml(product.name)}</strong>
@@ -206,7 +213,7 @@ const renderProduct = (state, context) => {
     <section class="kiosk-screen kiosk-catalog" aria-label="Меню">
       <div class="kiosk-product-backdrop" data-kiosk-close-product></div>
       <article class="kiosk-product-sheet" aria-labelledby="kiosk-product-title">
-        <button class="kiosk-sheet-close kiosk-touch" type="button" data-kiosk-close-product aria-label="Закрыть">×</button>
+        <button class="kiosk-sheet-close kiosk-touch" type="button" data-kiosk-close-product aria-label="Закрыть">${closeIcon}</button>
         <div class="kiosk-sheet-hero"><img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" /></div>
         <div class="kiosk-sheet-content">
           <h1 id="kiosk-product-title">${escapeHtml(product.name)}</h1>

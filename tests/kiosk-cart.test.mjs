@@ -23,5 +23,6 @@ test('пустая корзина не позволяет перейти к оп
   const state = { ...createKioskState(), screen: 'cart', fulfillment: 'takeaway' };
   const markup = renderKioskCart(state, context);
   assert.match(markup, /Корзина пока пуста/);
+  assert.match(markup, /class="kiosk-cart-empty__icon"/);
   assert.match(markup, /data-kiosk-checkout[^>]*disabled/);
 });

@@ -11,6 +11,9 @@ test('выбор оплаты занимает отдельный экран и 
   assert.match(markup, /Выберите способ оплаты/);
   assert.match(markup, /data-kiosk-payment="card"/);
   assert.match(markup, /data-kiosk-payment="qr"/);
+  assert.equal((markup.match(/class="kiosk-payment-icon"/g) || []).length, 2);
+  assert.match(markup, /class="kiosk-payment-icon"[\s\S]*?<svg/);
+  assert.doesNotMatch(markup, /<i aria-hidden="true">[▭⌗]<\/i>/);
   assert.match(markup, /490\s*₽/);
 });
 
