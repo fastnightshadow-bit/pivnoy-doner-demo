@@ -5,6 +5,20 @@ const escapeHtml = (value = '') => String(value).replaceAll('&', '&amp;').replac
 const back = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7" /></svg>';
 const brand = '<img class="kiosk-brand" src="assets/mobile-home/brand-wordmark.webp" alt="Пивной Донер" />';
 
+const cardIcon = `<span class="kiosk-payment-icon" aria-hidden="true">
+  <svg viewBox="0 0 24 24" focusable="false">
+    <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" />
+    <path d="M3.5 9.5h17M7 14.5h4" />
+  </svg>
+</span>`;
+
+const qrIcon = `<span class="kiosk-payment-icon" aria-hidden="true">
+  <svg viewBox="0 0 24 24" focusable="false">
+    <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" />
+    <path d="M14 14h2v2h-2zM18 14h2v4h-2zM14 18h4v2h-4z" />
+  </svg>
+</span>`;
+
 const shell = (content, { backButton = true, className = '' } = {}) => `
   <section class="kiosk-screen kiosk-payment ${className}">
     <header>${backButton ? `<button class="kiosk-icon-button kiosk-touch" type="button" data-kiosk-back aria-label="Назад">${back}</button>` : '<span></span>'}${brand}<span></span></header>
@@ -15,8 +29,8 @@ const renderMethod = (state) => shell(`
   <main class="kiosk-payment-method">
     <p class="kiosk-eyebrow">Шаг 3 из 3</p><h1>Выберите способ оплаты</h1><p>К оплате <strong>${money(calculateCartSummary(state.lines).total)}</strong></p>
     <div class="kiosk-payment-options">
-      <button class="kiosk-payment-option kiosk-touch" type="button" data-kiosk-payment="card"><i aria-hidden="true">▭</i><span><strong>Оплатить картой</strong><small>Приложите карту или телефон к терминалу</small></span><b>›</b></button>
-      <button class="kiosk-payment-option kiosk-touch" type="button" data-kiosk-payment="qr"><i aria-hidden="true">⌗</i><span><strong>Оплатить по QR-коду</strong><small>Через приложение вашего банка</small></span><b>›</b></button>
+      <button class="kiosk-payment-option kiosk-touch" type="button" data-kiosk-payment="card">${cardIcon}<span><strong>Оплатить картой</strong><small>Приложите карту или телефон к терминалу</small></span><b aria-hidden="true">›</b></button>
+      <button class="kiosk-payment-option kiosk-touch" type="button" data-kiosk-payment="qr">${qrIcon}<span><strong>Оплатить по QR-коду</strong><small>Через приложение вашего банка</small></span><b aria-hidden="true">›</b></button>
     </div>
     <aside><span>Итого</span><strong>${money(calculateCartSummary(state.lines).total)}</strong></aside>
   </main>`);

@@ -3,10 +3,10 @@
   --kiosk-red: #e5251f;
   --kiosk-red-dark: #bd1713;
   --kiosk-ink: #171717;
-  --kiosk-muted: #6d6964;
-  --kiosk-bg: #f8f5f0;
-  --kiosk-surface: #fffdfa;
-  --kiosk-line: rgba(23, 23, 23, 0.1);
+  --kiosk-muted: #6f6f6f;
+  --kiosk-bg: #fff;
+  --kiosk-surface: #fff;
+  --kiosk-line: #e7e7e7;
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -28,20 +28,32 @@ button,
 input,
 textarea { font: inherit; }
 
-button { cursor: pointer; }
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled) {
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease,
+    color 160ms ease, box-shadow 160ms ease;
+}
+
+button:not(:disabled):active { transform: scale(0.98); }
+button:disabled { cursor: default; }
 
 .kiosk-app {
   min-height: 100dvh;
   max-width: 900px;
   margin: 0 auto;
+  overflow: hidden;
   background: var(--kiosk-surface);
-  box-shadow: 0 0 80px rgba(34, 24, 16, 0.08);
 }
 
 .kiosk-screen {
   position: relative;
   min-height: 100dvh;
   overflow: hidden;
+  background: #fff;
 }
 
 .kiosk-touch {
@@ -59,11 +71,22 @@ button { cursor: pointer; }
   border: 0;
   border-radius: 20px;
   background: var(--kiosk-red);
-  box-shadow: 0 16px 32px rgba(229, 37, 31, 0.24);
+  box-shadow: 0 14px 30px rgba(229, 37, 31, 0.22);
   color: #fff;
   font-size: clamp(20px, 2.4vw, 30px);
   font-weight: 800;
-  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.kiosk-primary:hover {
+  background: #ee2a23;
+  box-shadow: 0 18px 36px rgba(229, 37, 31, 0.28);
+  transform: translateY(-2px);
+}
+
+.kiosk-primary:active {
+  background: var(--kiosk-red-dark);
+  box-shadow: 0 8px 20px rgba(229, 37, 31, 0.2);
+  transform: scale(0.98);
 }
 
 .kiosk-primary svg {
@@ -75,15 +98,9 @@ button { cursor: pointer; }
   stroke-width: 2;
 }
 
-.kiosk-primary:active {
-  transform: scale(0.98);
-  background: var(--kiosk-red-dark);
-  box-shadow: 0 8px 20px rgba(229, 37, 31, 0.2);
-}
-
 .kiosk-primary:focus-visible,
 .kiosk-touch:focus-visible {
-  outline: 4px solid rgba(229, 37, 31, 0.25);
+  outline: 4px solid rgba(229, 37, 31, 0.22);
   outline-offset: 4px;
 }
 
@@ -111,29 +128,27 @@ button { cursor: pointer; }
 }
 
 .kiosk-start {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  align-items: center;
-  padding: clamp(48px, 8vh, 100px) clamp(42px, 7vw, 78px) clamp(34px, 5vh, 60px);
+  display: block;
+  padding: clamp(38px, 5.5vh, 68px) clamp(34px, 6vw, 64px) 40px;
   isolation: isolate;
 }
 
 .kiosk-start__copy {
   position: relative;
   z-index: 3;
-  align-self: start;
+  max-width: 710px;
 }
 
-.kiosk-start__copy .kiosk-brand { margin-bottom: clamp(70px, 13vh, 150px); }
+.kiosk-start__copy .kiosk-brand { margin-bottom: clamp(42px, 7vh, 78px); }
 
 .kiosk-start h1,
 .kiosk-choice h1,
 .kiosk-placeholder h1 {
   max-width: 680px;
   margin: 0;
-  font-size: clamp(48px, 7.4vw, 82px);
-  line-height: 0.98;
-  letter-spacing: -0.055em;
+  font-size: clamp(46px, 7vw, 78px);
+  line-height: 1;
+  letter-spacing: -0.05em;
 }
 
 .kiosk-start h1 span { color: var(--kiosk-red); }
@@ -141,35 +156,32 @@ button { cursor: pointer; }
 .kiosk-start__visual {
   position: absolute;
   z-index: 1;
-  right: -26%;
-  bottom: 5%;
-  width: 92%;
-  height: 56%;
+  right: clamp(26px, 5vw, 54px);
+  bottom: clamp(72px, 8vh, 100px);
+  left: clamp(26px, 5vw, 54px);
+  height: clamp(260px, 35vh, 410px);
+  overflow: hidden;
+  border-radius: 42px;
+  background: #f7f7f7;
   pointer-events: none;
+  box-shadow: 0 22px 54px rgba(28, 28, 28, 0.12);
 }
 
 .kiosk-start__visual img {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 54% center;
-  border-radius: 50% 0 0 50%;
-  filter: saturate(1.08) contrast(1.02);
-  box-shadow: -40px 30px 80px rgba(83, 45, 15, 0.18);
+  object-position: center 50%;
+  filter: saturate(1.04) contrast(1.02);
 }
 
-.kiosk-start__halo {
-  position: absolute;
-  inset: -8%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(229, 37, 31, 0.12), transparent 68%);
-}
+.kiosk-start__halo { display: none; }
 
 .kiosk-start__status {
-  position: relative;
+  position: absolute;
   z-index: 3;
+  bottom: 30px;
+  left: clamp(34px, 6vw, 64px);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -196,6 +208,7 @@ button { cursor: pointer; }
   min-height: 132px;
   padding: 28px clamp(32px, 5vw, 56px);
   border-bottom: 1px solid var(--kiosk-line);
+  background: #fff;
 }
 
 .kiosk-topbar .kiosk-brand { justify-self: center; }
@@ -209,6 +222,12 @@ button { cursor: pointer; }
   border-radius: 18px;
   background: #fff;
   color: var(--kiosk-ink);
+}
+
+.kiosk-icon-button:hover {
+  border-color: rgba(229, 37, 31, 0.35);
+  color: var(--kiosk-red);
+  box-shadow: 0 8px 18px rgba(25, 25, 25, 0.08);
 }
 
 .kiosk-icon-button svg {
@@ -248,12 +267,14 @@ button { cursor: pointer; }
   background: #fff;
   color: var(--kiosk-ink);
   text-align: left;
-  box-shadow: 0 18px 50px rgba(43, 30, 19, 0.07);
-  transition: transform 160ms ease, border 160ms ease, box-shadow 160ms ease;
+  box-shadow: 0 16px 42px rgba(28, 28, 28, 0.07);
 }
 
-.kiosk-choice-card:active { transform: scale(0.985); }
-.kiosk-choice-card:hover { border-color: rgba(229, 37, 31, 0.32); box-shadow: 0 22px 54px rgba(43, 30, 19, 0.1); }
+.kiosk-choice-card:hover {
+  border-color: rgba(229, 37, 31, 0.34);
+  box-shadow: 0 22px 52px rgba(28, 28, 28, 0.11);
+  transform: translateY(-3px);
+}
 
 .kiosk-choice-card__icon {
   display: grid;
@@ -290,6 +311,7 @@ button { cursor: pointer; }
   justify-content: center;
   gap: 28px;
   padding: 40px;
+  background: #fff;
   text-align: center;
 }
 
@@ -312,7 +334,8 @@ button { cursor: pointer; }
 @media (max-width: 620px) {
   .kiosk-choice__grid { grid-template-columns: 1fr; }
   .kiosk-choice-card { min-height: 220px; }
-  .kiosk-start__visual { opacity: 0.5; right: -42%; }
+  .kiosk-start__visual { height: 31vh; }
+  .kiosk-start h1 { font-size: clamp(42px, 11vw, 62px); }
 }
 
 @media (orientation: landscape) and (max-height: 900px) {
@@ -326,7 +349,7 @@ button { cursor: pointer; }
     justify-content: center;
     gap: 10px;
     padding: 40px;
-    background: var(--kiosk-bg);
+    background: #fff;
     color: var(--kiosk-ink);
     text-align: center;
   }

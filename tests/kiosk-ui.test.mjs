@@ -99,3 +99,42 @@ test('основные элементы стойки рассчитаны на �
   assert.match(css, /\.kiosk-primary[\s\S]*min-height:\s*76px/);
   assert.match(css, /@media\s*\(orientation:\s*landscape\)/);
 });
+
+test('визуальная система стойки использует чистый белый фон без горизонтальной прокрутки опций', () => {
+  const baseCss = readText('kiosk.css');
+  const catalogCss = readText('kiosk-catalog.css');
+  const cartCss = readText('kiosk-cart.css');
+  const paymentCss = readText('kiosk-payment.css');
+
+  assert.match(baseCss, /--kiosk-bg:\s*#fff(?:fff)?\s*;/i);
+  assert.match(baseCss, /--kiosk-surface:\s*#fff(?:fff)?\s*;/i);
+  assert.doesNotMatch(`${catalogCss}${cartCss}${paymentCss}`, /#f8f5f0/i);
+  assert.match(catalogCss, /\.kiosk-sauce-row\{[^}]*grid-template-columns:/);
+  assert.doesNotMatch(catalogCss, /\.kiosk-sauce-row\{[^}]*overflow-x:\s*auto/);
+});
+
+test('карточка блюда использует SVG-крестик и показывает фотографию целиком', () => {
+  const state = {
+    ...createKioskState(),
+    screen: 'product',
+    fulfillment: 'takeaway',
+    selectedProductId: 'classic-shawarma',
+  };
+  const markup = renderKiosk(state, context);
+  const css = readText('kiosk-catalog.css');
+
+  assert.match(markup, /data-kiosk-close-product[^>]*>[\s\S]*?<svg/);
+  assert.doesNotMatch(markup, /aria-label="Закрыть">×<\/button>/);
+  assert.match(markup, /kiosk-sheet-hero[^>]*>[\s\S]*?alt="Классическая шаурма"/);
+  assert.match(css, /\.kiosk-sheet-hero img\{[^}]*object-fit:\s*contain/);
+});
+
+test('счётчики количества имеют единый белый фон', () => {
+  const catalogCss = readText('kiosk-catalog.css');
+  const cartCss = readText('kiosk-cart.css');
+
+  assert.match(catalogCss, /\.kiosk-quantity(?:>| )[^,{]*button\{[^}]*background:\s*#fff/);
+  assert.match(catalogCss, /\.kiosk-quantity(?:>| )[^,{]*strong\{[^}]*background:\s*#fff/);
+  assert.match(cartCss, /\.kiosk-line-quantity(?:>| )[^,{]*button\{[^}]*background:\s*#fff/);
+  assert.match(cartCss, /\.kiosk-line-quantity(?:>| )[^,{]*b\{[^}]*background:\s*#fff/);
+});
