@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { DomainError } from '../domain/errors.js';
 import { toPublicClientOrder } from '../domain/public-order.js';
@@ -40,6 +41,14 @@ const reviewSchema = z.object({
   publicationConsentVersion: z.string().min(1).max(40).optional(),
 });
 
+const buildCreateOrderLimiter = () => rateLimit({
+  windowMs: 60_000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TOO_MANY_ORDERS' },
+});
+
 const getOrderAccessToken = (request) => {
   const authorization = String(request.get('Authorization') ?? '').trim();
   return /^Bearer\s+([^\s]+)$/i.exec(authorization)?.[1] ?? '';
@@ -61,6 +70,7 @@ export const createOrdersRouter = ({
   paymentService = null,
 }) => {
   const router = Router();
+  const createOrderLimiter = buildCreateOrderLimiter();
 
   if (typeof orderService.getPublic === 'function') {
     router.get('/:id', async (request, response) => {
@@ -125,7 +135,7 @@ export const createOrdersRouter = ({
     });
   }
 
-  router.post('/', async (request, response) => {
+  router.post('/', createOrderLimiter, async (request, response) => {
     const idempotencyKey = String(request.get('Idempotency-Key') ?? '').trim();
     if (!/^[a-zA-Z0-9._:-]{8,128}$/.test(idempotencyKey)) {
       return response.status(400).json({ error: 'INVALID_IDEMPOTENCY_KEY' });

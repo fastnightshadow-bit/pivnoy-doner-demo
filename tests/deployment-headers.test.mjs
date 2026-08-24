@@ -4,16 +4,18 @@ import { readText } from './helpers.mjs';
 
 test('nginx отдаёт PWA manifest с корректным типом и защищает статические страницы', () => {
   const config = readText('deploy/nginx.conf');
+  const headers = readText('deploy/security-headers.conf');
 
   assert.match(config, /default_type\s+application\/manifest\+json;/);
-  assert.match(config, /X-Frame-Options\s+SAMEORIGIN\s+always;/);
-  assert.match(config, /Strict-Transport-Security\s+"max-age=31536000; includeSubDomains"\s+always;/);
-  assert.match(config, /Content-Security-Policy\s+"[^"]*default-src 'self'/);
-  assert.match(config, /Content-Security-Policy\s+"[^"]*script-src 'self'/);
-  assert.match(config, /Content-Security-Policy\s+"[^"]*object-src 'none'/);
-  assert.match(config, /Content-Security-Policy\s+"[^"]*frame-ancestors 'none'/);
+  assert.ok((config.match(/include \/etc\/nginx\/security-headers\.conf;/g) ?? []).length >= 5);
+  assert.match(headers, /X-Frame-Options\s+DENY\s+always;/);
+  assert.match(headers, /Strict-Transport-Security\s+"max-age=31536000; includeSubDomains"\s+always;/);
+  assert.match(headers, /Content-Security-Policy\s+"[^"]*default-src 'self'/);
+  assert.match(headers, /Content-Security-Policy\s+"[^"]*script-src 'self'/);
+  assert.match(headers, /Content-Security-Policy\s+"[^"]*object-src 'none'/);
+  assert.match(headers, /Content-Security-Policy\s+"[^"]*frame-ancestors 'none'/);
   assert.match(
-    config,
+    headers,
     /Permissions-Policy\s+"camera=\(\), microphone=\(\), geolocation=\(\), payment=\(\)"\s+always;/,
   );
 });

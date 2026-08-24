@@ -97,3 +97,45 @@ test('server limits the total item count across all order lines', () => {
   );
 });
 
+test('API limits automated order creation bursts', async () => {
+  const app = express();
+  app.use(express.json());
+  app.use(
+    '/api/orders',
+    createOrdersRouter({
+      orderService: {
+        create: async (_input, idempotencyKey) => ({
+          created: true,
+          accessToken: 'test-access-token',
+          order: {
+            id: idempotencyKey,
+            number: '1',
+            status: 'new',
+            paymentStatus: 'pending',
+            fulfillment: 'pickup',
+            itemsTotal: 300,
+            deliveryTotal: 0,
+            discountTotal: 0,
+            total: 300,
+            items: [],
+          },
+        }),
+      },
+    }),
+  );
+
+  for (let index = 0; index < 60; index += 1) {
+    const response = await request(app)
+      .post('/api/orders')
+      .set('Idempotency-Key', `rate-limit-${String(index).padStart(3, '0')}`)
+      .send(validRequest());
+    assert.equal(response.status, 201);
+  }
+
+  const blocked = await request(app)
+    .post('/api/orders')
+    .set('Idempotency-Key', 'rate-limit-blocked')
+    .send(validRequest());
+  assert.equal(blocked.status, 429);
+  assert.equal(blocked.body.error, 'TOO_MANY_ORDERS');
+});
