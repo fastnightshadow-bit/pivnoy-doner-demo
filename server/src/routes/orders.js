@@ -13,7 +13,7 @@ const orderSchema = z.object({
   customer: z.object({
     name: z.string().max(80).default(''),
     phone: z.string().min(10).max(32),
-  }),
+  }).strict(),
   address: z.record(z.string(), z.string().max(160)).optional(),
   comment: z.string().max(500).optional(),
   courierComment: z.string().max(500).optional(),
@@ -26,12 +26,11 @@ const orderSchema = z.object({
         size: z.string().max(40).optional(),
         addons: quantitiesSchema.optional(),
         sauces: quantitiesSchema.optional(),
-        unitPrice: z.number().optional(),
-      }),
+      }).strict(),
     )
     .min(1)
     .max(50),
-});
+}).strict();
 
 const reviewSchema = z.object({
   rating: z.coerce.number().int().min(1).max(5),
@@ -183,3 +182,4 @@ export const createOrdersRouter = ({
 
   return router;
 };
+

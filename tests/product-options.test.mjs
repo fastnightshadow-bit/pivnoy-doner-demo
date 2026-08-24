@@ -221,7 +221,7 @@ test('старая строка sauce преобразуется в количе
   assert.equal(migrated.lineId, modern.lineId);
 });
 
-test('старая сохранённая корзина мигрирует при чтении', () => {
+test('старая сохранённая корзина удаляет недопустимый соус при чтении', () => {
   const storage = {
     getItem: () =>
       JSON.stringify([
@@ -234,7 +234,7 @@ test('старая сохранённая корзина мигрирует пр
         },
       ]),
   };
-  assert.deepEqual(loadCart(storage)[0].sauces, { Тейсти: 1 });
+  assert.deepEqual(loadCart(storage)[0].sauces, {});
 });
 
 test('карточка закуски показывает количественный выбор соусов', () => {

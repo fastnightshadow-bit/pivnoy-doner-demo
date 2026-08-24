@@ -1,4 +1,4 @@
-import { createCartLine } from './cart-state.js';
+import { sanitizeCartLines } from './cart-security.js';
 
 export const CART_STORAGE_KEY = 'pivnoy-doner-cart-v1';
 
@@ -10,14 +10,14 @@ export const loadCart = (storage = getBrowserStorage()) => {
 
   try {
     const parsed = JSON.parse(storage.getItem(CART_STORAGE_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(createCartLine) : [];
+    return Array.isArray(parsed) ? sanitizeCartLines(parsed) : [];
   } catch {
     return [];
   }
 };
 
 export const saveCart = (storage = getBrowserStorage(), lines = []) => {
-  const safeLines = Array.isArray(lines) ? lines : [];
+  const safeLines = sanitizeCartLines(lines);
   if (!storage?.setItem) return safeLines;
 
   try {

@@ -37,6 +37,7 @@ import {
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
 } from './product-config.js';
+import { createCanonicalCheckoutItems } from './cart-security.js';
 
 const CHECKOUT_ATTEMPT_STORAGE_KEY = 'pivnoy-doner-checkout-attempt-v1';
 
@@ -59,14 +60,7 @@ export const createCheckoutOrderPayload = ({
   personalDataConsent: personalDataConsent === true,
   personalDataConsentVersion: LEGAL_VERSIONS.personalDataConsent,
   offerVersion: LEGAL_VERSIONS.offer,
-  items: (Array.isArray(lines) ? lines : []).map((line) => ({
-    productId: String(line.productId || ''),
-    quantity: Math.max(1, Number(line.quantity) || 1),
-    meat: getCheckoutLineMeatId(line),
-    size: String(line.size || ''),
-    addons: line.addons || {},
-    sauces: line.sauces || {},
-  })),
+  items: createCanonicalCheckoutItems(lines),
 });
 
 const getCheckoutOrderIdentity = (payload) => {
