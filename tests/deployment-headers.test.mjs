@@ -19,3 +19,9 @@ test('nginx отдаёт PWA manifest с корректным типом и за
     /Permissions-Policy\s+"camera=\(\), microphone=\(\), geolocation=\(\), payment=\(\)"\s+always;/,
   );
 });
+
+test('Docker build context включает конфигурацию security headers', () => {
+  const dockerignore = readText('.dockerignore');
+
+  assert.match(dockerignore, /^!deploy\/security-headers\.conf$/m);
+});
