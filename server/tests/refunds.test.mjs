@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 
 import { createApp } from '../src/app.js';
+import { PaymentProviderError } from '../src/payments/provider.js';
 import { YooKassaPaymentProvider } from '../src/payments/yookassa-provider.js';
+import { createPaymentsRepository } from '../src/repositories/payments.js';
 import { createPaymentService } from '../src/services/payments.js';
 
 const account = {
@@ -172,8 +174,8 @@ test('payment service refunds only the paid server amount and persists a safe re
         currency: 'RUB',
       }),
       reserveRefund: async (value) => ({
-        ...value,
-        status: 'pending',
+        refund: { ...value, status: 'pending' },
+        isNewAttempt: true,
       }),
       completeRefund: async (value) => {
         completed.push(value);
@@ -239,7 +241,10 @@ test('provider transport uncertainty keeps the same pending refund for safe retr
         amount: 300,
         currency: 'RUB',
       }),
-      reserveRefund: async (value) => ({ ...value, status: 'pending' }),
+      reserveRefund: async (value) => ({
+        refund: { ...value, status: 'pending' },
+        isNewAttempt: true,
+      }),
       completeRefund: async () => assert.fail('uncertain result must not be completed'),
       noteRefundError: async (value) => {
         errors.push(value);
@@ -264,6 +269,259 @@ test('provider transport uncertainty keeps the same pending refund for safe retr
   assert.equal(errors[0].orderId, 'order-1');
   assert.equal(errors[0].idempotencyKey, 'refund-key-1');
   assert.equal(errors[0].lastError, 'REFUND_PROVIDER_UNAVAILABLE');
+});
+
+test('definitive provider rejection marks the refund failed for an explicit retry', async () => {
+  const failures = [];
+  const service = createPaymentService({
+    orders: {
+      findById: async () => ({
+        id: 'order-1', number: 17, paymentStatus: 'paid', total: 300,
+      }),
+    },
+    payments: {
+      findRefundByOrderId: async () => null,
+      findPaidByOrderId: async () => ({
+        id: 'local-payment-1',
+        orderId: 'order-1',
+        providerPaymentId: 'payment-1',
+        status: 'paid',
+        amount: 300,
+        currency: 'RUB',
+      }),
+      reserveRefund: async (value) => ({
+        refund: { ...value, status: 'pending' },
+        isNewAttempt: true,
+      }),
+      completeRefund: async () => assert.fail('a rejected refund must not complete'),
+      failRefund: async (value) => {
+        failures.push(value);
+        return { ...value, status: 'failed' };
+      },
+      noteRefundError: async () =>
+        assert.fail('a definitive rejection must not remain pending'),
+    },
+    provider: {
+      createRefund: async () => {
+        throw new PaymentProviderError('YOOKASSA_REQUEST_FAILED', {
+          status: 502,
+          details: { providerStatus: 403 },
+        });
+      },
+    },
+    providerName: 'yookassa',
+    createId: () => 'refund-key-1',
+    returnUrlForOrder: () => 'https://example.test/order',
+  });
+
+  const result = await service.refundFull({
+    orderId: 'order-1', reason: 'Дублирующий заказ', account,
+  });
+
+  assert.equal(result.status, 'failed');
+  assert.deepEqual(failures[0], {
+    orderId: 'order-1',
+    idempotencyKey: 'refund-key-1',
+    lastError: 'REFUND_PROVIDER_FORBIDDEN',
+  });
+});
+
+for (const providerStatus of [409, 429]) {
+  test(`provider ${providerStatus} uncertainty keeps the refund pending with the same key`, async () => {
+    const errors = [];
+    const service = createPaymentService({
+      orders: {
+        findById: async () => ({
+          id: 'order-1', number: 17, paymentStatus: 'paid', total: 300,
+        }),
+      },
+      payments: {
+        findRefundByOrderId: async () => null,
+        findPaidByOrderId: async () => ({
+          id: 'local-payment-1',
+          orderId: 'order-1',
+          providerPaymentId: 'payment-1',
+          status: 'paid',
+          amount: 300,
+          currency: 'RUB',
+        }),
+        reserveRefund: async (value) => ({
+          refund: { ...value, status: 'pending' },
+          isNewAttempt: true,
+        }),
+        completeRefund: async () => assert.fail('an uncertain refund must not complete'),
+        failRefund: async () => assert.fail('an uncertain refund must not fail'),
+        noteRefundError: async (value) => {
+          errors.push(value);
+          return { ...value, status: 'pending' };
+        },
+      },
+      provider: {
+        createRefund: async () => {
+          throw new PaymentProviderError('YOOKASSA_REQUEST_FAILED', {
+            status: 502,
+            details: { providerStatus },
+          });
+        },
+      },
+      providerName: 'yookassa',
+      createId: () => 'refund-key-1',
+      returnUrlForOrder: () => 'https://example.test/order',
+    });
+
+    const result = await service.refundFull({
+      orderId: 'order-1', reason: 'Дублирующий заказ', account,
+    });
+
+    assert.equal(result.status, 'pending');
+    assert.deepEqual(errors[0], {
+      orderId: 'order-1',
+      idempotencyKey: 'refund-key-1',
+      lastError: 'REFUND_PROVIDER_UNAVAILABLE',
+    });
+  });
+}
+
+test('timeout followed by 403 keeps the original refund key pending', async () => {
+  let refund = null;
+  let callCount = 0;
+  let idCount = 0;
+  const providerKeys = [];
+  const payments = {
+    findRefundByOrderId: async () => refund,
+    findPaidByOrderId: async () => ({
+      id: 'local-payment-1',
+      orderId: 'order-1',
+      providerPaymentId: 'payment-1',
+      status: 'paid',
+      amount: 300,
+      currency: 'RUB',
+    }),
+    reserveRefund: async (value) => {
+      if (refund && refund.status !== 'failed') {
+        return { refund: { ...refund }, isNewAttempt: false };
+      }
+      refund = { ...value, status: 'pending', lastError: null };
+      return { refund: { ...refund }, isNewAttempt: true };
+    },
+    completeRefund: async () => assert.fail('an uncertain refund must not complete'),
+    failRefund: async () => assert.fail('a reused uncertain refund must not fail'),
+    noteRefundError: async (value) => {
+      refund = { ...refund, ...value, status: 'pending' };
+      return { ...refund };
+    },
+  };
+  const service = createPaymentService({
+    orders: {
+      findById: async () => ({
+        id: 'order-1', number: 17, paymentStatus: 'paid', total: 300,
+      }),
+    },
+    payments,
+    provider: {
+      createRefund: async ({ idempotencyKey }) => {
+        providerKeys.push(idempotencyKey);
+        callCount += 1;
+        if (callCount === 1) throw new Error('network timeout');
+        throw new PaymentProviderError('YOOKASSA_REQUEST_FAILED', {
+          status: 502,
+          details: { providerStatus: 403 },
+        });
+      },
+    },
+    providerName: 'yookassa',
+    createId: () => `refund-key-${++idCount}`,
+    returnUrlForOrder: () => 'https://example.test/order',
+  });
+
+  const first = await service.refundFull({
+    orderId: 'order-1', reason: 'Дублирующий заказ', account,
+  });
+  const second = await service.refundFull({
+    orderId: 'order-1', reason: 'Дублирующий заказ', account,
+  });
+  const third = await service.refundFull({
+    orderId: 'order-1', reason: 'Дублирующий заказ', account,
+  });
+
+  assert.equal(first.status, 'pending');
+  assert.equal(second.status, 'pending');
+  assert.equal(third.status, 'pending');
+  assert.deepEqual(providerKeys, [
+    'refund-key-1',
+    'refund-key-1',
+    'refund-key-1',
+  ]);
+  assert.equal(refund.lastError, 'REFUND_PROVIDER_UNAVAILABLE');
+});
+
+test('payments repository persists a definitive refund failure', async () => {
+  const calls = [];
+  const repository = createPaymentsRepository({
+    query: async (sql, values) => {
+      calls.push({ sql, values });
+      return {
+        rows: [{
+          order_id: 'order-1',
+          payment_id: 'payment-1',
+          idempotency_key: 'refund-key-1',
+          status: 'failed',
+          amount: 300,
+          currency: 'RUB',
+          last_error: 'REFUND_PROVIDER_FORBIDDEN',
+        }],
+      };
+    },
+  });
+
+  const result = await repository.failRefund({
+    orderId: 'order-1',
+    idempotencyKey: 'refund-key-1',
+    lastError: 'REFUND_PROVIDER_FORBIDDEN',
+  });
+
+  assert.equal(result.status, 'failed');
+  assert.equal(result.lastError, 'REFUND_PROVIDER_FORBIDDEN');
+  assert.match(calls[0].sql, /set status = 'failed'/i);
+  assert.deepEqual(calls[0].values, [
+    'order-1',
+    'refund-key-1',
+    'REFUND_PROVIDER_FORBIDDEN',
+  ]);
+});
+
+test('payments repository never downgrades an accepted refund to failed', async () => {
+  const calls = [];
+  const repository = createPaymentsRepository({
+    query: async (sql, values) => {
+      calls.push({ sql, values });
+      if (/update refund_operations/i.test(sql)) return { rows: [] };
+      return {
+        rows: [{
+          order_id: 'order-1',
+          payment_id: 'payment-1',
+          provider_refund_id: 'provider-refund-1',
+          idempotency_key: 'refund-key-1',
+          status: 'succeeded',
+          amount: 300,
+          currency: 'RUB',
+          last_error: null,
+        }],
+      };
+    },
+  });
+
+  const result = await repository.failRefund({
+    orderId: 'order-1',
+    idempotencyKey: 'refund-key-1',
+    lastError: 'REFUND_PROVIDER_FORBIDDEN',
+  });
+
+  assert.equal(result.status, 'succeeded');
+  assert.equal(result.providerRefundId, 'provider-refund-1');
+  assert.match(calls[0].sql, /status = 'pending'/i);
+  assert.match(calls[0].sql, /provider_refund_id is null/i);
+  assert.match(calls[1].sql, /select \* from refund_operations/i);
 });
 
 const createCancellationApp = ({ role = 'kitchen', orderStatus = 'ready' } = {}) => {
