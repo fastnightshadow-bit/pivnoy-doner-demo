@@ -109,7 +109,7 @@ export const createPaymentsRepository = (pool) => {
         const current = currentResult.rows[0];
         if (current && current.status !== 'failed') {
           await client.query('commit');
-          return mapRefund(current);
+          return { refund: mapRefund(current), isNewAttempt: false };
         }
 
         const result = current
@@ -150,7 +150,7 @@ export const createPaymentsRepository = (pool) => {
               ],
             );
         await client.query('commit');
-        return mapRefund(result.rows[0]);
+        return { refund: mapRefund(result.rows[0]), isNewAttempt: true };
       } catch (error) {
         await client.query('rollback');
         throw error;
@@ -234,6 +234,24 @@ export const createPaymentsRepository = (pool) => {
         [orderId, idempotencyKey, lastError],
       );
       return mapRefund(result.rows[0]);
+    },
+
+    failRefund: async ({ orderId, idempotencyKey, lastError }) => {
+      const result = await pool.query(
+        `update refund_operations
+         set status = 'failed', last_error = $3, updated_at = now()
+         where order_id = $1 and idempotency_key = $2
+           and status = 'pending' and provider_refund_id is null
+         returning *`,
+        [orderId, idempotencyKey, lastError],
+      );
+      if (result.rows[0]) return mapRefund(result.rows[0]);
+      const currentResult = await pool.query(
+        `select * from refund_operations
+         where order_id = $1 and idempotency_key = $2`,
+        [orderId, idempotencyKey],
+      );
+      return mapRefund(currentResult.rows[0]);
     },
 
     reserve: async (payment) => {
