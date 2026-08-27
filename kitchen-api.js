@@ -2,12 +2,12 @@ import {
   CANCELLATION_REASONS,
   createStatusHistoryEntry,
   getNextKitchenAction,
-} from './kitchen-model.js?v=2026082201';
+} from './kitchen-model.js?v=2026082701';
 import {
   createDemoEmployees,
   createDemoOrders,
 } from './kitchen-fixtures.js?v=2026082101';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082201';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082701';
 import { PRODUCTS } from './catalog-data.js';
 import {
   MEAT_LABELS,
@@ -41,25 +41,58 @@ export const isKitchenDemoLocation = (locationLike = {}) => {
 };
 
 const requestJson = async (fetchImpl, url, options = {}) => {
-  const response = await fetchImpl(url, {
-    credentials: 'include',
-    ...options,
-    headers: {
-      Accept: 'application/json',
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...options.headers,
-    },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new KitchenApiError(
-      payload.message || 'Не удалось выполнить действие',
-      response.status,
-      payload.error || '',
-      payload.details || null,
-    );
+  const {
+    timeoutMs = 0,
+    signal: upstreamSignal,
+    ...requestOptions
+  } = options;
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromUpstream = () => controller.abort(upstreamSignal?.reason);
+  if (upstreamSignal?.aborted) abortFromUpstream();
+  else upstreamSignal?.addEventListener('abort', abortFromUpstream, { once: true });
+  const timeoutValue = Math.max(0, Number(timeoutMs) || 0);
+  const timeout = timeoutValue
+    ? setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, timeoutValue)
+    : null;
+
+  try {
+    const response = await fetchImpl(url, {
+      credentials: 'include',
+      ...requestOptions,
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        ...(requestOptions.body ? { 'Content-Type': 'application/json' } : {}),
+        ...requestOptions.headers,
+      },
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new KitchenApiError(
+        payload.message || 'Не удалось выполнить действие',
+        response.status,
+        payload.error || '',
+        payload.details || null,
+      );
+    }
+    return payload;
+  } catch (error) {
+    if (timedOut) {
+      throw new KitchenApiError(
+        'Сервер отвечает слишком долго. Проверьте сеть и повторите действие',
+        0,
+        'REQUEST_TIMEOUT',
+      );
+    }
+    throw error;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+    upstreamSignal?.removeEventListener?.('abort', abortFromUpstream);
   }
-  return payload;
 };
 
 const joinUrl = (baseUrl, path) =>
@@ -149,9 +182,15 @@ export const createKitchenApi = ({
   baseUrl = '/api',
   fetchImpl = globalThis.fetch,
   eventSourceFactory = (url) => new EventSource(url),
+  requestTimeoutMs = 12000,
 } = {}) => {
   const jsonRequest = (path, options) =>
     requestJson(fetchImpl, joinUrl(baseUrl, path), options);
+  const settingsJsonRequest = (path, options) =>
+    requestJson(fetchImpl, joinUrl(baseUrl, path), {
+      ...options,
+      timeoutMs: requestTimeoutMs,
+    });
 
   const toSession = (session) => {
     if (!session?.authenticated || !session.account) return null;
@@ -193,32 +232,32 @@ export const createKitchenApi = ({
     },
 
     getSettings() {
-      return jsonRequest('/settings', { method: 'GET' });
+      return settingsJsonRequest('/settings', { method: 'GET' });
     },
 
     setAcceptingOrders(acceptingOrders) {
-      return jsonRequest('/settings', {
+      return settingsJsonRequest('/settings', {
         method: 'PATCH',
         body: JSON.stringify({ acceptingOrders: Boolean(acceptingOrders) }),
       });
     },
 
     setAvailability(productId, available) {
-      return jsonRequest(`/catalog/${encodeURIComponent(productId)}`, {
+      return settingsJsonRequest(`/catalog/${encodeURIComponent(productId)}`, {
         method: 'PATCH',
         body: JSON.stringify({ available: Boolean(available) }),
       });
     },
 
     setCategoryAvailability(categoryId, available) {
-      return jsonRequest(`/catalog/categories/${encodeURIComponent(categoryId)}`, {
+      return settingsJsonRequest(`/catalog/categories/${encodeURIComponent(categoryId)}`, {
         method: 'PATCH',
         body: JSON.stringify({ available: Boolean(available) }),
       });
     },
 
     setOptionAvailability(kind, optionId, available) {
-      return jsonRequest(
+      return settingsJsonRequest(
         `/catalog-options/${encodeURIComponent(kind)}/${encodeURIComponent(optionId)}`,
         {
           method: 'PATCH',
@@ -229,14 +268,14 @@ export const createKitchenApi = ({
 
     async updateSettings(settings) {
       const normalized = normalizeKitchenSettings(settings);
-      await jsonRequest('/settings', {
+      await settingsJsonRequest('/settings', {
         method: 'PATCH',
         body: JSON.stringify({ acceptingOrders: normalized.acceptingOrders }),
       });
       const stopped = new Set(normalized.stoppedProductIds);
       await Promise.all(
         PRODUCTS.map((product) =>
-          jsonRequest(`/catalog/${encodeURIComponent(product.id)}`, {
+          settingsJsonRequest(`/catalog/${encodeURIComponent(product.id)}`, {
             method: 'PATCH',
             body: JSON.stringify({ available: !stopped.has(product.id) }),
           }),
@@ -247,25 +286,25 @@ export const createKitchenApi = ({
       const stoppedAddons = new Set(normalized.stoppedAddonIds);
       await Promise.all([
         ...['chicken', 'beef'].map((meatId) =>
-          jsonRequest(`/catalog-options/meat/${encodeURIComponent(meatId)}`, {
+          settingsJsonRequest(`/catalog-options/meat/${encodeURIComponent(meatId)}`, {
             method: 'PATCH',
             body: JSON.stringify({ available: !stoppedMeats.has(meatId) }),
           }),
         ),
         ...Object.keys(PRODUCT_SAUCES).map((sauceId) =>
-          jsonRequest(`/catalog-options/sauce/${encodeURIComponent(sauceId)}`, {
+          settingsJsonRequest(`/catalog-options/sauce/${encodeURIComponent(sauceId)}`, {
             method: 'PATCH',
             body: JSON.stringify({ available: !stoppedSauces.has(sauceId) }),
           }),
         ),
         ...Object.keys(PRODUCT_ADDONS).map((addonId) =>
-          jsonRequest(`/catalog-options/addon/${encodeURIComponent(addonId)}`, {
+          settingsJsonRequest(`/catalog-options/addon/${encodeURIComponent(addonId)}`, {
             method: 'PATCH',
             body: JSON.stringify({ available: !stoppedAddons.has(addonId) }),
           }),
         ),
       ]);
-      return jsonRequest('/settings', { method: 'GET' });
+      return settingsJsonRequest('/settings', { method: 'GET' });
     },
 
     getHistory(filters = {}) {
