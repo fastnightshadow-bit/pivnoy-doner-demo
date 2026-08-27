@@ -2,32 +2,32 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026082201';
+} from './kitchen-api.js?v=2026082701';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026082201';
+} from './kitchen-model.js?v=2026082701';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
 } from './kitchen-presentation.js';
 import { CATEGORIES, PRODUCTS } from './catalog-data.js';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082201';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082701';
 import {
   buildCategorySummaries,
   getGlobalMeatOptions,
-} from './owner-menu.js?v=2026082201';
+} from './owner-menu.js?v=2026082701';
 import {
   getKitchenStoppedEntries,
   renderKitchenMenu,
   renderKitchenStoppedMenu,
-} from './kitchen-menu.js?v=2026082201';
+} from './kitchen-menu.js?v=2026082701';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026082201';
+} from './staff-live-sync.js?v=2026082701';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -439,6 +439,124 @@ export const removeMatchingToasts = (container, toastKey) => {
   return removed;
 };
 
+export const createKitchenSettingsActionRunner = ({
+  isConnected = () => false,
+  readSettings = () => normalizeKitchenSettings(),
+  writeSettings = () => {},
+  resolveControl = (_key, fallback) => fallback,
+  setControlPending = () => {},
+  renderSettings = () => {},
+  notify = () => {},
+  onSessionExpired = async () => {},
+} = {}) => {
+  const pendingKeys = new Set();
+  const applyDelta = (baseValue, beforeValue, afterValue) => {
+    const base = normalizeKitchenSettings(baseValue);
+    const before = normalizeKitchenSettings(beforeValue);
+    const after = normalizeKitchenSettings(afterValue);
+    const next = { ...base };
+    if (before.acceptingOrders !== after.acceptingOrders) {
+      next.acceptingOrders = after.acceptingOrders;
+    }
+    for (const property of [
+      'stoppedProductIds',
+      'stoppedMeatIds',
+      'stoppedSauceIds',
+      'stoppedAddonIds',
+    ]) {
+      const beforeIds = new Set(before[property]);
+      const afterIds = new Set(after[property]);
+      const nextIds = new Set(base[property]);
+      for (const id of new Set([...beforeIds, ...afterIds])) {
+        if (beforeIds.has(id) === afterIds.has(id)) continue;
+        if (afterIds.has(id)) nextIds.add(id);
+        else nextIds.delete(id);
+      }
+      next[property] = [...nextIds];
+    }
+    return normalizeKitchenSettings(next);
+  };
+
+  const run = async (request = {}) => {
+    const key = String(request.key || '');
+    const lockKeys = [
+      ...new Set(
+        [key, ...(request.lockKeys || [])]
+          .map((item) => String(item || ''))
+          .filter(Boolean),
+      ),
+    ];
+    if (!key || lockKeys.some((lockKey) => pendingKeys.has(lockKey))) {
+      return false;
+    }
+    if (!isConnected()) {
+      notify('Нет соединения. Настройки не сохранены', 'error');
+      return false;
+    }
+
+    const previousSettings = normalizeKitchenSettings(readSettings());
+    const optimisticSettings = normalizeKitchenSettings(
+      typeof request.optimisticUpdate === 'function'
+        ? request.optimisticUpdate(previousSettings)
+        : previousSettings,
+    );
+    lockKeys.forEach((lockKey) => pendingKeys.add(lockKey));
+    writeSettings(optimisticSettings);
+    setControlPending(
+      key,
+      true,
+      request.checked,
+      resolveControl(key, request.control),
+      lockKeys,
+    );
+
+    try {
+      await request.action();
+      writeSettings(
+        applyDelta(readSettings(), previousSettings, optimisticSettings),
+      );
+      notify(request.successMessage);
+      return true;
+    } catch (error) {
+      writeSettings(
+        applyDelta(readSettings(), optimisticSettings, previousSettings),
+      );
+      if (error?.status === 401) {
+        notify('Сессия закончилась. Войдите снова', 'error');
+        await onSessionExpired();
+        return false;
+      }
+      notify(
+        error?.message || 'Настройки не сохранены',
+        'error',
+        {
+          label: 'Повторить',
+          onClick: () => run(request),
+        },
+      );
+      return false;
+    } finally {
+      lockKeys.forEach((lockKey) => pendingKeys.delete(lockKey));
+      setControlPending(
+        key,
+        false,
+        request.checked,
+        resolveControl(key, request.control),
+        lockKeys,
+      );
+      renderSettings();
+    }
+  };
+
+  return {
+    run,
+    isPending: (key) => pendingKeys.has(String(key || '')),
+    clear() {
+      pendingKeys.clear();
+    },
+  };
+};
+
 export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   if (!windowRef || !documentRef) return null;
 
@@ -527,7 +645,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     connected: false,
     soundMuted: false,
     settings: normalizeKitchenSettings(),
-    settingsPending: false,
+    settingsPendingKeys: new Set(),
     menuMode: 'index',
     menuQuery: '',
     activeCategoryId: '',
@@ -540,6 +658,8 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   let lastPanelTrigger = null;
   let audioContext = null;
   let audioUnlocked = false;
+  let settingsRevision = 0;
+  let settingsActionRunner = null;
 
   const showToast = (message, tone = 'normal', action = null) => {
     if (!refs.toast) return;
@@ -626,6 +746,38 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     return `${value} ${word}`;
   };
 
+  const getSettingsControlKey = (control) => {
+    if (control === refs.acceptingOrders) return 'accepting-orders';
+    const dataset = control?.dataset || {};
+    if ('kitchenCategoryToggle' in dataset) {
+      return `category:${dataset.kitchenCategoryToggle}`;
+    }
+    if ('kitchenProductToggle' in dataset) {
+      return `product:${dataset.kitchenProductToggle}`;
+    }
+    if ('kitchenOptionToggle' in dataset) {
+      return `option:${dataset.kind}:${dataset.id}`;
+    }
+    return '';
+  };
+
+  const updateStoppedAvailability = (
+    settings,
+    property,
+    ids,
+    available,
+  ) => {
+    const next = new Set(settings[property] || []);
+    for (const id of ids) {
+      if (available) next.delete(id);
+      else next.add(id);
+    }
+    return normalizeKitchenSettings({
+      ...settings,
+      [property]: [...next],
+    });
+  };
+
   const renderKitchenSettings = () => {
     const normalized = normalizeKitchenSettings(state.settings);
     state.settings = normalized;
@@ -647,13 +799,17 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
             aria-label="${escapeKitchenHtml(`${meat.label}: ${meat.available ? 'включено' : 'выключено'}`)}"
             data-kitchen-option-toggle="meat:${escapeKitchenHtml(meat.id)}"
             data-kind="meat" data-id="${escapeKitchenHtml(meat.id)}"
-            ${state.settingsPending ? 'disabled' : ''}><i aria-hidden="true"></i></button>
+            ${state.settingsPendingKeys.has(`option:meat:${meat.id}`) ? 'disabled aria-busy="true"' : ''}><i aria-hidden="true"></i></button>
         </article>`)
         .join('');
     }
     if (refs.acceptingOrders) {
       refs.acceptingOrders.checked = normalized.acceptingOrders;
-      refs.acceptingOrders.disabled = state.settingsPending;
+      refs.acceptingOrders.disabled = state.settingsPendingKeys.has('accepting-orders');
+      refs.acceptingOrders.toggleAttribute(
+        'aria-busy',
+        state.settingsPendingKeys.has('accepting-orders'),
+      );
     }
     if (refs.acceptingLabel) {
       refs.acceptingLabel.textContent = normalized.acceptingOrders
@@ -675,7 +831,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
         showProducts: false,
       });
       refs.menuList.querySelectorAll('button').forEach((button) => {
-        button.disabled ||= state.settingsPending;
+        button.disabled ||= state.settingsPendingKeys.has(getSettingsControlKey(button));
       });
       if (refs.menuEmpty) refs.menuEmpty.hidden = Boolean(refs.menuList.innerHTML);
     }
@@ -694,14 +850,14 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
             })
           : '';
         refs.stopList.querySelectorAll('button').forEach((button) => {
-          button.disabled ||= state.settingsPending;
+          button.disabled ||= state.settingsPendingKeys.has(getSettingsControlKey(button));
         });
       }
     }
     if (refs.stoppedList) {
       refs.stoppedList.innerHTML = renderKitchenStoppedMenu(stoppedEntries);
       refs.stoppedList.querySelectorAll('button').forEach((button) => {
-        button.disabled ||= state.settingsPending;
+        button.disabled ||= state.settingsPendingKeys.has(getSettingsControlKey(button));
       });
     }
     if (refs.stoppedEmpty) refs.stoppedEmpty.hidden = stoppedEntries.length > 0;
@@ -711,28 +867,26 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   };
 
   const loadKitchenSettings = async () => {
+    const requestedAtRevision = settingsRevision;
     const response = await activeApi.getSettings();
+    if (requestedAtRevision !== settingsRevision) return false;
     state.settings = normalizeKitchenSettings(response);
+    settingsRevision += 1;
     renderKitchenSettings();
+    return true;
   };
 
   const openKitchenSettings = async () => {
-    if (!refs.menuView || state.settingsPending) return;
-    state.settingsPending = true;
+    if (!refs.menuView) return;
+    state.menuMode = 'index';
+    state.activeCategoryId = '';
+    setElementHidden(refs.boardView, true);
+    setElementHidden(refs.menuView, false);
     renderKitchenSettings();
     try {
       await loadKitchenSettings();
-      state.menuMode = 'index';
-      state.activeCategoryId = '';
-      setElementHidden(refs.boardView, true);
-      setElementHidden(refs.menuView, false);
-      renderKitchenSettings();
-      refs.menuSearch?.focus();
     } catch (error) {
       showToast(error?.message || 'Не удалось загрузить настройки', 'error');
-    } finally {
-      state.settingsPending = false;
-      renderKitchenSettings();
     }
   };
 
@@ -748,31 +902,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     refs.settingsOpen?.focus();
   };
 
-  const runSettingsAction = async (action, successMessage) => {
-    if (state.settingsPending) return;
-    if (!state.connected) {
-      showToast('Нет соединения. Настройки не сохранены', 'error');
-      return;
-    }
-    state.settingsPending = true;
-    renderKitchenSettings();
-    try {
-      await action();
-      await loadKitchenSettings();
-      showToast(successMessage);
-    } catch (error) {
-      if (error?.status === 401) {
-        showToast('Сессия закончилась. Войдите снова', 'error');
-        await endSession();
-        return;
-      }
-      showToast(error?.message || 'Настройки не сохранены', 'error');
-      await loadKitchenSettings().catch(() => {});
-    } finally {
-      state.settingsPending = false;
-      renderKitchenSettings();
-    }
-  };
+  const runSettingsAction = (request) => settingsActionRunner?.run(request);
 
   const updateClock = () => {
     if (!refs.currentTime) return;
@@ -1111,7 +1241,9 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     state.fulfillment = 'all';
     state.urgency = 'all';
     state.settings = normalizeKitchenSettings();
-    state.settingsPending = false;
+    state.settingsPendingKeys.clear();
+    settingsActionRunner?.clear();
+    settingsRevision += 1;
     state.menuMode = 'index';
     state.menuQuery = '';
     state.activeCategoryId = '';
@@ -1128,6 +1260,44 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     setElementHidden(refs.loginView, false);
     refs.pinInput?.focus();
   };
+
+  settingsActionRunner = createKitchenSettingsActionRunner({
+    isConnected: () => state.connected,
+    readSettings: () => state.settings,
+    writeSettings: (settings) => {
+      state.settings = normalizeKitchenSettings(settings);
+      settingsRevision += 1;
+    },
+    resolveControl: (key, fallback) => {
+      if (key === 'accepting-orders') return refs.acceptingOrders || fallback;
+      return Array.from(
+        refs.menuView?.querySelectorAll('button, input') || [],
+      ).find((control) => getSettingsControlKey(control) === key) || fallback;
+    },
+    setControlPending: (key, pending, checked, control, lockKeys = [key]) => {
+      for (const lockKey of lockKeys) {
+        if (pending) state.settingsPendingKeys.add(lockKey);
+        else state.settingsPendingKeys.delete(lockKey);
+      }
+      const visibleControls = Array.from(
+        refs.menuView?.querySelectorAll('button, input') || [],
+      );
+      if (control && !visibleControls.includes(control)) visibleControls.push(control);
+      for (const visibleControl of visibleControls) {
+        const controlKey = getSettingsControlKey(visibleControl);
+        if (!lockKeys.includes(controlKey)) continue;
+        if (controlKey === key) {
+          if ('checked' in visibleControl) visibleControl.checked = Boolean(checked);
+          else visibleControl.setAttribute('aria-checked', String(Boolean(checked)));
+        }
+        visibleControl.disabled = Boolean(pending);
+        visibleControl.toggleAttribute?.('aria-busy', Boolean(pending));
+      }
+    },
+    renderSettings: renderKitchenSettings,
+    notify: showToast,
+    onSessionExpired: endSession,
+  });
 
   const performStatusChange = async (
     orderId,
@@ -1326,10 +1496,16 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
   });
   refs.acceptingOrders?.addEventListener('change', () => {
     const acceptingOrders = refs.acceptingOrders.checked;
-    void runSettingsAction(
-      () => activeApi.setAcceptingOrders(acceptingOrders),
-      acceptingOrders ? 'Приём заказов включён' : 'Приём заказов остановлен',
-    );
+    void runSettingsAction({
+      key: 'accepting-orders',
+      control: refs.acceptingOrders,
+      checked: acceptingOrders,
+      optimisticUpdate: (settings) => ({ ...settings, acceptingOrders }),
+      action: () => activeApi.setAcceptingOrders(acceptingOrders),
+      successMessage: acceptingOrders
+        ? 'Приём заказов включён'
+        : 'Приём заказов остановлен',
+    });
   });
   refs.openStopped?.addEventListener('click', () => {
     state.menuMode = 'stopped';
@@ -1367,30 +1543,74 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     if (categoryToggle) {
       const categoryId = categoryToggle.dataset.kitchenCategoryToggle;
       const available = categoryToggle.getAttribute('aria-checked') !== 'true';
-      void runSettingsAction(
-        () => activeApi.setCategoryAvailability(categoryId, available),
-        available ? 'Категория возвращена в меню' : 'Категория добавлена в стоп-лист',
-      );
+      const productIds = PRODUCTS
+        .filter(({ category }) => category === categoryId)
+        .map(({ id }) => id);
+      void runSettingsAction({
+        key: `category:${categoryId}`,
+        lockKeys: productIds.map((productId) => `product:${productId}`),
+        control: categoryToggle,
+        checked: available,
+        optimisticUpdate: (settings) => updateStoppedAvailability(
+          settings,
+          'stoppedProductIds',
+          productIds,
+          available,
+        ),
+        action: () => activeApi.setCategoryAvailability(categoryId, available),
+        successMessage: available
+          ? 'Категория возвращена в меню'
+          : 'Категория добавлена в стоп-лист',
+      });
       return;
     }
     const productToggle = event.target.closest('[data-kitchen-product-toggle]');
     if (productToggle) {
       const productId = productToggle.dataset.kitchenProductToggle;
       const available = productToggle.getAttribute('aria-checked') !== 'true';
-      void runSettingsAction(
-        () => activeApi.setAvailability(productId, available),
-        available ? 'Блюдо возвращено в меню' : 'Блюдо добавлено в стоп-лист',
-      );
+      const categoryId = PRODUCTS.find(({ id }) => id === productId)?.category;
+      void runSettingsAction({
+        key: `product:${productId}`,
+        lockKeys: categoryId ? [`category:${categoryId}`] : [],
+        control: productToggle,
+        checked: available,
+        optimisticUpdate: (settings) => updateStoppedAvailability(
+          settings,
+          'stoppedProductIds',
+          [productId],
+          available,
+        ),
+        action: () => activeApi.setAvailability(productId, available),
+        successMessage: available
+          ? 'Блюдо возвращено в меню'
+          : 'Блюдо добавлено в стоп-лист',
+      });
       return;
     }
     const optionToggle = event.target.closest('[data-kitchen-option-toggle]');
     if (optionToggle) {
       const { kind, id } = optionToggle.dataset;
       const available = optionToggle.getAttribute('aria-checked') !== 'true';
-      void runSettingsAction(
-        () => activeApi.setOptionAvailability(kind, id, available),
-        available ? 'Опция возвращена в меню' : 'Опция добавлена в стоп-лист',
-      );
+      const property = {
+        meat: 'stoppedMeatIds',
+        sauce: 'stoppedSauceIds',
+        addon: 'stoppedAddonIds',
+      }[kind];
+      void runSettingsAction({
+        key: `option:${kind}:${id}`,
+        control: optionToggle,
+        checked: available,
+        optimisticUpdate: (settings) => updateStoppedAvailability(
+          settings,
+          property,
+          [id],
+          available,
+        ),
+        action: () => activeApi.setOptionAvailability(kind, id, available),
+        successMessage: available
+          ? 'Опция возвращена в меню'
+          : 'Опция добавлена в стоп-лист',
+      });
     }
   });
   refs.search?.addEventListener('input', () => {
@@ -1540,7 +1760,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026082201').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026082701').catch(() => {});
   }
 
   return {
