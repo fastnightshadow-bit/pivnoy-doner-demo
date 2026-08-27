@@ -98,9 +98,182 @@ test('создание заказа передаёт ключ идемпотен
   assert.equal(calls[0].options.credentials, 'same-origin');
 });
 
-test('ошибка API сохраняет код и HTTP-статус', async () => {
+test('оформление повторяет сетевой сбой с тем же ключом заказа', async () => {
+  const calls = [];
+  const delays = [];
   const api = createClientApi({
-    fetcher: async () => jsonResponse({ error: 'MINIMUM_ORDER' }, 422),
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      if (calls.length === 1) throw new TypeError('network disconnected');
+      return jsonResponse({ id: 'order-1', status: 'submitted' }, 201);
+    },
+    checkoutRetryDelaysMs: [25],
+    waitFn: async (delay) => delays.push(delay),
+  });
+
+  const payload = { items: [{ productId: 'nuggets', quantity: 1 }] };
+  const order = await api.createOrder(payload, 'checkout-stable-key');
+
+  assert.equal(order.id, 'order-1');
+  assert.equal(calls.length, 2);
+  assert.deepEqual(delays, [25]);
+  for (const call of calls) {
+    assert.equal(call.url, '/api/orders');
+    assert.equal(
+      call.options.headers['Idempotency-Key'],
+      'checkout-stable-key',
+    );
+    assert.deepEqual(JSON.parse(call.options.body), payload);
+  }
+});
+
+test('проверка доступности меню тоже восстанавливается после сетевого сбоя', async () => {
+  const calls = [];
+  const delays = [];
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      if (calls.length === 1) throw new TypeError('network disconnected');
+      return jsonResponse({ acceptingOrders: true });
+    },
+    checkoutRetryDelaysMs: [15],
+    waitFn: async (delay) => delays.push(delay),
+  });
+
+  const status = await api.getCatalogStatus();
+
+  assert.equal(status.acceptingOrders, true);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(delays, [15]);
+  assert.equal(calls.every((call) => call.url === '/api/catalog-status'), true);
+});
+
+test('зависшая проверка меню не блокирует кнопку бесконечно', async () => {
+  const api = createClientApi({
+    fetcher: async (_url, options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        }, { once: true });
+      }),
+    checkoutRequestTimeoutMs: 5,
+    checkoutRetryDelaysMs: [],
+  });
+
+  await assert.rejects(
+    api.getCatalogStatus(),
+    (error) => error.code === 'REQUEST_TIMEOUT' && error.status === 0,
+  );
+});
+
+test('зависшее оформление останавливается с кодом таймаута', async () => {
+  const api = createClientApi({
+    fetcher: async (_url, options) =>
+      new Promise((_resolve, reject) => {
+        const rejectAbort = () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        };
+        if (options.signal?.aborted) rejectAbort();
+        else options.signal?.addEventListener('abort', rejectAbort, { once: true });
+      }),
+    checkoutRequestTimeoutMs: 10,
+    checkoutRetryDelaysMs: [],
+  });
+
+  const request = api.createOrder({ items: [] }, 'checkout-timeout-key');
+  const guard = new Promise((_resolve, reject) => {
+    setTimeout(() => reject(new Error('test guard timeout')), 100);
+  });
+
+  await assert.rejects(
+    Promise.race([request, guard]),
+    (error) => error.code === 'REQUEST_TIMEOUT' && error.status === 0,
+  );
+});
+
+test('таймаут оформления повторяется с прежним ключом', async () => {
+  const calls = [];
+  const delays = [];
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      if (calls.length > 1) {
+        return jsonResponse({ id: 'order-after-timeout' }, 201);
+      }
+      return new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        }, { once: true });
+      });
+    },
+    checkoutRequestTimeoutMs: 5,
+    checkoutRetryDelaysMs: [20],
+    waitFn: async (delay) => delays.push(delay),
+  });
+
+  const order = await api.createOrder({ items: [] }, 'checkout-timeout-retry');
+
+  assert.equal(order.id, 'order-after-timeout');
+  assert.equal(calls.length, 2);
+  assert.deepEqual(delays, [20]);
+  assert.deepEqual(
+    calls.map((call) => call.options.headers['Idempotency-Key']),
+    ['checkout-timeout-retry', 'checkout-timeout-retry'],
+  );
+});
+
+test('временная ошибка API повторяет оформление без дубля', async () => {
+  const calls = [];
+  const delays = [];
+  const api = createClientApi({
+    fetcher: async (url, options) => {
+      calls.push({ url, options });
+      return calls.length === 1
+        ? jsonResponse({ error: 'UPSTREAM_UNAVAILABLE' }, 503)
+        : jsonResponse({ id: 'order-after-503' }, 201);
+    },
+    checkoutRetryDelaysMs: [40],
+    waitFn: async (delay) => delays.push(delay),
+  });
+
+  const order = await api.createOrder({ items: [] }, 'checkout-retry-503');
+
+  assert.equal(order.id, 'order-after-503');
+  assert.equal(calls.length, 2);
+  assert.deepEqual(delays, [40]);
+  assert.deepEqual(
+    calls.map((call) => call.options.headers['Idempotency-Key']),
+    ['checkout-retry-503', 'checkout-retry-503'],
+  );
+});
+
+test('исчерпанные сетевые повторы возвращают точный код', async () => {
+  const api = createClientApi({
+    fetcher: async () => {
+      throw new TypeError('network disconnected');
+    },
+    checkoutRetryDelaysMs: [],
+  });
+
+  await assert.rejects(
+    api.createOrder({ items: [] }, 'checkout-offline'),
+    (error) => error.code === 'NETWORK_ERROR' && error.status === 0,
+  );
+});
+
+test('ошибка API сохраняет код и HTTP-статус', async () => {
+  const calls = [];
+  const api = createClientApi({
+    fetcher: async () => {
+      calls.push(true);
+      return jsonResponse({ error: 'MINIMUM_ORDER' }, 422);
+    },
   });
 
   await assert.rejects(
@@ -108,6 +281,7 @@ test('ошибка API сохраняет код и HTTP-статус', async ()
     (error) =>
       error.code === 'MINIMUM_ORDER' && error.status === 422,
   );
+  assert.equal(calls.length, 1);
 });
 
 test('получение заказа кодирует идентификатор', async () => {

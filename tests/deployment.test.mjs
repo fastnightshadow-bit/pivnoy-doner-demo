@@ -127,7 +127,9 @@ test('client pages version their changed immutable assets', async () => {
   const catalogReleaseKey = '2026081702';
   const productSheetReleaseKey = '2026082101';
   const productSheetStyleReleaseKey = '2026082101';
-  const checkoutReleaseKey = '2026082101';
+  const checkoutScriptReleaseKey = '2026082702';
+  const checkoutStyleReleaseKey = '2026082101';
+  const checkoutClientApiReleaseKey = '2026082702';
   const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
   const homeStyleReleaseKey = '2026081702';
@@ -162,11 +164,11 @@ test('client pages version their changed immutable assets', async () => {
   );
   assert.match(
     checkoutHtml,
-    new RegExp(`<script\\s+type="module"\\s+src="checkout\\.js\\?v=${checkoutReleaseKey}"><\\/script>`),
+    new RegExp(`<script\\s+type="module"\\s+src="checkout\\.js\\?v=${checkoutScriptReleaseKey}"><\\/script>`),
   );
   assert.match(
     checkoutHtml,
-    new RegExp(`href="checkout\\.css\\?v=${checkoutReleaseKey}"`),
+    new RegExp(`href="checkout\\.css\\?v=${checkoutStyleReleaseKey}"`),
   );
   assert.match(cartHtml, new RegExp(`href="cart\\.css\\?v=${styleReleaseKey}"`));
   assert.match(homeHtml, new RegExp(`href="home\\.css\\?v=${homeStyleReleaseKey}"`));
@@ -221,7 +223,7 @@ test('client pages version their changed immutable assets', async () => {
     [
       './checkout-state.js?v=20260811',
       `./order-storage.js?v=${releaseKey}`,
-      `./client-api.js?v=${releaseKey}`,
+      `./client-api.js?v=${checkoutClientApiReleaseKey}`,
       './shared/legal.js?v=20260811',
     ],
   );
@@ -264,7 +266,6 @@ test('client pages version their changed immutable assets', async () => {
   ].join('\n');
   for (const moduleName of [
     'order-storage',
-    'client-api',
     'review-service',
     'review-state',
     'review-view',
@@ -290,6 +291,16 @@ test('client pages version their changed immutable assets', async () => {
       moduleName,
     );
   }
+
+  const clientApiImports = [
+    ...completeGraph.matchAll(/\.\/client-api\.js(?:\?v=([^'"\s]+))?/g),
+  ];
+  assert.equal(clientApiImports.length, 3);
+  assert.equal(clientApiImports.every((match) => Boolean(match[1])), true);
+  assert.deepEqual(
+    [...new Set(clientApiImports.map((match) => match[1]))].sort(),
+    [checkoutClientApiReleaseKey, releaseKey].sort(),
+  );
 });
 
 test('service worker scripts bypass the immutable asset cache', async () => {

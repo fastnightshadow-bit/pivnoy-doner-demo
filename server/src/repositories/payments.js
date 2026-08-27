@@ -98,6 +98,25 @@ export const createPaymentsRepository = (pool) => {
       return mapRefund(result.rows[0]);
     },
 
+    listRefundsForRetry: async ({ limit = 20 } = {}) => {
+      const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+      const result = await pool.query(
+        `select * from refund_operations
+         where (
+           status = 'pending'
+           and updated_at <= now() - interval '5 minutes'
+         ) or (
+           status = 'failed'
+           and last_error = 'REFUND_PROVIDER_FORBIDDEN'
+           and updated_at <= now() - interval '6 hours'
+         )
+         order by updated_at asc
+         limit $1`,
+        [safeLimit],
+      );
+      return result.rows.map(mapRefund);
+    },
+
     reserveRefund: async (refund) => {
       const client = await pool.connect();
       try {

@@ -24,6 +24,10 @@ import { createPushRepository } from './repositories/push.js';
 import { createPushService } from './services/push.js';
 import { createPushWorker } from './push/worker.js';
 import { createWebPushSender } from './push/web-push-sender.js';
+import {
+  createRefundRetryWorker,
+  startRefundRetryLoop,
+} from './refunds/retry-worker.js';
 
 const config = loadConfig();
 
@@ -61,8 +65,9 @@ const paymentProvider =
         secretKey: config.yookassaSecretKey,
       })
     : new MockPaymentProvider();
+const paymentsRepository = createPaymentsRepository(db);
 const paymentService = createPaymentService({
-  payments: createPaymentsRepository(db),
+  payments: paymentsRepository,
   orders,
   provider: paymentProvider,
   providerName: config.paymentProvider,
@@ -109,6 +114,15 @@ const server = createApp({
   console.log(`Pivdoner API listening on port ${config.port}`);
 });
 
+const stopRefundRetryLoop = config.paymentProvider === 'yookassa'
+  ? startRefundRetryLoop({
+      worker: createRefundRetryWorker({
+        payments: paymentsRepository,
+        paymentService,
+      }),
+    })
+  : null;
+
 let pushTimer = null;
 if (pushWorker) {
   const tick = () =>
@@ -122,6 +136,7 @@ if (pushWorker) {
 
 const shutdown = async (signal) => {
   console.log(`Received ${signal}, shutting down`);
+  stopRefundRetryLoop?.();
   if (pushTimer) {
     clearInterval(pushTimer);
     pushTimer = null;

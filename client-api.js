@@ -41,6 +41,11 @@ const authorizationHeader = (token) => ({
 
 const TERMINAL_ORDER_STATUSES = new Set(['completed', 'cancelled']);
 const PERMANENT_POLL_ERROR_STATUSES = new Set([401, 403, 404]);
+const RETRYABLE_CHECKOUT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const isRetryableCheckoutError = (error) =>
+  error instanceof TypeError ||
+  error?.code === 'REQUEST_TIMEOUT' ||
+  RETRYABLE_CHECKOUT_STATUSES.has(Number(error?.status));
 
 export const normalizeClientOrderResponse = (value = {}) => ({
   ...value,
@@ -65,29 +70,104 @@ export const createClientApi = (options = {}) => {
   const documentRef = normalized.documentRef ?? globalThis.document;
   const setTimeoutFn = normalized.setTimeoutFn ?? globalThis.setTimeout;
   const clearTimeoutFn = normalized.clearTimeoutFn ?? globalThis.clearTimeout;
+  const checkoutRetryDelaysMs = Array.isArray(normalized.checkoutRetryDelaysMs)
+    ? normalized.checkoutRetryDelaysMs
+    : [300, 900];
+  const checkoutRequestTimeoutMs = Math.max(
+    0,
+    Number(normalized.checkoutRequestTimeoutMs ?? 12000) || 0,
+  );
+  const requestSetTimeoutFn =
+    normalized.requestSetTimeoutFn ?? globalThis.setTimeout;
+  const requestClearTimeoutFn =
+    normalized.requestClearTimeoutFn ?? globalThis.clearTimeout;
+  const AbortControllerRef =
+    normalized.AbortControllerRef ?? globalThis.AbortController;
+  const waitFn = normalized.waitFn ?? (
+    (delay) => new Promise((resolve) => globalThis.setTimeout(resolve, delay))
+  );
 
   if (typeof fetcher !== 'function') {
     throw new Error('fetch-unavailable');
   }
 
-  const fetchJson = async (url, options = {}) =>
-    parseResponse(await fetcher(url, requestOptions(options)));
+  const fetchJson = async (url, options = {}, timeoutMs = 0) => {
+    const timeoutValue = Math.max(0, Number(timeoutMs) || 0);
+    const controller =
+      timeoutValue > 0 && typeof AbortControllerRef === 'function'
+        ? new AbortControllerRef()
+        : null;
+    let timedOut = false;
+    const timeout = controller && typeof requestSetTimeoutFn === 'function'
+      ? requestSetTimeoutFn(() => {
+          timedOut = true;
+          controller.abort();
+        }, timeoutValue)
+      : null;
+    try {
+      return await parseResponse(
+        await fetcher(
+          url,
+          requestOptions({
+            ...options,
+            ...(controller ? { signal: controller.signal } : {}),
+          }),
+        ),
+      );
+    } catch (error) {
+      if (timedOut || error?.name === 'AbortError') {
+        throw new ClientApiError('REQUEST_TIMEOUT', 0);
+      }
+      throw error;
+    } finally {
+      if (timeout !== null) requestClearTimeoutFn?.(timeout);
+    }
+  };
   const getOrder = async (id, accessToken) =>
     normalizeClientOrderResponse(
       await fetchJson(`/api/orders/${encodeURIComponent(String(id || ''))}`, {
         headers: authorizationHeader(accessToken),
       }),
     );
+  const requestWithCheckoutRetry = async (request) => {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await request();
+      } catch (error) {
+        const canRetry =
+          isRetryableCheckoutError(error) &&
+          attempt < checkoutRetryDelaysMs.length;
+        if (!canRetry) {
+          if (error instanceof TypeError) {
+            throw new ClientApiError('NETWORK_ERROR', 0);
+          }
+          throw error;
+        }
+        await waitFn(checkoutRetryDelaysMs[attempt]);
+      }
+    }
+  };
   const getCatalogStatus = () =>
-    fetchJson('/api/catalog-status', { cache: 'no-store' });
+    requestWithCheckoutRetry(() =>
+      fetchJson(
+        '/api/catalog-status',
+        { cache: 'no-store' },
+        checkoutRequestTimeoutMs,
+      ),
+    );
+  const createOrder = async (payload, idempotencyKey) => {
+    const options = {
+      method: 'POST',
+      headers: { 'Idempotency-Key': String(idempotencyKey || '') },
+      body: JSON.stringify(payload),
+    };
+    return requestWithCheckoutRetry(() =>
+      fetchJson('/api/orders', options, checkoutRequestTimeoutMs),
+    );
+  };
 
   return {
-    createOrder: (payload, idempotencyKey) =>
-      fetchJson('/api/orders', {
-        method: 'POST',
-        headers: { 'Idempotency-Key': String(idempotencyKey || '') },
-        body: JSON.stringify(payload),
-      }),
+    createOrder,
 
     getCatalogStatus,
 

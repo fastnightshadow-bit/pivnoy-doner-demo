@@ -145,6 +145,57 @@ test('ошибка недоступной мясной опции не назы�
   );
 });
 
+test('ошибка сети объясняет, что корзина сохранена', () => {
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage({ code: 'NETWORK_ERROR' }),
+    'Нет связи с сервером. Проверьте интернет — корзина сохранена.',
+  );
+});
+
+test('таймаут предлагает безопасно повторить оформление', () => {
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage({ code: 'REQUEST_TIMEOUT' }),
+    'Сервер отвечает слишком долго. Повторите оформление — заказ не продублируется.',
+  );
+});
+
+test('устаревшие данные заказа получают конкретное действие', () => {
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage({ code: 'LEGAL_VERSION_OUTDATED' }),
+    'Страница устарела. Обновите её и повторите оформление.',
+  );
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage({ code: 'INVALID_ORDER' }),
+    'Данные корзины устарели. Вернитесь в корзину, проверьте заказ и повторите.',
+  );
+});
+
+test('сбой платёжного сервиса не называется ошибкой интернета', () => {
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage({
+      code: 'YOOKASSA_REQUEST_FAILED',
+      status: 502,
+    }),
+    'Платёжный сервис временно недоступен. Повторите оформление через минуту — заказ не продублируется.',
+  );
+});
+
+test('неизвестная ошибка показывает только безопасный диагностический код', () => {
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage({
+      code: 'INTERNAL_ERROR',
+      message: 'customer +7 999 111-22-33',
+    }),
+    'Не удалось оформить заказ. Повторите попытку. Код: INTERNAL_ERROR.',
+  );
+  assert.equal(
+    checkout.getCheckoutSubmissionErrorMessage({
+      code: '<img src=x onerror=alert(1)>',
+    }),
+    'Не удалось оформить заказ. Повторите попытку.',
+  );
+});
+
 test('оформление блокирует сохранённую позицию с соусом из стоп-листа', () => {
   const unavailable = checkout.getUnavailableCheckoutProducts(
     [

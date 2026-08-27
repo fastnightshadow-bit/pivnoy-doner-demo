@@ -27,7 +27,7 @@ import {
   loadPromo,
   savePromo,
 } from './promo-storage.js';
-import { clientApi } from './client-api.js?v=2026081402';
+import { clientApi } from './client-api.js?v=2026082702';
 import { useProductionApi } from './runtime-mode.js';
 import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 import {
@@ -231,7 +231,29 @@ export const getCheckoutSubmissionErrorMessage = (error, lines = []) => {
   if (error?.code === 'PRODUCT_OPTION_UNAVAILABLE') {
     return 'Один из выбранных вариантов временно недоступен. Вернитесь в корзину и выберите другой.';
   }
-  return 'Не удалось оформить заказ. Проверьте интернет и повторите.';
+  if (error?.code === 'NETWORK_ERROR') {
+    return 'Нет связи с сервером. Проверьте интернет — корзина сохранена.';
+  }
+  if (error?.code === 'REQUEST_TIMEOUT') {
+    return 'Сервер отвечает слишком долго. Повторите оформление — заказ не продублируется.';
+  }
+  if (error?.code === 'LEGAL_VERSION_OUTDATED') {
+    return 'Страница устарела. Обновите её и повторите оформление.';
+  }
+  if (error?.code === 'INVALID_ORDER') {
+    return 'Данные корзины устарели. Вернитесь в корзину, проверьте заказ и повторите.';
+  }
+  if (
+    ['YOOKASSA_REQUEST_FAILED', 'PAYMENT_FETCH_UNAVAILABLE'].includes(
+      error?.code,
+    )
+  ) {
+    return 'Платёжный сервис временно недоступен. Повторите оформление через минуту — заказ не продублируется.';
+  }
+  const diagnosticCode = String(error?.code || '').trim();
+  return /^[A-Z0-9_]{2,64}$/.test(diagnosticCode)
+    ? `Не удалось оформить заказ. Повторите попытку. Код: ${diagnosticCode}.`
+    : 'Не удалось оформить заказ. Повторите попытку.';
 };
 
 export const isCheckoutOrderingPaused = (status = {}) =>
