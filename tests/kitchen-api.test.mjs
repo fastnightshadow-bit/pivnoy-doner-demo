@@ -209,6 +209,63 @@ test('production kitchen changes one menu control with one request', async () =>
   ]);
 });
 
+test('kitchen settings request times out instead of leaving a tablet control stuck', async () => {
+  const api = createKitchenApi({
+    requestTimeoutMs: 5,
+    fetchImpl: async (_url, options = {}) =>
+      new Promise((_resolve, reject) => {
+        options.signal?.addEventListener('abort', () => {
+          reject(options.signal.reason);
+        }, { once: true });
+      }),
+  });
+
+  const result = await Promise.race([
+    api.getSettings().catch((error) => error),
+    new Promise((resolve) => setTimeout(() => resolve({ code: 'TEST_TIMEOUT' }), 80)),
+  ]);
+
+  assert.equal(result.code, 'REQUEST_TIMEOUT');
+  assert.match(result.message, /слишком долго/i);
+});
+
+test('the short settings timeout never makes a cancellation refund ambiguous', async () => {
+  const api = createKitchenApi({
+    requestTimeoutMs: 5,
+    fetchImpl: async (_url, options = {}) =>
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(() => resolve(response({
+          order: {
+            id: 'order-1',
+            public_number: 28,
+            status: 'cancelled',
+            payment_status: 'refunded',
+            version: 5,
+            items: [],
+          },
+          refundStatus: 'succeeded',
+        })), 15);
+        options.signal?.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(options.signal.reason);
+        }, { once: true });
+      }),
+  });
+
+  const result = await api.cancelOrder(
+    'order-1',
+    {
+      reasonId: 'customer_request',
+      comment: '',
+      confirmationNumber: '28',
+    },
+    4,
+  );
+
+  assert.equal(result.refundStatus, 'succeeded');
+  assert.equal(result.order.status, 'cancelled');
+});
+
 test('demo kitchen changes products and options independently', async () => {
   const api = createApi();
   await api.login('0000');
