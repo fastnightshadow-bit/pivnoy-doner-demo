@@ -62,6 +62,7 @@ a {
 button {
   border: 0;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 button:disabled {
@@ -1667,6 +1668,103 @@ dialog input[type="radio"] {
 
   .employee-control__copy small {
     display: none;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (min-width: 641px) and (max-width: 1366px) {
+  .kitchen-topbar {
+    grid-template-columns: 64px 104px minmax(180px, 1fr) auto minmax(92px, auto);
+    gap: 8px;
+    min-height: 82px;
+    padding: 10px;
+  }
+
+  .kitchen-brand span,
+  .employee-control__copy {
+    display: none;
+  }
+
+  .kitchen-search,
+  .toolbar-button,
+  .icon-button,
+  .employee-control button {
+    min-height: 56px;
+  }
+
+  .toolbar-button {
+    padding-inline: 14px;
+    font-size: 14px;
+  }
+
+  .kitchen-board {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .kanban-column__header {
+    min-height: 56px;
+    padding: 10px;
+  }
+
+  .kanban-column__header h2 {
+    font-size: 17px;
+  }
+
+  .kanban-column__list {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .order-card__open {
+    padding: 12px 12px 8px;
+  }
+
+  .order-card__heading strong {
+    font-size: 19px;
+  }
+
+  .order-card__customer {
+    font-size: 14px;
+  }
+
+  .order-card__heading time,
+  .order-card__meta,
+  .order-card__paid {
+    font-size: 12px;
+  }
+
+  .order-card__item {
+    font-size: 14px;
+  }
+
+  .order-card__action {
+    min-height: 56px;
+    font-size: 15px;
+  }
+
+  .kitchen-menu-back,
+  .kitchen-menu-toggle,
+  .availability-switch,
+  .kitchen-menu-category-row > button:first-child,
+  .kitchen-menu-expand {
+    min-height: 48px;
+  }
+
+  .availability-switch {
+    width: 60px;
+    min-width: 60px;
+    min-height: 40px;
+  }
+
+  .availability-switch i {
+    top: 5px;
+    left: 5px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .availability-switch[aria-checked='true'] i {
+    transform: translateX(20px);
   }
 }
 
