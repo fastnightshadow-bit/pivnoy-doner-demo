@@ -50,3 +50,27 @@ test('кухонное меню показывает категории, блю�
   assert.match(html, /data-kitchen-option-toggle="meat:beef"/);
   assert.match(html, /Нет в наличии/);
 });
+
+test('экран управления открывается до сетевой загрузки и не вызывает клавиатуру планшета', () => {
+  const source = readText('kitchen.js');
+  const start = source.indexOf('const openKitchenSettings =');
+  const end = source.indexOf('const closeKitchenSettings =', start);
+  const body = source.slice(start, end);
+
+  assert.ok(start >= 0 && end > start);
+  assert.ok(
+    body.indexOf('setElementHidden(refs.menuView, false)') <
+      body.indexOf('await loadKitchenSettings'),
+    'menu must become visible before the settings request finishes',
+  );
+  assert.doesNotMatch(body, /menuSearch\?\.focus/);
+});
+
+test('landscape kitchen tablet gets touch-sized controls and readable order cards', () => {
+  const css = readText('kitchen.css');
+
+  assert.match(css, /@media[^\{]*pointer:\s*coarse[^\{]*max-width:\s*1366px/s);
+  assert.match(css, /@media[^\{]*pointer:\s*coarse[\s\S]*?\.order-card__action\s*\{[^}]*min-height:\s*56px/s);
+  assert.match(css, /@media[^\{]*pointer:\s*coarse[\s\S]*?\.order-card__item\s*\{[^}]*font-size:\s*14px/s);
+  assert.match(css, /button[^\{]*\{[^}]*touch-action:\s*manipulation/s);
+});
