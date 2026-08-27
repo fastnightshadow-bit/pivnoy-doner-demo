@@ -51,6 +51,17 @@ const mapRefundStatus = (status) => {
   return 'pending';
 };
 
+const getDefinitiveRefundError = (error) => {
+  if (
+    !(error instanceof PaymentProviderError) ||
+    error.code !== 'YOOKASSA_REQUEST_FAILED'
+  ) {
+    return '';
+  }
+  const providerStatus = Number(error.details?.providerStatus);
+  return providerStatus === 403 ? 'REFUND_PROVIDER_FORBIDDEN' : '';
+};
+
 const assertProviderRefund = (refund, payment) => {
   if (!String(refund?.id ?? '').trim()) {
     throw new PaymentProviderError('REFUND_PROVIDER_ID_REQUIRED', {
@@ -251,7 +262,7 @@ export const createPaymentService = ({
       return { status: 'failed', error: 'REFUND_PAYMENT_MISMATCH' };
     }
 
-    const reservation = await payments.reserveRefund({
+    const reservationResult = await payments.reserveRefund({
       orderId: normalizedOrderId,
       paymentId: payment.id,
       idempotencyKey: createId(),
@@ -260,6 +271,7 @@ export const createPaymentService = ({
       reason: String(reason || '').trim(),
       requestedBy: account?.id ?? null,
     });
+    const reservation = reservationResult?.refund;
     if (!reservation) {
       return { status: 'failed', error: 'REFUND_RESERVATION_FAILED' };
     }
@@ -285,7 +297,17 @@ export const createPaymentService = ({
           providerPayload: toSafeRefundPayload(providerRefund),
         })) ?? { ...reservation, status: 'pending' }
       );
-    } catch {
+    } catch (error) {
+      const definitiveError = getDefinitiveRefundError(error);
+      if (definitiveError && reservationResult.isNewAttempt) {
+        return (
+          (await payments.failRefund({
+            orderId: normalizedOrderId,
+            idempotencyKey: reservation.idempotencyKey,
+            lastError: definitiveError,
+          })) ?? { ...reservation, status: 'failed', lastError: definitiveError }
+        );
+      }
       return (
         (await payments.noteRefundError({
           orderId: normalizedOrderId,
