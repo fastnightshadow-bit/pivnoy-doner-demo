@@ -25,3 +25,20 @@ test('Docker build context включает конфигурацию security he
 
   assert.match(dockerignore, /^!deploy\/security-headers\.conf$/m);
 });
+
+test('nginx отдаёт SEO-файлы напрямую и не подменяет их главной страницей', () => {
+  const config = readText('deploy/nginx.conf');
+
+  assert.match(
+    config,
+    /map \$host \$robots_entry\s*\{[\s\S]*?pivdoner\\\.ru\$ \/robots\.txt;[\s\S]*?default \/robots-private\.txt;[\s\S]*?\}/,
+  );
+  assert.match(
+    config,
+    /location = \/robots\.txt\s*\{[\s\S]*?default_type text\/plain;[\s\S]*?try_files \$robots_entry =404;[\s\S]*?\}/,
+  );
+  assert.match(
+    config,
+    /location = \/sitemap\.xml\s*\{[\s\S]*?default_type application\/xml;[\s\S]*?try_files \$uri =404;[\s\S]*?\}/,
+  );
+});

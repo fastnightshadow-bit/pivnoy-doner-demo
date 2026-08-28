@@ -1,2 +1,12 @@
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /api/
+Disallow: /cart.html
+Disallow: /checkout.html
+Disallow: /order.html
+Disallow: /kitchen.html
+Disallow: /courier.html
+Disallow: /owner.html
+Disallow: /index.html
+
+Sitemap: https://pivdoner.ru/sitemap.xml
