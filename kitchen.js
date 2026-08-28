@@ -2,32 +2,32 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026082701';
+} from './kitchen-api.js?v=2026082801';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026082701';
+} from './kitchen-model.js?v=2026082801';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
 } from './kitchen-presentation.js';
 import { CATEGORIES, PRODUCTS } from './catalog-data.js';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082701';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082801';
 import {
   buildCategorySummaries,
   getGlobalMeatOptions,
-} from './owner-menu.js?v=2026082701';
+} from './owner-menu.js?v=2026082801';
 import {
   getKitchenStoppedEntries,
   renderKitchenMenu,
   renderKitchenStoppedMenu,
-} from './kitchen-menu.js?v=2026082701';
+} from './kitchen-menu.js?v=2026082801';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026082701';
+} from './staff-live-sync.js?v=2026082801';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -381,6 +381,35 @@ export const validateCancellationInput = ({
   return '';
 };
 
+export const playKitchenNewOrderAlert = (audioContext) => {
+  if (
+    !audioContext ||
+    typeof audioContext.createOscillator !== 'function' ||
+    typeof audioContext.createGain !== 'function' ||
+    !audioContext.destination
+  ) {
+    return false;
+  }
+
+  const startAt = Number(audioContext.currentTime) || 0;
+  const frequencies = [880, 1175, 880, 1175];
+  frequencies.forEach((frequency, index) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const noteAt = startAt + index * 0.24;
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(frequency, noteAt);
+    gain.gain.setValueAtTime(0.0001, noteAt);
+    gain.gain.exponentialRampToValueAtTime(0.75, noteAt + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteAt + 0.19);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(noteAt);
+    oscillator.stop(noteAt + 0.2);
+  });
+  return true;
+};
+
 export const createNewOrderNotifier = ({
   playSound = () => {},
   announce = () => {},
@@ -709,21 +738,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
 
   const playNewOrderSound = () => {
     if (!audioUnlocked || !audioContext || state.soundMuted) return;
-    const startAt = audioContext.currentTime;
-    [740, 880].forEach((frequency, index) => {
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const noteAt = startAt + index * 0.09;
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, noteAt);
-      gain.gain.setValueAtTime(0.0001, noteAt);
-      gain.gain.exponentialRampToValueAtTime(0.11, noteAt + 0.012);
-      gain.gain.exponentialRampToValueAtTime(0.0001, noteAt + 0.075);
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      oscillator.start(noteAt);
-      oscillator.stop(noteAt + 0.08);
-    });
+    playKitchenNewOrderAlert(audioContext);
   };
 
   const newOrderNotifier = createNewOrderNotifier({
@@ -1760,7 +1775,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026082701').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026082801').catch(() => {});
   }
 
   return {

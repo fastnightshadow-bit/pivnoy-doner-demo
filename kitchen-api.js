@@ -2,7 +2,7 @@ import {
   CANCELLATION_REASONS,
   createStatusHistoryEntry,
   getNextKitchenAction,
-} from './kitchen-model.js?v=2026082701';
+} from './kitchen-model.js?v=2026082801';
 import {
   createDemoEmployees,
   createDemoOrders,
