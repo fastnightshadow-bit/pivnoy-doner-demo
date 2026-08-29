@@ -38,7 +38,10 @@ const renderMethod = (state) => shell(`
 const renderCard = (context) => shell(`
   <main class="kiosk-payment-process">
     <p class="kiosk-eyebrow">Оплата картой</p><h1>Приложите карту</h1><p>или телефон к терминалу справа от экрана</p>
-    <div class="kiosk-terminal-art" aria-hidden="true"><div><span></span><b>••••</b><i>)))</i></div><em></em></div>
+    <div class="kiosk-terminal-art" aria-hidden="true">
+      <div class="kiosk-terminal-device"><span></span><b>••••</b><i>)))</i></div>
+      <div class="kiosk-payment-card-art"><span></span><i></i></div>
+    </div>
     <strong class="kiosk-payment-status"><i></i>${context.paymentPending === false ? 'Проверяем оплату…' : 'Терминал ожидает оплату'}</strong>
     <small>Не закрывайте экран. Оплата завершится автоматически.</small>
   </main>`, { className: 'is-process' });

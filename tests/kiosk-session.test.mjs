@@ -15,16 +15,16 @@ const harness = () => {
   return { controller, timers, events };
 };
 
-test('пустой заказ сбрасывается через 30 секунд', () => {
+test('пустой заказ предупреждается и сбрасывается через 60 секунд бездействия', () => {
   const { controller, timers } = harness();
   controller.sync({ screen: 'catalog', lines: [] });
-  assert.deepEqual(timers.filter(({ cleared }) => !cleared).map(({ delay }) => delay), [30_000]);
+  assert.deepEqual(timers.filter(({ cleared }) => !cleared).map(({ delay }) => delay), [50_000, 60_000]);
 });
 
 test('корзина сначала предупреждает, затем очищается', () => {
   const { controller, timers } = harness();
   controller.sync({ screen: 'cart', lines: [{ quantity: 1 }] });
-  assert.deepEqual(timers.filter(({ cleared }) => !cleared).map(({ delay }) => delay), [60_000, 70_000]);
+  assert.deepEqual(timers.filter(({ cleared }) => !cleared).map(({ delay }) => delay), [50_000, 60_000]);
 });
 
 test('экран успеха возвращается в начало через 10 секунд', () => {

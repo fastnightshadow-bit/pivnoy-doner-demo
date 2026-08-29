@@ -41,6 +41,9 @@
 .kiosk-categories::-webkit-scrollbar { display: none; }
 
 .kiosk-category {
+  display: inline-grid;
+  box-sizing: border-box;
+  place-items: center;
   padding: 0 22px;
   border: 1px solid #dedede;
   border-radius: 999px;
@@ -48,6 +51,8 @@
   color: #626262;
   font-size: 17px;
   font-weight: 800;
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
 }
 .kiosk-category:hover { border-color: rgba(229, 37, 31, 0.45); color: var(--kiosk-red); }
@@ -86,6 +91,7 @@
   background: #f7f7f7;
 }
 .kiosk-product__visual img { width: 100%; height: 100%; padding: 12px; object-fit: contain; }
+.kiosk-product__visual.is-shawarma img { transform: scale(1.1); transform-origin: center; }
 .kiosk-product__visual b {
   position: absolute;
   z-index: 1;
@@ -256,6 +262,7 @@
 
 .kiosk-option-group { margin: 24px 0; padding: 0; border: 0; }
 .kiosk-option-group legend { margin-bottom: 12px; font-size: 20px; font-weight: 900; }
+.kiosk-option-group legend small { margin-left: 8px; color: #777; font-size: 13px; font-weight: 700; }
 .kiosk-option-group > div { display: flex; flex-wrap: wrap; gap: 10px; }
 .kiosk-option {
   min-width: 118px;

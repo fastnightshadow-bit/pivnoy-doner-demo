@@ -19,12 +19,8 @@ export const createKioskSessionController = ({
       after(10_000, onReset);
       return;
     }
-    if (Array.isArray(state.lines) && state.lines.length > 0) {
-      after(60_000, onWarn);
-      after(70_000, onReset);
-      return;
-    }
-    after(30_000, onReset);
+    after(50_000, onWarn);
+    after(60_000, onReset);
   };
   return { clear, sync, activity: sync };
 };

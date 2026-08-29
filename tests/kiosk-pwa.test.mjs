@@ -10,8 +10,10 @@ test('стойка устанавливается как отдельное по
   assert.ok(manifest.icons.some(({ sizes, purpose }) => sizes === '512x512' && purpose.includes('maskable')));
 });
 
-test('стойка регистрирует собственный service worker и кэширует оболочку', () => {
-  assert.match(readText('kiosk-session-runtime.js'), /serviceWorker\.register\('\.\/kiosk-sw\.js'\)/);
+test('стойка регистрирует версионированный service worker и кэширует оболочку', () => {
+  const runtime = readText('kiosk-session-runtime.js');
+  assert.match(runtime, /const KIOSK_BUILD = '20260823-8'/);
+  assert.ok(runtime.includes(".register(`./kiosk-sw.js?v=${KIOSK_BUILD}`, { updateViaCache: 'none' })"));
   const worker = readText('kiosk-sw.js');
   assert.match(worker, /kiosk\.html/);
   assert.match(worker, /kiosk-app\.js/);

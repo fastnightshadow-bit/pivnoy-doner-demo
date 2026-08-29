@@ -74,3 +74,22 @@ test('успешная оплата сохраняет заказ и откры�
   assert.equal(state.order.number, '31');
   assert.equal(state.payment.status, 'succeeded');
 });
+
+test('карточка, открытая из корзины, закрывается обратно в корзину', () => {
+  let state = {
+    ...createKioskState(),
+    screen: 'cart',
+    fulfillment: 'dine-in',
+    lines: [{ lineId: 'line-1', productId: 'classic-shawarma', quantity: 1 }],
+  };
+
+  state = reduceKioskState(state, {
+    type: 'OPEN_PRODUCT',
+    productId: 'classic-shawarma',
+  });
+  assert.equal(state.screen, 'product');
+  assert.equal(state.productReturnScreen, 'cart');
+
+  state = reduceKioskState(state, { type: 'CLOSE_PRODUCT' });
+  assert.equal(state.screen, 'cart');
+});
