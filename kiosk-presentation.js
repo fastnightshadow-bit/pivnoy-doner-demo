@@ -114,7 +114,7 @@ const renderProductCard = (product, settings) => {
       data-kiosk-product="${product.id}" ${availability.available ? '' : 'disabled'}>
       <span class="kiosk-product__visual${product.category === 'shawarma' ? ' is-shawarma' : ''}">
         ${product.badge ? `<b>${escapeHtml(product.badge)}</b>` : ''}
-        <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" />
+        <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" />
       </span>
       <span class="kiosk-product__body">
         <strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.description)}</small>
@@ -177,7 +177,7 @@ const renderProduct = (state, context) => {
       <div class="kiosk-product-backdrop" data-kiosk-close-product></div>
       <article class="kiosk-product-sheet${context.animateProductEntry ? ' is-entering' : ''}" aria-labelledby="kiosk-product-title">
         <button class="kiosk-sheet-close kiosk-touch" type="button" data-kiosk-close-product aria-label="Закрыть">${closeIcon}</button>
-        <div class="kiosk-sheet-hero"><span class="kiosk-sheet-image-stage"><img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" /></span></div>
+        <div class="kiosk-sheet-hero"><span class="kiosk-sheet-image-stage"><img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" decoding="sync" /></span></div>
         <div class="kiosk-sheet-content">
           <h1 id="kiosk-product-title">${escapeHtml(product.name)}</h1><p>${escapeHtml(getProductDescription(product, meat))}</p>
           ${meats.length > 1 ? renderSegment('Выберите мясо', meats, meat, MEAT_LABELS, context.settings || {}, 'meat') : ''}

@@ -10,7 +10,7 @@
 }
 .kiosk-payment > header .kiosk-brand { width: 150px; height: auto; justify-self: center; }
 .kiosk-payment-method { display: flex; min-height: calc(100dvh - 112px); flex-direction: column; padding: 56px 46px; }
-.kiosk-payment-method h1 { margin: 7px 0 10px; font-size: 48px; }
+.kiosk-payment-method h1 { max-width: 100%; margin: 7px 0 10px; overflow-wrap: anywhere; font-size: clamp(32px, 5.5vw, 48px); }
 .kiosk-payment-method > p:not(.kiosk-eyebrow) { color: #737373; font-size: 22px; }
 .kiosk-payment-method > p strong { margin-left: 8px; color: #181716; font-size: 30px; }
 .kiosk-payment-options { display: grid; gap: 18px; margin-top: 50px; }
@@ -26,6 +26,7 @@
   background: #fff;
   color: #181716;
   text-align: left;
+  min-width: 0;
 }
 .kiosk-payment-option:hover,
 .kiosk-payment-option:focus-visible {
@@ -46,7 +47,7 @@
 .kiosk-payment-option:hover .kiosk-payment-icon,
 .kiosk-payment-option:focus-visible .kiosk-payment-icon { background: var(--kiosk-red); }
 .kiosk-payment-icon svg { width: 36px; height: 36px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.kiosk-payment-option span:not(.kiosk-payment-icon) { display: grid; gap: 7px; }
+.kiosk-payment-option span:not(.kiosk-payment-icon) { display: grid; min-width: 0; gap: 7px; overflow-wrap: anywhere; }
 .kiosk-payment-option strong { font-size: 24px; }
 .kiosk-payment-option small { color: #737373; font-size: 16px; }
 .kiosk-payment-option > b { font-size: 35px; transition: transform 160ms ease; }
@@ -82,3 +83,13 @@
 .kiosk-payment-result.is-error .kiosk-result-icon { border-color: #181716; color: #181716; }
 
 @keyframes kiosk-pulse { 50% { box-shadow: 0 0 0 13px rgba(229, 37, 31, 0); } }
+
+@media (max-width: 520px) {
+  .kiosk-payment-method,
+  .kiosk-payment-process { padding-right: 20px; padding-left: 20px; }
+  .kiosk-payment-option { grid-template-columns: 60px minmax(0, 1fr) 24px; gap: 12px; padding: 18px; }
+  .kiosk-payment-icon { width: 58px; height: 58px; }
+  .kiosk-payment-method > aside strong { font-size: 34px; }
+  .kiosk-terminal-art { width: min(100%, 340px); }
+  .kiosk-qr { width: min(100%, 330px); height: auto; aspect-ratio: 1; }
+}
