@@ -22,7 +22,7 @@ const brand = '<img class="kiosk-brand" src="assets/mobile-home/brand-wordmark.w
 
 const renderRecommendation = (product) => `
   <button class="kiosk-cart-rec kiosk-touch" type="button" data-kiosk-product="${product.id}">
-    <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" />
+    <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" />
     <span><strong>${escapeHtml(product.name)}</strong><b>${money(product.price)}</b></span><i aria-hidden="true">${plusGlyph}</i>
   </button>`;
 
@@ -40,7 +40,7 @@ export const renderKioskCart = (state, context = {}) => {
       <main class="kiosk-cart-content">
         ${state.lines.length ? `<div class="kiosk-cart-lines">${state.lines.map((line) => `
           <article class="kiosk-cart-line kiosk-touch" data-kiosk-edit-line="${escapeHtml(line.lineId)}" role="button" tabindex="0" aria-label="Изменить ${escapeHtml(line.name)}">
-            <img src="${escapeHtml(line.image || '')}" alt="${escapeHtml(line.name)}" />
+            <img src="${escapeHtml(line.image || '')}" alt="${escapeHtml(line.name)}" decoding="async" />
             <div class="kiosk-cart-line__copy"><h2>${escapeHtml(line.name)}</h2>
               <p>${[MEAT_LABELS[line.meat], SIZE_LABELS[line.size], line.sauce ? `Соус: ${sauceLabel(line.sauce)}` : '', ...(line.addons || []).map(addonLabel)].filter(Boolean).map(escapeHtml).join(' · ')}</p>
               <strong>${money(line.unitPrice * line.quantity)}</strong>

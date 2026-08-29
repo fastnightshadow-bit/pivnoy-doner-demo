@@ -1,9 +1,10 @@
-const VERSION = '20260823-8';
+const VERSION = '20260829-1';
 const CACHE = `pivnoy-doner-kiosk-${VERSION}`;
 const SHELL = [
   './kiosk.html',
   `./kiosk-app.js?v=${VERSION}`,
   './kiosk-state.js', './kiosk-api.js', './kiosk-presentation.js',
+  './kiosk-image-cache.js',
   './kiosk-cart-presentation.js', './kiosk-payment-presentation.js',
   './kiosk-session.js', `./kiosk-session-runtime.js?v=${VERSION}`,
   `./kiosk.css?v=${VERSION}`, `./kiosk-catalog.css?v=${VERSION}`,

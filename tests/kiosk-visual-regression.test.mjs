@@ -31,8 +31,8 @@ test('итог корзины оптически поднят к центру к
 
 test('версия ресурсов киоска меняется вместе с исправлениями', () => {
   const html = readText('kiosk.html');
-  assert.match(html, /kiosk-fixes-v3\.css\?v=20260823-8/);
-  assert.match(html, /kiosk-app\.js\?v=20260823-8/);
+  assert.match(html, /kiosk-fixes-v3\.css\?v=20260829-1/);
+  assert.match(html, /kiosk-app\.js\?v=20260829-1/);
 });
 
 
@@ -41,4 +41,17 @@ test('логотип в планшетной шапке имеет явный о
   assert.match(css, /\.kiosk-menu-header \.kiosk-brand\s*\{[^}]*align-self:\s*center/);
   assert.match(css, /\.kiosk-menu-header \.kiosk-brand\s*\{[^}]*transform:\s*translate\(-2px,\s*3px\)/);
   assert.match(css, /\.kiosk-topbar \.kiosk-brand\s*\{[^}]*transform:\s*translate\(-2px,\s*3px\)/);
+});
+
+test('текст товара остаётся внутри карточек при любой доступной ширине', () => {
+  const catalogCss = readText('kiosk-catalog.css');
+  const cartCss = readText('kiosk-cart.css');
+
+  assert.match(catalogCss, /\.kiosk-products\s*\{[^}]*repeat\(auto-fit,\s*minmax\(min\(100%,\s*330px\),\s*1fr\)\)/);
+  assert.match(catalogCss, /\.kiosk-product__body\s*\{[^}]*min-width:\s*0/);
+  assert.match(catalogCss, /\.kiosk-product__body\s*>\s*strong\s*\{[^}]*overflow-wrap:\s*anywhere[^}]*-webkit-line-clamp:\s*2/);
+  assert.match(catalogCss, /\.kiosk-sheet-content\s+h1\s*\{[^}]*overflow-wrap:\s*anywhere/);
+  assert.match(cartCss, /\.kiosk-cart-line__copy\s*\{[^}]*min-width:\s*0/);
+  assert.match(cartCss, /\.kiosk-cart-line__copy\s+h2\s*\{[^}]*overflow-wrap:\s*anywhere/);
+  assert.match(cartCss, /\.kiosk-cart-rec\s+span\s*\{[^}]*min-width:\s*0/);
 });

@@ -20,10 +20,12 @@ import {
 import { renderKioskCart } from './kiosk-cart-presentation.js';
 import { renderKioskPayment } from './kiosk-payment-presentation.js';
 import { getKioskAvailability, renderKiosk } from './kiosk-presentation.js';
+import { createKioskImageCache } from './kiosk-image-cache.js';
 
 const root = document.querySelector('[data-kiosk-app]');
 const isDemo = isKioskDemoLocation(window.location);
 const api = isDemo ? createDemoKioskApi() : createKioskApi();
+const imageCache = createKioskImageCache();
 let state = createKioskState();
 let context = {
   products: [],
@@ -111,9 +113,10 @@ const closeProduct = () => {
   dispatch({ type: 'CLOSE_PRODUCT' });
 };
 
-const openCartLine = (lineId) => {
+const openCartLine = async (lineId) => {
   const line = state.lines.find((item) => item.lineId === lineId);
   if (!line) return;
+  await imageCache.ensure(line.image || findProduct(line.productId)?.image);
   context = {
     ...context,
     selection: createLineSelection(line),
@@ -173,7 +176,7 @@ const startPayment = async (method) => {
   }
 };
 
-root.addEventListener('click', (event) => {
+root.addEventListener('click', async (event) => {
   if (event.target.closest('[data-kiosk-start]')) {
     dispatch({ type: 'START' });
     return;
@@ -201,6 +204,7 @@ root.addEventListener('click', (event) => {
   const productButton = event.target.closest('[data-kiosk-product]');
   if (productButton) {
     const productId = productButton.dataset.kioskProduct;
+    await imageCache.ensure(findProduct(productId)?.image);
     context = {
       ...context,
       selection: createDefaultSelection(productId),
@@ -309,7 +313,7 @@ root.addEventListener('click', (event) => {
 
   const editLine = event.target.closest('[data-kiosk-edit-line]');
   if (editLine) {
-    openCartLine(editLine.dataset.kioskEditLine);
+    await openCartLine(editLine.dataset.kioskEditLine);
     return;
   }
 
@@ -351,12 +355,12 @@ root.addEventListener('click', (event) => {
   }
 });
 
-root.addEventListener('keydown', (event) => {
+root.addEventListener('keydown', async (event) => {
   if (!['Enter', ' '].includes(event.key)) return;
   const editLine = event.target.closest('[data-kiosk-edit-line]');
   if (!editLine) return;
   event.preventDefault();
-  openCartLine(editLine.dataset.kioskEditLine);
+  await openCartLine(editLine.dataset.kioskEditLine);
 });
 
 const start = async () => {
@@ -364,6 +368,9 @@ const start = async () => {
     const bootstrap = await api.getBootstrap();
     context = { ...context, ...bootstrap };
     render();
+    void imageCache.preloadProducts(
+      context.products?.length ? context.products : PRODUCTS,
+    );
     api.subscribe(
       (message) => {
         if (message.type === 'settings.updated') {
