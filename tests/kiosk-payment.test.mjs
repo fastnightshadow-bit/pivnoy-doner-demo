@@ -17,10 +17,12 @@ test('выбор оплаты занимает отдельный экран и 
   assert.match(markup, /490\s*₽/);
 });
 
-test('экран карты показывает понятную инструкцию', () => {
+test('экран карты показывает терминал и приближающуюся карту без красной дуги', () => {
   const markup = renderKioskPayment({ ...base, screen: 'card-payment' }, { paymentPending: true });
   assert.match(markup, /Приложите карту/);
   assert.match(markup, /Терминал ожидает оплату/);
+  assert.match(markup, /class="kiosk-payment-card-art"/);
+  assert.doesNotMatch(markup, /<em(?:\s|>)/);
 });
 
 test('экран QR показывает код и инструкцию', () => {

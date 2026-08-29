@@ -15,8 +15,10 @@ test('корзина показывает состав, количество и 
   assert.match(markup, /Курица/);
   assert.match(markup, /Сыр/);
   assert.match(markup, /data-kiosk-line-quantity/);
+  assert.match(markup, new RegExp(`data-kiosk-edit-line="${line.lineId}"`));
   assert.match(markup, /700\s*₽/);
   assert.match(markup, /Перейти к оплате/);
+  assert.match(markup, /data-delta="1"[^>]*>[\s\S]*?kiosk-plus-glyph/);
 });
 
 test('пустая корзина не позволяет перейти к оплате', () => {
@@ -25,4 +27,10 @@ test('пустая корзина не позволяет перейти к оп
   assert.match(markup, /Корзина пока пуста/);
   assert.match(markup, /class="kiosk-cart-empty__icon"/);
   assert.match(markup, /data-kiosk-checkout[^>]*disabled/);
+});
+
+test('быстрое добавление в рекомендациях использует центрированный значок плюса', () => {
+  const state = { ...createKioskState(), screen: 'cart', fulfillment: 'takeaway' };
+  const markup = renderKioskCart(state, context);
+  assert.match(markup, /class="kiosk-cart-rec[^"]*"[\s\S]*?class="kiosk-plus-glyph"/);
 });

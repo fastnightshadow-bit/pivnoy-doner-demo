@@ -16,6 +16,7 @@ export const createKioskState = () => ({
   fulfillment: '',
   lines: [],
   selectedProductId: '',
+  productReturnScreen: 'catalog',
   order: null,
   payment: null,
   error: '',
@@ -26,7 +27,6 @@ export const resetKioskState = createKioskState;
 const BACK_SCREENS = Object.freeze({
   fulfillment: 'start',
   catalog: 'fulfillment',
-  product: 'catalog',
   cart: 'catalog',
   'payment-method': 'cart',
   'card-payment': 'payment-method',
@@ -40,6 +40,9 @@ const withScreen = (state, screen, updates = {}) => ({
   screen,
   error: updates.error ?? '',
 });
+
+const getProductReturnScreen = (state) =>
+  state.productReturnScreen === 'cart' ? 'cart' : 'catalog';
 
 export const reduceKioskState = (state, event = {}) => {
   if (!state || !KIOSK_SCREENS.includes(state.screen)) return createKioskState();
@@ -55,15 +58,19 @@ export const reduceKioskState = (state, event = {}) => {
         : state;
 
     case 'OPEN_PRODUCT':
-      return state.screen === 'catalog' && String(event.productId || '')
+      return ['catalog', 'cart'].includes(state.screen) && String(event.productId || '')
         ? withScreen(state, 'product', {
             selectedProductId: String(event.productId),
+            productReturnScreen: state.screen === 'cart' ? 'cart' : 'catalog',
           })
         : state;
 
     case 'CLOSE_PRODUCT':
       return state.screen === 'product'
-        ? withScreen(state, 'catalog', { selectedProductId: '' })
+        ? withScreen(state, getProductReturnScreen(state), {
+            selectedProductId: '',
+            productReturnScreen: 'catalog',
+          })
         : state;
 
     case 'SET_LINES':
@@ -71,7 +78,10 @@ export const reduceKioskState = (state, event = {}) => {
 
     case 'OPEN_CART':
       return ['catalog', 'product'].includes(state.screen)
-        ? withScreen(state, 'cart', { selectedProductId: '' })
+        ? withScreen(state, 'cart', {
+            selectedProductId: '',
+            productReturnScreen: 'catalog',
+          })
         : state;
 
     case 'OPEN_PAYMENT_METHOD':
@@ -97,10 +107,13 @@ export const reduceKioskState = (state, event = {}) => {
         : state;
 
     case 'BACK': {
-      const screen = BACK_SCREENS[state.screen];
+      const screen = state.screen === 'product'
+        ? getProductReturnScreen(state)
+        : BACK_SCREENS[state.screen];
       if (!screen) return state;
       return withScreen(state, screen, {
         selectedProductId: state.screen === 'product' ? '' : state.selectedProductId,
+        productReturnScreen: state.screen === 'product' ? 'catalog' : state.productReturnScreen,
       });
     }
 

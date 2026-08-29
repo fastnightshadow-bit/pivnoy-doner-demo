@@ -34,17 +34,23 @@ test('в добавках используется жареный лук', () =>
   assert.equal(PRODUCT_ADDONS.onion.label, 'Жареный лук');
 });
 
-test('каждое блюдо получает один бесплатный соус по умолчанию', () => {
+test('соус не выбирается автоматически и каждый соус стоит 50 рублей', () => {
   for (const product of PRODUCTS) {
     const config = getProductConfiguration(product.id);
     assert.deepEqual(config.sauces, Object.keys(PRODUCT_SAUCES), product.id);
-    assert.ok(config.sauces.includes(config.defaultSauce), product.id);
-    const priceWithoutSauce = calculateProductPrice(product.id, {});
+    assert.equal(config.defaultSauce, '', product.id);
+    const meat = Object.keys(config.prices)[0];
+    const size = Object.keys(config.prices[meat])[0];
+    const priceWithoutSauce = calculateProductPrice(product.id, { meat, size });
     const priceWithSauce = calculateProductPrice(product.id, {
-      sauce: config.defaultSauce,
+      meat,
+      size,
+      sauce: 'tasty',
     });
-    assert.equal(priceWithSauce, priceWithoutSauce, product.id);
+    assert.equal(priceWithSauce, priceWithoutSauce + 50, product.id);
   }
+
+  assert.ok(Object.values(PRODUCT_SAUCES).every(({ price }) => price === 50));
 });
 
 test('соус входит в идентичность позиции корзины', () => {
@@ -66,7 +72,8 @@ test('карточка блюда показывает выбор одного �
   assert.match(markup, />Соус</);
   assert.match(markup, /data-sheet-sauce="chili"/);
   assert.match(markup, /data-sheet-sauce="chili"[^>]*[\s\S]*?Чили/);
-  assert.match(markup, /Входит в стоимость/);
+  assert.match(markup, /Без соуса/);
+  assert.match(markup, /\+50/);
 });
 
 test('соус сохраняется в заказе и показывается кухне', () => {

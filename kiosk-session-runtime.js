@@ -18,6 +18,23 @@ const getScreenState = () => ({
 });
 const sync = () => controller.sync(getScreenState());
 new MutationObserver(sync).observe(root, { childList: true, subtree: true });
-['pointerdown', 'touchstart', 'keydown'].forEach((name) => document.addEventListener(name, () => { hideWarning(); controller.activity(getScreenState()); }, { passive: true }));
+const markActivity = () => { hideWarning(); controller.activity(getScreenState()); };
+['pointerdown', 'pointermove', 'touchstart', 'touchmove', 'wheel', 'scroll', 'keydown'].forEach((name) => {
+  document.addEventListener(name, markActivity, { passive: true, capture: name === 'scroll' });
+});
 sync();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./kiosk-sw.js').catch(() => {});
+
+const KIOSK_BUILD = '20260823-8';
+const SW_RELOAD_KEY = 'kiosk-sw-reloaded';
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (sessionStorage.getItem(SW_RELOAD_KEY) === KIOSK_BUILD) return;
+    sessionStorage.setItem(SW_RELOAD_KEY, KIOSK_BUILD);
+    window.location.reload();
+  });
+
+  navigator.serviceWorker
+    .register(`./kiosk-sw.js?v=${KIOSK_BUILD}`, { updateViaCache: 'none' })
+    .then((registration) => registration.update())
+    .catch(() => {});
+}

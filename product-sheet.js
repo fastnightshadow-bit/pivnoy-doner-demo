@@ -51,7 +51,7 @@ const normalizeSelection = (productId, selection = {}) => {
   const sauces = configuration?.sauces ?? [];
   const sauce = sauces.includes(selection.sauce)
     ? selection.sauce
-    : configuration?.defaultSauce ?? sauces[0] ?? '';
+    : '';
 
   return {
     meat,
@@ -72,16 +72,25 @@ const createSauceMarkup = (productId, selection) => {
   const sauceIds = getProductConfiguration(productId)?.sauces ?? [];
   if (sauceIds.length === 0) return '';
 
+  const withoutSauceActive = !selection.sauce;
   return `
     <section class="product-sheet__section" aria-labelledby="sheet-sauce-title">
       <header class="product-sheet__section-heading">
         <h3 id="sheet-sauce-title">Соус</h3>
-        <small>1 соус · Входит в стоимость</small>
+        <small>По желанию · +50 ₽</small>
       </header>
       <div class="product-sheet__sauces" role="radiogroup" aria-label="Выбор соуса">
+        <button
+          class="${withoutSauceActive ? 'is-active' : ''}"
+          type="button"
+          role="radio"
+          aria-checked="${withoutSauceActive}"
+          data-sheet-sauce=""
+        >Без соуса</button>
         ${sauceIds
           .map((sauceId) => {
             const active = sauceId === selection.sauce;
+            const sauce = PRODUCT_SAUCES[sauceId];
             return `
               <button
                 class="${active ? 'is-active' : ''}"
@@ -89,7 +98,7 @@ const createSauceMarkup = (productId, selection) => {
                 role="radio"
                 aria-checked="${active}"
                 data-sheet-sauce="${sauceId}"
-              >${PRODUCT_SAUCES[sauceId]?.label ?? sauceId}</button>`;
+              >${sauce?.label ?? sauceId} · +${sauce?.price ?? 50} ₽</button>`;
           })
           .join('')}
       </div>
