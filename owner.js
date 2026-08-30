@@ -21,6 +21,10 @@ const refs = {
   refresh: document.querySelector('[data-owner-refresh]'),
   logout: document.querySelector('[data-owner-logout]'),
   accepting: document.querySelector('[data-owner-accepting]'),
+  createKiosk: document.querySelector('[data-owner-create-kiosk]'),
+  kioskCode: document.querySelector('[data-owner-kiosk-code]'),
+  kioskCodeValue: document.querySelector('[data-owner-kiosk-code-value]'),
+  kioskCodeExpiry: document.querySelector('[data-owner-kiosk-code-expiry]'),
   globalMeats: document.querySelector('[data-owner-global-meats]'),
   acceptingLabel: document.querySelector('[data-owner-accepting-label]'),
   active: document.querySelector('[data-owner-active]'),
@@ -370,6 +374,15 @@ refs.accepting.addEventListener('change', () => {
     const settings = await api.setAcceptingOrders(next);
     dashboard.settings = { ...dashboard.settings, ...settings };
   }, next ? 'Приём заказов включён' : 'Приём заказов остановлен');
+});
+
+refs.createKiosk.addEventListener('click', () => {
+  void runAction(async () => {
+    const activation = await api.createKioskActivation();
+    refs.kioskCodeValue.textContent = activation.code;
+    refs.kioskCodeExpiry.textContent = 'Код действует 10 минут';
+    refs.kioskCode.hidden = false;
+  }, 'Код подключения создан');
 });
 
 refs.search.addEventListener('input', renderMain);

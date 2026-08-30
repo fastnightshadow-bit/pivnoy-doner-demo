@@ -9,8 +9,8 @@
     <link rel="manifest" href="owner.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app/favicon-32.png" />
     <link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png" />
-    <link rel="stylesheet" href="owner.css?v=2026082201" />
-    <script type="module" src="owner.js?v=2026082102"></script>
+    <link rel="stylesheet" href="owner.css?v=2026083001" />
+    <script type="module" src="owner.js?v=2026083001"></script>
   </head>
   <body>
     <section class="owner-login" data-owner-login>
@@ -58,6 +58,20 @@
               <input type="checkbox" data-owner-accepting />
               <i aria-hidden="true"></i>
             </label>
+          </section>
+
+          <section class="owner-kiosk-card">
+            <div class="owner-kiosk-card__copy">
+              <span>Самообслуживание</span>
+              <h2>Подключить киоск</h2>
+              <p>Создайте одноразовый код и введите его на планшете. Пароль владельца на киоске не хранится.</p>
+            </div>
+            <button class="owner-button owner-kiosk-card__button" type="button" data-owner-create-kiosk>Создать код</button>
+            <div class="owner-kiosk-code" data-owner-kiosk-code hidden aria-live="polite">
+              <small>Код подключения</small>
+              <strong data-owner-kiosk-code-value>—</strong>
+              <span data-owner-kiosk-code-expiry>Код действует 10 минут</span>
+            </div>
           </section>
 
           <section class="owner-global-meats">

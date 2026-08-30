@@ -5,13 +5,26 @@ import { authenticateRequest, requireRole } from '../auth/middleware.js';
 const settingsSchema = z.object({ acceptingOrders: z.boolean() });
 const availabilitySchema = z.object({ available: z.boolean() });
 
-export const createOwnerRouter = ({ authService, dashboard, settings = null }) => {
+export const createOwnerRouter = ({
+  authService,
+  dashboard,
+  settings = null,
+  kioskAuthService = null,
+}) => {
   const router = Router();
   router.use(authenticateRequest(authService));
   router.use(requireRole('owner'));
   router.get('/dashboard', async (_request, response) => {
     response.json(await dashboard.get());
   });
+  if (kioskAuthService) {
+    router.post('/kiosk-activation', async (request, response) => {
+      const activation = await kioskAuthService.createActivation(
+        request.account,
+      );
+      response.status(201).json(activation);
+    });
+  }
   if (settings) {
     router.patch('/settings', async (request, response) => {
       const parsed = settingsSchema.safeParse(request.body);

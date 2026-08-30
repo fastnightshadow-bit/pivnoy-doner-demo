@@ -180,3 +180,17 @@ test('courier push migration creates an idempotent retryable outbox', async () =
   assert.match(sql, /available_at timestamptz not null default now\(\)/i);
   assert.match(sql, /create index push_jobs_pending_idx[\s\S]*status[\s\S]*available_at/i);
 });
+
+test('kiosk migration stores devices and separates service mode from fulfillment', async () => {
+  const sql = await readFile(
+    new URL('../src/db/migrations/006_kiosk.sql', import.meta.url),
+    'utf8',
+  ).catch(() => '');
+
+  assert.match(sql, /create table(?: if not exists)? kiosk_devices/i);
+  assert.match(sql, /create table(?: if not exists)? kiosk_activation_codes/i);
+  assert.match(sql, /session_token_hash char\(64\).*unique/i);
+  assert.match(sql, /alter table orders add column source text not null default 'web'/i);
+  assert.match(sql, /add column service_mode text/i);
+  assert.match(sql, /add column kiosk_device_id uuid references kiosk_devices\(id\)/i);
+});

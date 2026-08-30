@@ -11,3 +11,14 @@ test('кнопки возврата владельца используют це
   assert.match(css, /\.owner-back-icon::before/);
   assert.match(css, /rotate\(-45deg\)/);
 });
+
+test('владелец видит отдельное безопасное подключение киоска', () => {
+  const html = readText('owner.html');
+  const js = readText('owner.js');
+
+  assert.match(html, /data-owner-create-kiosk/);
+  assert.match(html, /data-owner-kiosk-code/);
+  assert.match(html, /Подключить киоск/);
+  assert.match(js, /createKioskActivation/);
+  assert.match(js, /Код действует 10 минут/);
+});

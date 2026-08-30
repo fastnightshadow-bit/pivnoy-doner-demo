@@ -16,6 +16,7 @@ import {
 import { createOwnerRouter } from './routes/owner.js';
 import { createPaymentsRouter } from './routes/payments.js';
 import { createPushRouter } from './routes/push.js';
+import { createKioskAuthRouter } from './routes/kiosk-auth.js';
 
 export const createApp = ({
   db,
@@ -29,15 +30,23 @@ export const createApp = ({
   dashboardService = null,
   paymentService = null,
   pushService = null,
+  kioskAuthService = null,
   nodeEnv = 'development',
 }) => {
   const app = express();
+  app.locals.kioskAuthService = kioskAuthService;
 
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(express.json({ limit: '256kb' }));
   app.use(cookieParser());
   app.use('/api/health', createHealthRouter({ db }));
+  if (kioskAuthService) {
+    app.use(
+      '/api/kiosk',
+      createKioskAuthRouter({ authService: kioskAuthService, nodeEnv }),
+    );
+  }
   if (authService) {
     app.use('/api/auth', createAuthRouter({ authService, nodeEnv }));
   }
@@ -85,6 +94,7 @@ export const createApp = ({
         authService,
         dashboard: dashboardService,
         settings: settingsService,
+        kioskAuthService,
       }),
     );
   }

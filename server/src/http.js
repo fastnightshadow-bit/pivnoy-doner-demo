@@ -22,6 +22,8 @@ import { MockPaymentProvider } from './payments/mock-provider.js';
 import { YooKassaPaymentProvider } from './payments/yookassa-provider.js';
 import { createPushRepository } from './repositories/push.js';
 import { createPushService } from './services/push.js';
+import { createKioskDevicesRepository } from './repositories/kiosk-devices.js';
+import { createKioskAuthService } from './auth/kiosk-session.js';
 import { createPushWorker } from './push/worker.js';
 import { createWebPushSender } from './push/web-push-sender.js';
 import {
@@ -48,6 +50,9 @@ const orderService = createOrderService({
   orderAccessSecret: config.orderAccessSecret,
 });
 const authService = createAuthService({ repository: createAuthRepository(db) });
+const kioskAuthService = createKioskAuthService({
+  repository: createKioskDevicesRepository(db),
+});
 const staffOrders = createStaffOrdersRepository(db);
 const statusService = createStatusService({ orders: staffOrders });
 const events = createEventsRepository(db);
@@ -109,6 +114,7 @@ const server = createApp({
   dashboardService,
   paymentService,
   pushService,
+  kioskAuthService,
   nodeEnv: config.nodeEnv,
 }).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);

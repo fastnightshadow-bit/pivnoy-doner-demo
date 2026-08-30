@@ -72,6 +72,10 @@ export const createOwnerApi = ({ fetchImpl = globalThis.fetch } = {}) => ({
         body: JSON.stringify({ available: Boolean(available) }),
       },
     ),
+  createKioskActivation: () =>
+    requestJson(fetchImpl, '/api/owner/kiosk-activation', {
+      method: 'POST',
+    }),
 });
 
 export const createDemoOwnerApi = () => {
@@ -147,6 +151,13 @@ export const createDemoOwnerApi = () => {
       else stopped.add(optionId);
       settings = { ...settings, [settingKey]: [...stopped] };
       return { kind, optionId, available: Boolean(available) };
+    },
+    async createKioskActivation() {
+      requireSession();
+      return {
+        code: '123456',
+        expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+      };
     },
   };
 };

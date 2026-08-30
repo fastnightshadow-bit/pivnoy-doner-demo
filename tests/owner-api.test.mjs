@@ -83,3 +83,17 @@ test('владелец может остановить отдельную доб
   assert.equal(calls[0].url, '/api/catalog-options/addon/jalapeno');
   assert.deepEqual(JSON.parse(calls[0].options.body), { available: false });
 });
+
+test('владелец создаёт код подключения киоска', async () => {
+  const calls = [];
+  const api = createOwnerApi({ fetchImpl: recordingFetch(calls, {
+    code: '123456',
+    expiresAt: '2026-08-30T10:10:00.000Z',
+  }) });
+
+  const activation = await api.createKioskActivation();
+
+  assert.equal(calls[0].url, '/api/owner/kiosk-activation');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(activation.code, '123456');
+});
