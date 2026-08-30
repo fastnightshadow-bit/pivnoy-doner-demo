@@ -67,6 +67,17 @@ export const createPaymentsRepository = (pool) => {
       return mapPayment(result.rows[0]);
     },
 
+    findLatestByOrderId: async (orderId) => {
+      const result = await pool.query(
+        `select * from payments
+         where order_id = $1
+         order by updated_at desc
+         limit 1`,
+        [orderId],
+      );
+      return mapPayment(result.rows[0]);
+    },
+
     findPaidByOrderId: async (orderId) => {
       const result = await pool.query(
         `select * from payments

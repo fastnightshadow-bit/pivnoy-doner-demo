@@ -155,6 +155,7 @@ export class YooKassaPaymentProvider {
     customerPhone,
     items,
     deliveryAmount,
+    paymentMethod,
   }) {
     const { paymentMinorUnits, receipt } = buildReceipt({
       amount,
@@ -171,6 +172,9 @@ export class YooKassaPaymentProvider {
           currency: 'RUB',
         },
         capture: true,
+        ...(paymentMethod === 'sbp'
+          ? { payment_method_data: { type: 'sbp' } }
+          : {}),
         confirmation: { type: 'redirect', return_url: String(returnUrl) },
         description: `Заказ №${publicNumber || orderId}`.slice(0, 128),
         metadata: { order_id: String(orderId) },

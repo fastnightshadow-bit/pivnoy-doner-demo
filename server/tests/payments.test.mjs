@@ -100,6 +100,101 @@ test('YooKassa provider sends server credentials, fiscal receipt and idempotency
   assert.equal(result.confirmationUrl, 'https://yookassa.test/pay-1');
 });
 
+test('YooKassa creates an SBP redirect that can be shown as a kiosk QR', async () => {
+  let requestBody;
+  const provider = new YooKassaPaymentProvider({
+    shopId: 'shop-1',
+    secretKey: 'secret-1',
+    fetcher: async (_url, options) => {
+      requestBody = JSON.parse(options.body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: 'pay-sbp-1',
+          status: 'pending',
+          amount: { value: '200.00', currency: 'RUB' },
+          confirmation: {
+            confirmation_url: 'https://yoomoney.ru/checkout/payments/sbp/1',
+          },
+          metadata: { order_id: 'order-sbp-1' },
+        }),
+      };
+    },
+  });
+
+  const payment = await provider.createPayment({
+    orderId: 'order-sbp-1',
+    publicNumber: '31',
+    amount: 200,
+    returnUrl: 'https://kiosk.pivdoner.ru/',
+    idempotencyKey: 'kiosk-payment-sbp-1',
+    paymentMethod: 'sbp',
+    customerPhone: '+79256474577',
+    items: [{ productId: 'nuggets', name: 'Наггетсы', quantity: 1, unitPrice: 200 }],
+    deliveryAmount: 0,
+  });
+
+  assert.deepEqual(requestBody.payment_method_data, { type: 'sbp' });
+  assert.deepEqual(requestBody.confirmation, {
+    type: 'redirect',
+    return_url: 'https://kiosk.pivdoner.ru/',
+  });
+  assert.equal(payment.confirmationUrl, 'https://yoomoney.ru/checkout/payments/sbp/1');
+});
+
+test('kiosk payment is allowed only for the order-owning kiosk device', async () => {
+  const calls = [];
+  const service = createPaymentService({
+    payments: {
+      findByIdempotencyKey: async () => null,
+      findByProviderPaymentId: async () => null,
+      reserve: async (payment) => ({ ...payment, providerPaymentId: null }),
+      completeReservation: async (payment) => payment,
+    },
+    orders: {
+      findById: async () => ({
+        id: 'kiosk-order-1',
+        number: '31',
+        source: 'kiosk',
+        kioskDeviceId: 'device-1',
+        paymentStatus: 'pending',
+        phone: '+79256474577',
+        items: [{ productId: 'nuggets', name: 'Наггетсы', quantity: 1, unitPrice: 200 }],
+        deliveryTotal: 0,
+        total: 200,
+      }),
+    },
+    provider: {
+      createPayment: async (input) => {
+        calls.push(input);
+        return {
+          id: 'provider-kiosk-1',
+          orderId: input.orderId,
+          status: 'pending',
+          amount: input.amount,
+          currency: 'RUB',
+          confirmationUrl: 'https://yoomoney.ru/checkout/payments/sbp/1',
+        };
+      },
+    },
+    returnUrlForOrder: () => 'https://kiosk.pivdoner.ru/',
+  });
+
+  const payment = await service.createForKiosk(
+    'kiosk-order-1',
+    'kiosk-payment-sbp-1',
+    'device-1',
+  );
+  assert.equal(payment.status, 'pending');
+  assert.equal(calls[0].paymentMethod, 'sbp');
+
+  await assert.rejects(
+    () => service.createForKiosk('kiosk-order-1', 'kiosk-payment-sbp-2', 'device-2'),
+    (error) => error.code === 'KIOSK_ORDER_ACCESS_DENIED' && error.status === 403,
+  );
+});
+
 test('YooKassa receipt keeps quantity and leading product identity when truncating descriptions', async () => {
   const calls = [];
   const provider = new YooKassaPaymentProvider({

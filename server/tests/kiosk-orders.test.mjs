@@ -127,3 +127,71 @@ test('подключённый планшет получает канониче�
   assert.equal(response.body.order.source, 'kiosk');
   assert.equal(response.body.order.serviceMode, 'dine_in');
 });
+
+test('QR-заказ возвращает реальную ссылку оплаты и SVG, но не секреты', async () => {
+  const paymentCalls = [];
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    kioskAuthService: {
+      authenticate: async () => ({ id: 'device-1', displayName: 'Киоск 1' }),
+    },
+    kioskOrderService: createService(),
+    settingsService: { get: async () => ({ acceptingOrders: true }) },
+    paymentService: {
+      createForKiosk: async (orderId, key, deviceId) => {
+        paymentCalls.push({ orderId, key, deviceId });
+        return {
+          id: 'payment-1',
+          orderId,
+          status: 'pending',
+          confirmationUrl: 'https://yoomoney.ru/checkout/payments/sbp/1',
+        };
+      },
+    },
+    kioskQrEncoder: async (value) => `<svg data-value="${value}"></svg>`,
+  });
+
+  const response = await request(app)
+    .post('/api/kiosk/orders')
+    .set('Cookie', 'pivdoner_kiosk=valid-token')
+    .set('Idempotency-Key', 'kiosk-http-operation-qr')
+    .send(validInput());
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.payment.status, 'pending');
+  assert.match(response.body.qrSvg, /^<svg/);
+  assert.deepEqual(paymentCalls, [{
+    orderId: 'c81f9510-8589-4eac-bdbe-fb190d2b04bd',
+    key: 'kiosk-http-operation-qr:sbp',
+    deviceId: 'device-1',
+  }]);
+  assert.equal(JSON.stringify(response.body).includes('secret'), false);
+});
+
+test('киоск автоматически получает подтверждённый статус оплаты своего заказа', async () => {
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    kioskAuthService: {
+      authenticate: async () => ({ id: 'device-1', displayName: 'Киоск 1' }),
+    },
+    kioskOrderService: createService(),
+    settingsService: { get: async () => ({ acceptingOrders: true }) },
+    paymentService: {
+      createForKiosk: async () => null,
+      getForKiosk: async (orderId, deviceId) => ({
+        id: 'payment-1',
+        orderId,
+        status: deviceId === 'device-1' ? 'paid' : 'pending',
+        confirmationUrl: '',
+      }),
+    },
+  });
+
+  const response = await request(app)
+    .get('/api/kiosk/orders/order-1/payment')
+    .set('Cookie', 'pivdoner_kiosk=valid-token');
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.payment.status, 'paid');
+  assert.equal(response.body.payment.orderId, 'order-1');
+});

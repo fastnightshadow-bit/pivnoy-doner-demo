@@ -25,6 +25,7 @@ import { createPushService } from './services/push.js';
 import { createKioskDevicesRepository } from './repositories/kiosk-devices.js';
 import { createKioskAuthService } from './auth/kiosk-session.js';
 import { createKioskOrderService } from './services/kiosk-orders.js';
+import { encodeKioskQrSvg } from './kiosk/qr.js';
 import { createPushWorker } from './push/worker.js';
 import { createWebPushSender } from './push/web-push-sender.js';
 import {
@@ -122,6 +123,7 @@ const server = createApp({
   pushService,
   kioskAuthService,
   kioskOrderService,
+  kioskQrEncoder: encodeKioskQrSvg,
   nodeEnv: config.nodeEnv,
 }).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);

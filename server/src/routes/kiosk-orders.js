@@ -49,6 +49,8 @@ export const createKioskOrdersRouter = ({
   authService,
   orderService,
   settings,
+  paymentService = null,
+  qrEncoder = null,
 }) => {
   const router = Router();
   router.use(authenticateKioskRequest(authService), requireKioskDevice);
@@ -59,6 +61,24 @@ export const createKioskOrdersRouter = ({
     settings: await settings.get(),
     serverTime: new Date().toISOString(),
   }));
+
+  router.get('/orders/:id/payment', async (request, response) => {
+    if (!paymentService?.getForKiosk) {
+      return response.status(503).json({ error: 'PAYMENT_UNAVAILABLE' });
+    }
+    try {
+      const payment = await paymentService.getForKiosk(
+        String(request.params.id),
+        request.kioskDevice.id,
+      );
+      return response.json({ payment, serverTime: new Date().toISOString() });
+    } catch (error) {
+      if (error?.name === 'PaymentProviderError') {
+        return response.status(error.status || 502).json({ error: error.code });
+      }
+      throw error;
+    }
+  });
 
   router.post(
     '/orders',
@@ -81,8 +101,19 @@ export const createKioskOrdersRouter = ({
           idempotencyKey,
           request.kioskDevice,
         );
+        const payment = paymentService
+          ? await paymentService.createForKiosk(
+              result.order.id,
+              `${idempotencyKey}:sbp`,
+              request.kioskDevice.id,
+            )
+          : null;
+        const qrSvg = payment?.confirmationUrl && qrEncoder
+          ? await qrEncoder(payment.confirmationUrl)
+          : '';
         return response.status(result.created ? 201 : 200).json({
           order: toKioskOrder(result.order),
+          ...(payment ? { payment, qrSvg } : {}),
           serverTime: new Date().toISOString(),
         });
       } catch (error) {
@@ -101,6 +132,9 @@ export const createKioskOrdersRouter = ({
             error: error.code,
             details: error.details,
           });
+        }
+        if (error?.name === 'PaymentProviderError') {
+          return response.status(error.status || 502).json({ error: error.code });
         }
         throw error;
       }

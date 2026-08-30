@@ -33,6 +33,7 @@ export const createApp = ({
   pushService = null,
   kioskAuthService = null,
   kioskOrderService = null,
+  kioskQrEncoder = null,
   nodeEnv = 'development',
 }) => {
   const app = express();
@@ -56,6 +57,8 @@ export const createApp = ({
         authService: kioskAuthService,
         orderService: kioskOrderService,
         settings: settingsService,
+        paymentService,
+        qrEncoder: kioskQrEncoder,
       }),
     );
   }

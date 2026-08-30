@@ -127,18 +127,29 @@ export const createPaymentService = ({
   providerName = 'mock',
   createId = randomUUID,
   returnUrlForOrder,
-}) => ({
-  create: async (orderId, idempotencyKey, accessToken) => {
-    if (typeof accessToken !== 'string' || accessToken.length === 0) {
-      throw new PaymentProviderError('ORDER_ACCESS_REQUIRED', { status: 401 });
-    }
-
+}) => {
+  const createPayment = async ({
+    orderId,
+    idempotencyKey,
+    accessToken = '',
+    kioskDeviceId = '',
+    paymentMethod,
+  }) => {
     const key = String(idempotencyKey || '').trim();
     const order = await orders.findById(String(orderId));
     if (!order) {
       throw new PaymentProviderError('ORDER_NOT_FOUND', { status: 404 });
     }
-    if (!verifyOrderAccessToken(accessToken, order.accessTokenHash)) {
+    if (kioskDeviceId) {
+      if (
+        order.source !== 'kiosk' ||
+        order.kioskDeviceId !== kioskDeviceId
+      ) {
+        throw new PaymentProviderError('KIOSK_ORDER_ACCESS_DENIED', {
+          status: 403,
+        });
+      }
+    } else if (!verifyOrderAccessToken(accessToken, order.accessTokenHash)) {
       throw new PaymentProviderError('ORDER_ACCESS_DENIED', { status: 403 });
     }
 
@@ -182,6 +193,7 @@ export const createPaymentService = ({
       amount: order.total,
       returnUrl: returnUrlForOrder(order.id),
       idempotencyKey: key,
+      paymentMethod,
       ...receiptInput,
     });
     const providerPaymentId = assertProviderPayment(providerPayment, order);
@@ -234,7 +246,43 @@ export const createPaymentService = ({
       });
       return toPublicPayment(owner);
     }
-  },
+  };
+
+  return {
+    create: async (orderId, idempotencyKey, accessToken) => {
+      if (typeof accessToken !== 'string' || accessToken.length === 0) {
+        throw new PaymentProviderError('ORDER_ACCESS_REQUIRED', { status: 401 });
+      }
+      return createPayment({ orderId, idempotencyKey, accessToken });
+    },
+
+    createForKiosk: (orderId, idempotencyKey, kioskDeviceId) =>
+      createPayment({
+        orderId,
+        idempotencyKey,
+        kioskDeviceId,
+        paymentMethod: 'sbp',
+      }),
+
+    getForKiosk: async (orderId, kioskDeviceId) => {
+      const order = await orders.findById(String(orderId));
+      if (!order) {
+        throw new PaymentProviderError('ORDER_NOT_FOUND', { status: 404 });
+      }
+      if (
+        order.source !== 'kiosk' ||
+        order.kioskDeviceId !== kioskDeviceId
+      ) {
+        throw new PaymentProviderError('KIOSK_ORDER_ACCESS_DENIED', {
+          status: 403,
+        });
+      }
+      const payment = await payments.findLatestByOrderId(order.id);
+      if (!payment) {
+        throw new PaymentProviderError('PAYMENT_NOT_FOUND', { status: 404 });
+      }
+      return toPublicPayment(payment);
+    },
 
   refundFull: async ({ orderId, reason, account }) => {
     const normalizedOrderId = String(orderId || '');
@@ -376,4 +424,5 @@ export const createPaymentService = ({
       })) ?? { applied: false }
     );
   },
-});
+  };
+};
