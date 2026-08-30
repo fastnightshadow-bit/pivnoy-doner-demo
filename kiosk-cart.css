@@ -117,3 +117,33 @@
   .kiosk-cart-checkout strong { font-size: 24px; }
   .kiosk-cart-checkout .kiosk-primary { font-size: 17px; }
 }
+
+@media (orientation: landscape) {
+  .kiosk-cart { padding-bottom: 116px; }
+  .kiosk-cart-header { height: 82px; padding: 10px 28px; }
+  .kiosk-cart-header h1 { font-size: 28px; }
+  .kiosk-cart-header .kiosk-eyebrow { margin-bottom: 4px; font-size: 13px; }
+  .kiosk-cart-header .kiosk-brand { width: 122px; }
+  .kiosk-cart-content { padding: 18px 28px 34px; }
+  .kiosk-cart-lines { grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 12px; }
+  .kiosk-cart-line { min-height: 120px; grid-template-columns: 94px minmax(0, 1fr) auto; padding: 10px 14px 10px 10px; }
+  .kiosk-cart-line > img { width: 94px; height: 94px; }
+  .kiosk-cart-recommendations { margin-top: 22px; }
+  .kiosk-cart-recommendations > h2 { margin-bottom: 12px; font-size: 24px; }
+  .kiosk-cart-rec { grid-template-columns: 68px 1fr 44px; }
+  .kiosk-cart-rec img { width: 68px; height: 68px; }
+  .kiosk-cart-checkout { gap: 20px; padding: 10px 28px max(12px, env(safe-area-inset-bottom)); }
+  .kiosk-cart-checkout .kiosk-primary { height: 66px; min-height: 66px; }
+  .kiosk-cart-checkout strong { font-size: 27px; }
+}
+
+@media (orientation: landscape) and (max-height: 760px) {
+  .kiosk-cart { padding-bottom: 98px; }
+  .kiosk-cart-header { height: 72px; }
+  .kiosk-cart-content { padding-top: 12px; }
+  .kiosk-cart-line { min-height: 106px; grid-template-columns: 82px minmax(0, 1fr) auto; }
+  .kiosk-cart-line > img { width: 82px; height: 82px; }
+  .kiosk-cart-line__copy p { margin-bottom: 6px; font-size: 14px; }
+  .kiosk-line-quantity { height: 52px; }
+  .kiosk-cart-checkout .kiosk-primary { height: 60px; min-height: 60px; }
+}

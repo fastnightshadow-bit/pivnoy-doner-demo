@@ -37,6 +37,10 @@ owner.pivdoner.ru {
   import pivdoner_app
 }
 
+kiosk.pivdoner.ru {
+  import pivdoner_app
+}
+
 stage.pivdoner.ru {
   handle /api/* {
     reverse_proxy pivdoner-stage-api:3001

@@ -76,6 +76,7 @@ test('Caddy routes client and staff subdomains to the isolated services', async 
     'kitchen.pivdoner.ru',
     'courier.pivdoner.ru',
     'owner.pivdoner.ru',
+    'kiosk.pivdoner.ru',
     'stage.pivdoner.ru',
   ]) {
     assert.match(caddy, new RegExp(host.replaceAll('.', '\\.')));
@@ -119,6 +120,7 @@ test('web container maps each host to its own PWA entry point', async () => {
   assert.ok(nginx.includes('~^kitchen\\.pivdoner\\.ru$ /kitchen.html;'));
   assert.ok(nginx.includes('~^courier\\.pivdoner\\.ru$ /courier.html;'));
   assert.ok(nginx.includes('~^owner\\.pivdoner\\.ru$ /owner.html;'));
+  assert.ok(nginx.includes('~^kiosk\\.pivdoner\\.ru$ /kiosk.html;'));
   assert.match(nginx, /default\s+\/home\.html/);
 });
 

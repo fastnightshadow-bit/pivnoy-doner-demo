@@ -1,4 +1,4 @@
-const VERSION = '20260830-1';
+const VERSION = '20260830-2';
 const CACHE = `pivnoy-doner-kiosk-${VERSION}`;
 const SHELL = [
   './kiosk.html',
