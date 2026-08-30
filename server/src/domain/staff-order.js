@@ -74,14 +74,22 @@ const toStaffHistoryEntry = (entry = {}) => ({
   reason: entry.reason ?? '',
 });
 
-export const toStaffOrder = (order = {}) => ({
+export const toStaffOrder = (order = {}) => {
+  const source = (order.source ?? 'web') === 'kiosk' ? 'kiosk' : 'web';
+  const serviceMode = source === 'kiosk' &&
+    ['dine_in', 'takeaway'].includes(order.serviceMode ?? order.service_mode)
+    ? order.serviceMode ?? order.service_mode
+    : null;
+  return {
   id: order.id,
   number: String(order.number ?? order.public_number ?? ''),
   status: order.status,
   paymentStatus: order.paymentStatus ?? order.payment_status,
   fulfillment: order.fulfillment,
+  source,
+  serviceMode,
   customerName: order.customerName ?? order.customer_name ?? '',
-  phone: order.phone ?? '',
+  phone: source === 'kiosk' ? '' : order.phone ?? '',
   address: toStaffAddress(order.address),
   comment: order.comment ?? order.customer_comment ?? '',
   courierComment: order.courierComment ?? order.courier_comment ?? '',
@@ -105,7 +113,8 @@ export const toStaffOrder = (order = {}) => ({
       ? { refundStatus: order.refundStatus ?? order.refund_status }
       : {}
   ),
-});
+  };
+};
 
 export const toCourierOrder = (order = {}) => ({
   id: order.id,

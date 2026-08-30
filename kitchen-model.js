@@ -107,12 +107,17 @@ export const normalizeKitchenOrder = (value, nowMs = Date.now()) => {
 
   const createdAtMs = Date.parse(createdAt);
   const fulfillment = value.fulfillment === 'delivery' ? 'delivery' : 'pickup';
+  const source = value.source === 'kiosk' ? 'kiosk' : 'web';
   const normalized = {
     id,
     number,
     status,
     paymentStatus: 'succeeded',
     fulfillment,
+    source,
+    serviceMode: source === 'kiosk' && ['dine_in', 'takeaway'].includes(value.serviceMode)
+      ? value.serviceMode
+      : null,
     createdAt: new Date(createdAtMs).toISOString(),
     promisedAt: toText(value.promisedAt),
     acceptedAt: toText(value.acceptedAt),

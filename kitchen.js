@@ -45,6 +45,15 @@ const FULFILLMENT_LABELS = Object.freeze({
   delivery: 'Доставка',
 });
 
+const getFulfillmentLabel = (order = {}) => {
+  if (order.source === 'kiosk') {
+    return order.serviceMode === 'dine_in'
+      ? 'Киоск · Здесь'
+      : 'Киоск · С собой';
+  }
+  return FULFILLMENT_LABELS[order.fulfillment] || 'Самовывоз';
+};
+
 const FILTER_LABELS = Object.freeze({
   pickup: 'Самовывоз',
   delivery: 'Доставка',
@@ -123,10 +132,10 @@ export const createOrderCardMarkup = (order = {}) => {
     : 'normal';
   const orderId = escapeKitchenHtml(order.id);
   const orderNumber = escapeKitchenHtml(order.number || '—');
-  const customerName = escapeKitchenHtml(order.customer?.name || 'Гость');
-  const fulfillment = escapeKitchenHtml(
-    FULFILLMENT_LABELS[order.fulfillment] || 'Самовывоз',
+  const customerName = escapeKitchenHtml(
+    order.source === 'kiosk' ? 'Заказ с киоска' : order.customer?.name || 'Гость',
   );
+  const fulfillment = escapeKitchenHtml(getFulfillmentLabel(order));
   const urgencyLabel = escapeKitchenHtml(
     order.urgency?.label || 'Без срока',
   );
@@ -238,10 +247,11 @@ export const createOrderDetailsMarkup = (order = {}) => {
   );
   const phone = String(order.customer?.phone || '');
   const phoneHref = sanitizePhone(phone);
-  const customerName = order.customer?.name || 'Гость';
+  const customerName = order.source === 'kiosk'
+    ? 'Заказ с киоска'
+    : order.customer?.name || 'Гость';
   const status = STATUS_LABELS[order.status] || order.status || '—';
-  const fulfillment =
-    FULFILLMENT_LABELS[order.fulfillment] || 'Самовывоз';
+  const fulfillment = getFulfillmentLabel(order);
 
   return `<section class="detail-section">
       <dl class="detail-grid">
@@ -336,7 +346,7 @@ export const createHistoryMarkup = (orders) => {
       )}">
         <strong>#${escapeKitchenHtml(order?.number || '—')}</strong>
         <span><b>${escapeKitchenHtml(status)}</b><br /><small>${escapeKitchenHtml(
-          FULFILLMENT_LABELS[order?.fulfillment] || 'Самовывоз',
+          getFulfillmentLabel(order),
         )}</small></span>
         <span>${escapeKitchenHtml(order?.employee || '—')}${
           refundCopy

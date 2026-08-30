@@ -22,6 +22,8 @@ const rawStaffOrder = Object.freeze({
   idempotency_key: retryKey,
   status: 'cooking',
   fulfillment: 'delivery',
+  source: 'web',
+  service_mode: null,
   payment_status: 'paid',
   customer_name: 'Ilya',
   phone: '+79991234567',
@@ -115,6 +117,8 @@ test('staff roles cannot recover a customer bearer token from an order response'
         'number',
         'paymentStatus',
         'phone',
+        'serviceMode',
+        'source',
         'status',
         'total',
         'updatedAt',
@@ -201,4 +205,28 @@ test('staff order SQL selects only role-safe order and item fields', async () =>
     sql,
     /idempotency_key|access_token_hash|personal_data_consent|offer_version/i,
   );
+  assert.match(sql, /o\.source/i);
+  assert.match(sql, /o\.service_mode/i);
+});
+
+test('кухня не получает фискальный телефон покупателя киоска', async () => {
+  const kioskOrder = {
+    ...rawStaffOrder,
+    source: 'kiosk',
+    service_mode: 'takeaway',
+  };
+  const app = createApp({
+    db: { query: async () => ({ rows: [{ ok: 1 }] }) },
+    authService: {
+      authenticate: async () => ({ id: 'kitchen-1', displayName: 'Кухня', role: 'kitchen' }),
+    },
+    staffOrders: { listActive: async () => [kioskOrder] },
+    statusService: { change: async () => null },
+  });
+  const response = await request(app)
+    .get('/api/staff/orders')
+    .set('Cookie', 'pivdoner_session=kitchen');
+  assert.equal(response.body.orders[0].phone, '');
+  assert.equal(response.body.orders[0].source, 'kiosk');
+  assert.equal(response.body.orders[0].serviceMode, 'takeaway');
 });

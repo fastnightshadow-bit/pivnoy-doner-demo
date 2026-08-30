@@ -146,6 +146,10 @@ export const normalizeProductionKitchenOrder = (order = {}) => {
         ? 'succeeded'
         : order.paymentStatus ?? order.payment_status,
     fulfillment: order.fulfillment,
+    source: order.source === 'kiosk' ? 'kiosk' : 'web',
+    serviceMode: ['dine_in', 'takeaway'].includes(
+      order.serviceMode ?? order.service_mode,
+    ) ? order.serviceMode ?? order.service_mode : null,
     createdAt: order.createdAt ?? order.created_at,
     promisedAt: order.promisedAt || createPromisedAt(order),
     customer: {

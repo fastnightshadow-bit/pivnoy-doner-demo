@@ -9,6 +9,8 @@ export const createStaffOrdersRepository = (pool) => ({
         o.status,
         o.fulfillment,
         o.payment_status,
+        o.source,
+        o.service_mode,
         o.customer_name,
         o.phone,
         o.address,
@@ -63,6 +65,8 @@ export const createStaffOrdersRepository = (pool) => ({
         o.status,
         o.fulfillment,
         o.payment_status,
+        o.source,
+        o.service_mode,
         o.customer_name,
         o.phone,
         o.address,
@@ -122,6 +126,7 @@ export const createStaffOrdersRepository = (pool) => ({
   findCancellationTarget: async (orderId) => {
     const result = await pool.query(
       `select id, public_number, status, fulfillment, payment_status,
+              source, service_mode,
               version, total, updated_at
        from orders
        where id = $1`,
