@@ -15,6 +15,8 @@ test('выбор оплаты занимает отдельный экран и 
   assert.match(markup, /class="kiosk-payment-icon"[\s\S]*?<svg/);
   assert.doesNotMatch(markup, /<i aria-hidden="true">[▭⌗]<\/i>/);
   assert.match(markup, /490\s*₽/);
+  assert.match(markup, /data-kiosk-fiscal-phone/);
+  assert.match(markup, /data-kiosk-personal-consent/);
 });
 
 test('экран карты показывает терминал и приближающуюся карту без красной дуги', () => {
@@ -25,10 +27,24 @@ test('экран карты показывает терминал и прибл�
   assert.doesNotMatch(markup, /<em(?:\s|>)/);
 });
 
-test('экран QR показывает код и инструкцию', () => {
-  const markup = renderKioskPayment({ ...base, screen: 'qr-payment' }, { paymentPending: true, qrValue: 'demo' });
+test('после анимации карта честно предлагает оплату по QR', () => {
+  const markup = renderKioskPayment(
+    { ...base, screen: 'card-payment' },
+    { terminalState: 'unavailable' },
+  );
+  assert.match(markup, /Терминал ещё не подключён/);
+  assert.match(markup, /data-kiosk-use-qr/);
+});
+
+test('экран QR показывает настоящий SVG и инструкцию', () => {
+  const markup = renderKioskPayment(
+    { ...base, screen: 'qr-payment' },
+    { paymentPending: true, qrSvg: '<svg viewBox="0 0 10 10"><path d="M0 0h1v1z" /></svg>' },
+  );
   assert.match(markup, /Наведите камеру/);
   assert.match(markup, /data-kiosk-qr/);
+  assert.match(markup, /<svg viewBox=/);
+  assert.doesNotMatch(markup, /class="is-dark"/);
 });
 
 test('успех показывает номер заказа, а ошибка позволяет повторить', () => {

@@ -54,6 +54,14 @@
 .kiosk-payment-option:hover > b { color: var(--kiosk-red); transform: translateX(4px); }
 .kiosk-payment-method > aside { display: flex; align-items: end; justify-content: space-between; margin-top: auto; padding-top: 30px; border-top: 1px solid #e7e7e7; font-size: 22px; }
 .kiosk-payment-method > aside strong { font-size: 42px; }
+.kiosk-receipt-fields { margin: 22px 0; padding: 18px 20px; display: grid; gap: 14px; border: 1px solid #e2e2e2; border-radius: 20px; background: #fafafa; }
+.kiosk-receipt-fields label > span { display: block; margin-bottom: 8px; color: #5f5f5f; font-size: 15px; font-weight: 700; }
+.kiosk-receipt-fields input[type="tel"] { width: 100%; min-height: 58px; padding: 0 16px; border: 1px solid #d6d6d6; border-radius: 15px; background: #fff; color: #181716; font-size: 20px; outline: none; }
+.kiosk-receipt-fields input[type="tel"]:focus { border-color: var(--kiosk-red); box-shadow: 0 0 0 4px rgba(229,37,31,.12); }
+.kiosk-receipt-fields .kiosk-consent { min-height: 48px; display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 11px; cursor: pointer; }
+.kiosk-receipt-fields .kiosk-consent input { width: 26px; height: 26px; accent-color: var(--kiosk-red); }
+.kiosk-receipt-fields .kiosk-consent span { margin: 0; font-size: 13px; line-height: 1.35; }
+.kiosk-receipt-fields > p { margin: 0; color: var(--kiosk-red); font-size: 14px; font-weight: 750; }
 
 .kiosk-payment-process { display: flex; min-height: calc(100dvh - 112px); flex-direction: column; align-items: center; padding: 56px 46px 40px; text-align: center; }
 .kiosk-payment-process h1 { margin: 8px 0; font-size: 50px; }
@@ -67,9 +75,11 @@
 .kiosk-payment-status { display: flex; align-items: center; gap: 12px; font-size: 20px; }
 .kiosk-payment-status i { width: 12px; height: 12px; border-radius: 50%; background: var(--kiosk-red); box-shadow: 0 0 0 8px rgba(229, 37, 31, 0.12); animation: kiosk-pulse 1.5s infinite; }
 .kiosk-payment-process > small { margin-top: 15px; color: #818181; }
-.kiosk-qr { display: grid; width: 330px; height: 330px; grid-template-columns: repeat(7, 1fr); gap: 5px; margin: 50px auto 32px; padding: 25px; border: 14px solid #fff; border-radius: 26px; background: #fff; box-shadow: 0 18px 45px rgba(0, 0, 0, 0.13); }
-.kiosk-qr i { background: #fff; }
-.kiosk-qr i.is-dark { border-radius: 2px; background: #181716; }
+.kiosk-payment-status.is-unavailable { color: #181716; }
+.kiosk-use-qr { width: min(100%, 430px); min-height: 68px; margin-top: 24px; }
+.kiosk-qr { display: grid; width: 330px; height: 330px; place-items: center; margin: 42px auto 26px; padding: 15px; border: 1px solid #ededed; border-radius: 26px; background: #fff; box-shadow: 0 18px 45px rgba(0, 0, 0, 0.13); }
+.kiosk-qr svg { display: block; width: 100%; height: 100%; }
+.kiosk-qr.is-loading { background: #fafafa; color: #737373; font-size: 18px; font-weight: 750; }
 
 .kiosk-payment.is-result { display: grid; place-items: center; }
 .kiosk-payment.is-result > header { position: absolute; top: 0; right: 0; left: 0; }

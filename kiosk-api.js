@@ -5,10 +5,11 @@ const wait = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export class KioskApiError extends Error {
-  constructor(message, status = 0) {
+  constructor(message, status = 0, code = 'API_ERROR') {
     super(message);
     this.name = 'KioskApiError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -36,6 +37,7 @@ const requestJson = async (fetchImpl, url, options = {}) => {
     throw new KioskApiError(
       payload.message || 'Не удалось выполнить действие',
       response.status,
+      payload.error || 'API_ERROR',
     );
   }
   return payload;
@@ -50,6 +52,17 @@ export const createKioskApi = ({
     requestJson(fetchImpl, joinUrl(baseUrl, path), options);
 
   return {
+    activateDevice(code, displayName) {
+      return jsonRequest('/activate', {
+        method: 'POST',
+        body: JSON.stringify({ code: String(code || ''), displayName: String(displayName || '') }),
+      });
+    },
+
+    getSession() {
+      return jsonRequest('/session', { method: 'GET' });
+    },
+
     getBootstrap() {
       return jsonRequest('/bootstrap', { method: 'GET' });
     },
@@ -59,6 +72,12 @@ export const createKioskApi = ({
         method: 'POST',
         headers: { 'Idempotency-Key': String(operationId || '') },
         body: JSON.stringify(payload || {}),
+      });
+    },
+
+    getPaymentStatus(orderId) {
+      return jsonRequest(`/orders/${encodeURIComponent(String(orderId || ''))}/payment`, {
+        method: 'GET',
       });
     },
 
@@ -100,6 +119,14 @@ export const createDemoKioskApi = ({
   };
 
   return {
+    async activateDevice() {
+      return { authenticated: true, device: { id: 'demo-device', displayName: 'Демо-киоск' } };
+    },
+
+    async getSession() {
+      return { authenticated: true, device: { id: 'demo-device', displayName: 'Демо-киоск' } };
+    },
+
     async getBootstrap() {
       await delay();
       return createKioskBootstrapFixture({ serverTime: serverTime() });
@@ -108,7 +135,9 @@ export const createDemoKioskApi = ({
     createOrder(payload, operationId) {
       return runOnce(operationId, async () => {
         await delay();
-        const lines = Array.isArray(payload?.lines) ? payload.lines : [];
+        const lines = Array.isArray(payload?.items)
+          ? payload.items
+          : Array.isArray(payload?.lines) ? payload.lines : [];
         const total = lines.reduce(
           (sum, line) =>
             sum +
@@ -122,13 +151,23 @@ export const createDemoKioskApi = ({
           number: String(orderSequence),
           status: 'pending_payment',
           total,
-          fulfillment: String(payload?.fulfillment || ''),
+          fulfillment: String(payload?.serviceMode || payload?.fulfillment || ''),
           lines: clone(lines),
           createdAt,
         };
         orderSequence += 1;
-        return { order, serverTime: createdAt };
+        return {
+          order,
+          payment: { id: `demo-payment-${order.number}`, orderId: order.id, status: 'pending' },
+          qrSvg: '<svg viewBox="0 0 21 21" aria-hidden="true"><rect width="21" height="21" fill="#fff"/><path d="M1 1h6v6H1zm13 0h6v6h-6zM1 14h6v6H1zm9-5h2v2h-2zm3 0h2v4h-2zm4 1h3v2h-3zm-8 4h4v2H9zm6 1h2v5h-2zm3 0h2v2h-2zm-9 4h4v2H9z" fill="#111"/></svg>',
+          serverTime: createdAt,
+        };
       });
+    },
+
+    async getPaymentStatus(orderId) {
+      await delay();
+      return { payment: { orderId, status: 'paid' }, serverTime: serverTime() };
     },
 
     subscribe(onEvent, onConnection = () => {}) {

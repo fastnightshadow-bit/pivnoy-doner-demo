@@ -1,10 +1,11 @@
-const VERSION = '20260829-1';
+const VERSION = '20260830-1';
 const CACHE = `pivnoy-doner-kiosk-${VERSION}`;
 const SHELL = [
   './kiosk.html',
   `./kiosk-app.js?v=${VERSION}`,
   './kiosk-state.js', './kiosk-api.js', './kiosk-presentation.js',
   './kiosk-image-cache.js',
+  './kiosk-payment-flow.js', './kiosk-activation-presentation.js',
   './kiosk-cart-presentation.js', './kiosk-payment-presentation.js',
   './kiosk-session.js', `./kiosk-session-runtime.js?v=${VERSION}`,
   `./kiosk.css?v=${VERSION}`, `./kiosk-catalog.css?v=${VERSION}`,
@@ -12,6 +13,7 @@ const SHELL = [
   `./kiosk-session.css?v=${VERSION}`, `./kiosk-polish.css?v=${VERSION}`,
   `./kiosk-fixes-v3.css?v=${VERSION}`,
   './catalog-data.js', './cart-state.js', './product-config.js',
+  './shared/legal.js',
   './assets/mobile-home/brand-wordmark.webp',
   './assets/mobile-home/hero-enhanced.webp',
 ];

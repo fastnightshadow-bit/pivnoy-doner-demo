@@ -26,18 +26,28 @@ import { renderKioskCart } from './kiosk-cart-presentation.js';
 import { renderKioskPayment } from './kiosk-payment-presentation.js';
 import { renderKiosk } from './kiosk-presentation.js';
 import { createKioskImageCache } from './kiosk-image-cache.js';
+import { createKioskPaymentController } from './kiosk-payment-flow.js';
+import { renderKioskActivation } from './kiosk-activation-presentation.js';
+import { LEGAL_VERSIONS } from './shared/legal.js?v=20260811';
 
 const root = document.querySelector('[data-kiosk-app]');
 const isDemo = isKioskDemoLocation(window.location);
 const api = isDemo ? createDemoKioskApi() : createKioskApi();
 const imageCache = createKioskImageCache();
+const paymentController = createKioskPaymentController({ api });
 let state = createKioskState();
+let paymentPollTimer = 0;
 let context = {
   products: [],
   activeCategory: 'shawarma',
   selection: null,
   editingLineId: '',
   paymentPending: false,
+  terminalState: '',
+  qrSvg: '',
+  fiscalPhone: '',
+  personalDataConsent: false,
+  paymentFormError: '',
   notice: '',
   settings: {
     acceptingOrders: true,
@@ -132,19 +142,50 @@ const openCartLine = async (lineId) => {
 };
 
 const startPayment = async (method) => {
+  if (method === 'card') {
+    dispatch({ type: 'SELECT_PAYMENT', value: 'card' });
+    paymentController.showCardAnimation((terminalState) => {
+      if (state.screen !== 'card-payment') return;
+      context = { ...context, terminalState };
+      render();
+    });
+    return;
+  }
+
+  const phoneDigits = String(context.fiscalPhone || '').replace(/\D/g, '');
+  if (![10, 11].includes(phoneDigits.length) || !context.personalDataConsent) {
+    context = {
+      ...context,
+      paymentFormError: ![10, 11].includes(phoneDigits.length)
+        ? 'Введите корректный номер телефона для чека'
+        : 'Подтвердите согласие для формирования чека',
+    };
+    render();
+    return;
+  }
+
   dispatch({ type: 'SELECT_PAYMENT', value: method });
-  context = { ...context, paymentPending: true };
+  context = { ...context, paymentPending: true, qrSvg: '', paymentFormError: '' };
   render();
   try {
     const operationId =
       globalThis.crypto?.randomUUID?.() ||
       `kiosk-${Date.now()}-${Math.random()}`;
-    const result = await api.createOrder(
+    const result = await paymentController.createQrOrder(
       {
-        fulfillment: state.fulfillment,
-        paymentMethod: method,
-        source: 'kiosk',
-        lines: state.lines,
+        serviceMode: state.fulfillment === 'dine-in' ? 'dine_in' : 'takeaway',
+        fiscalPhone: context.fiscalPhone,
+        personalDataConsent: true,
+        personalDataConsentVersion: LEGAL_VERSIONS.personalDataConsent,
+        offerVersion: LEGAL_VERSIONS.offer,
+        items: state.lines.map((line) => ({
+          productId: line.productId,
+          quantity: line.quantity,
+          meat: line.meat,
+          size: line.size,
+          addons: line.addons,
+          sauces: line.sauces,
+        })),
       },
       operationId,
     );
@@ -155,24 +196,29 @@ const startPayment = async (method) => {
     };
     context = {
       ...context,
-      qrValue:
-        result.payment?.confirmationUrl || result.payment?.qrCodeData || '',
+      qrSvg: result.qrSvg || '',
       paymentPending: false,
     };
     render();
-    if (result.payment?.confirmationUrl && method === 'card') {
-      window.location.assign(result.payment.confirmationUrl);
-    }
-    if (isDemo || result.payment?.status === 'succeeded') {
-      setTimeout(
-        () =>
-          dispatch({
-            type: 'PAYMENT_SUCCEEDED',
-            payment: result.payment || { status: 'succeeded' },
-          }),
-        isDemo ? 1400 : 0,
-      );
-    }
+    const poll = async () => {
+      if (state.screen !== 'qr-payment' || !state.order?.id) return;
+      try {
+        const status = await paymentController.getPaymentStatus(state.order.id);
+        if (status.payment?.status === 'paid') {
+          dispatch({ type: 'PAYMENT_SUCCEEDED', payment: status.payment });
+          return;
+        }
+        if (status.payment?.status === 'failed') {
+          dispatch({ type: 'PAYMENT_FAILED', error: 'Оплата не завершена' });
+          return;
+        }
+      } catch {
+        context = { ...context, connected: false };
+        render();
+      }
+      paymentPollTimer = setTimeout(poll, 2500);
+    };
+    paymentPollTimer = setTimeout(poll, isDemo ? 900 : 2500);
   } catch (error) {
     context = { ...context, paymentPending: false };
     dispatch({
@@ -358,7 +404,19 @@ root.addEventListener('click', async (event) => {
 
   const payment = event.target.closest('[data-kiosk-payment]');
   if (payment) {
+    context = {
+      ...context,
+      fiscalPhone: root.querySelector('[data-kiosk-fiscal-phone]')?.value || context.fiscalPhone,
+      personalDataConsent: root.querySelector('[data-kiosk-personal-consent]')?.checked || false,
+    };
     startPayment(payment.dataset.kioskPayment);
+    return;
+  }
+
+  if (event.target.closest('[data-kiosk-use-qr]')) {
+    paymentController.stopCardAnimation();
+    state = { ...state, screen: 'payment-method', error: '' };
+    render();
     return;
   }
 
@@ -369,6 +427,8 @@ root.addEventListener('click', async (event) => {
   }
 
   if (event.target.closest('[data-kiosk-reset]')) {
+    clearTimeout(paymentPollTimer);
+    paymentController.stopCardAnimation();
     state = createKioskState();
     context = {
       ...context,
@@ -381,7 +441,25 @@ root.addEventListener('click', async (event) => {
   }
 
   if (event.target.closest('[data-kiosk-back]')) {
+    paymentController.stopCardAnimation();
     dispatch({ type: 'BACK' });
+  }
+});
+
+root.addEventListener('submit', async (event) => {
+  const form = event.target.closest('[data-kiosk-activation-form]');
+  if (!form) return;
+  event.preventDefault();
+  const code = form.querySelector('[data-kiosk-activation-code]')?.value || '';
+  const displayName = form.querySelector('[data-kiosk-device-name]')?.value || '';
+  root.innerHTML = renderKioskActivation({ pending: true });
+  try {
+    await api.activateDevice(code, displayName);
+    await start();
+  } catch {
+    root.innerHTML = renderKioskActivation({
+      error: 'Код не подошёл или уже использован',
+    });
   }
 });
 
@@ -445,6 +523,10 @@ const start = async () => {
       },
     );
   } catch (error) {
+    if (error?.status === 401 && !isDemo) {
+      root.innerHTML = renderKioskActivation();
+      return;
+    }
     root.innerHTML = `<section class="kiosk-fatal" role="alert"><img src="assets/mobile-home/brand-wordmark.webp" alt="Пивной Донер" /><h1>Не удалось загрузить меню</h1><p>${String(error?.message || 'Проверьте подключение к интернету')}</p><button class="kiosk-primary kiosk-touch" type="button" onclick="location.reload()">Повторить</button></section>`;
   }
 };

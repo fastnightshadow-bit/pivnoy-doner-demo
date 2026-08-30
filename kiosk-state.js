@@ -94,7 +94,7 @@ export const reduceKioskState = (state, event = {}) => {
       return state;
 
     case 'PAYMENT_SUCCEEDED':
-      return ['card-payment', 'qr-payment'].includes(state.screen)
+      return state.screen === 'qr-payment'
         ? withScreen(state, 'success', { payment: event.payment || null })
         : state;
 

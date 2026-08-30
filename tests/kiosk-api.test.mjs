@@ -40,6 +40,30 @@ test('production API отправляет заказ один раз с ключ
   assert.equal(result.order.number, '24');
 });
 
+test('production API активирует планшет и проверяет оплату заказа', async () => {
+  const calls = [];
+  const api = createKioskApi({
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return jsonResponse(url.endsWith('/activate')
+        ? { authenticated: true, device: { id: 'device-1' } }
+        : { payment: { orderId: 'order-1', status: 'paid' } });
+    },
+  });
+
+  await api.activateDevice('123456', 'Киоск у входа');
+  const status = await api.getPaymentStatus('order-1');
+
+  assert.equal(calls[0].url, '/api/kiosk/activate');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    code: '123456',
+    displayName: 'Киоск у входа',
+  });
+  assert.equal(calls[1].url, '/api/kiosk/orders/order-1/payment');
+  assert.equal(status.payment.status, 'paid');
+});
+
 test('production подписка передаёт обновление и состояние соединения', () => {
   let source;
   const events = [];

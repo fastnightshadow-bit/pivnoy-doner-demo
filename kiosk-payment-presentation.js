@@ -25,13 +25,18 @@ const shell = (content, { backButton = true, className = '' } = {}) => `
     ${content}
   </section>`;
 
-const renderMethod = (state) => shell(`
+const renderMethod = (state, context) => shell(`
   <main class="kiosk-payment-method">
     <p class="kiosk-eyebrow">Шаг 3 из 3</p><h1>Выберите способ оплаты</h1><p>К оплате <strong>${money(calculateCartSummary(state.lines).total)}</strong></p>
     <div class="kiosk-payment-options">
       <button class="kiosk-payment-option kiosk-touch" type="button" data-kiosk-payment="card">${cardIcon}<span><strong>Оплатить картой</strong><small>Приложите карту или телефон к терминалу</small></span><b aria-hidden="true">›</b></button>
       <button class="kiosk-payment-option kiosk-touch" type="button" data-kiosk-payment="qr">${qrIcon}<span><strong>Оплатить по QR-коду</strong><small>Через приложение вашего банка</small></span><b aria-hidden="true">›</b></button>
     </div>
+    <section class="kiosk-receipt-fields">
+      <label><span>Телефон для электронного чека при оплате по QR</span><input type="tel" inputmode="tel" autocomplete="tel" data-kiosk-fiscal-phone placeholder="+7 999 000-00-00" value="${escapeHtml(context.fiscalPhone || '')}" /></label>
+      <label class="kiosk-consent"><input type="checkbox" data-kiosk-personal-consent ${context.personalDataConsent ? 'checked' : ''} /><span>Согласен на обработку номера для формирования чека и принимаю оферту</span></label>
+      ${context.paymentFormError ? `<p role="alert">${escapeHtml(context.paymentFormError)}</p>` : ''}
+    </section>
     <aside><span>Итого</span><strong>${money(calculateCartSummary(state.lines).total)}</strong></aside>
   </main>`);
 
@@ -42,16 +47,16 @@ const renderCard = (context) => shell(`
       <div class="kiosk-terminal-device"><span></span><b>••••</b><i>)))</i></div>
       <div class="kiosk-payment-card-art"><span></span><i></i></div>
     </div>
-    <strong class="kiosk-payment-status"><i></i>${context.paymentPending === false ? 'Проверяем оплату…' : 'Терминал ожидает оплату'}</strong>
-    <small>Не закрывайте экран. Оплата завершится автоматически.</small>
+    ${context.terminalState === 'unavailable'
+      ? '<strong class="kiosk-payment-status is-unavailable">Терминал ещё не подключён</strong><small>Деньги не списаны. Оплатите заказ по QR-коду.</small><button class="kiosk-primary kiosk-touch kiosk-use-qr" type="button" data-kiosk-use-qr>Перейти к оплате по QR</button>'
+      : '<strong class="kiosk-payment-status"><i></i>Терминал ожидает оплату</strong><small>Показываем, как будет работать подключённый терминал.</small>'}
   </main>`, { className: 'is-process' });
 
-const qrPattern = Array.from({ length: 49 }, (_, index) => `<i class="${(index * 7 + index % 4) % 3 ? '' : 'is-dark'}"></i>`).join('');
-const renderQr = () => shell(`
+const renderQr = (context) => shell(`
   <main class="kiosk-payment-process">
     <p class="kiosk-eyebrow">Оплата по QR-коду</p><h1>Наведите камеру</h1><p>Откройте приложение банка и отсканируйте код</p>
-    <div class="kiosk-qr" data-kiosk-qr aria-label="QR-код для оплаты">${qrPattern}</div>
-    <strong class="kiosk-payment-status"><i></i>Ожидаем оплату</strong><small>После оплаты экран сменится автоматически.</small>
+    <div class="kiosk-qr${context.qrSvg ? '' : ' is-loading'}" data-kiosk-qr aria-label="QR-код для оплаты">${context.qrSvg || '<span>Создаём QR…</span>'}</div>
+    <strong class="kiosk-payment-status"><i></i>${context.qrSvg ? 'Ожидаем оплату' : 'Подготавливаем оплату'}</strong><small>После оплаты экран сменится автоматически.</small>
   </main>`, { className: 'is-process' });
 
 const renderSuccess = (state) => shell(`
@@ -61,7 +66,7 @@ const renderError = (state) => shell(`
   <main class="kiosk-payment-result is-error"><div class="kiosk-result-icon">!</div><p class="kiosk-eyebrow">Оплата не завершена</p><h1>${escapeHtml(state.error || 'Оплата не прошла')}</h1><p>Деньги не списаны. Попробуйте ещё раз или выберите другой способ.</p><button class="kiosk-primary kiosk-touch" type="button" data-kiosk-payment-retry>Повторить оплату</button><button class="kiosk-secondary kiosk-touch" type="button" data-kiosk-back>Выбрать другой способ</button></main>`, { backButton: false, className: 'is-result' });
 
 export const renderKioskPayment = (state, context = {}) => {
-  if (state.screen === 'payment-method') return renderMethod(state);
+  if (state.screen === 'payment-method') return renderMethod(state, context);
   if (state.screen === 'card-payment') return renderCard(context);
   if (state.screen === 'qr-payment') return renderQr(context);
   if (state.screen === 'success') return renderSuccess(state);

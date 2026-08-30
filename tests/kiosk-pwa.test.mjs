@@ -12,7 +12,7 @@ test('стойка устанавливается как отдельное по
 
 test('стойка регистрирует версионированный service worker и кэширует оболочку', () => {
   const runtime = readText('kiosk-session-runtime.js');
-  assert.match(runtime, /const KIOSK_BUILD = '20260829-1'/);
+  assert.match(runtime, /const KIOSK_BUILD = '20260830-1'/);
   assert.ok(runtime.includes(".register(`./kiosk-sw.js?v=${KIOSK_BUILD}`, { updateViaCache: 'none' })"));
   const worker = readText('kiosk-sw.js');
   assert.match(worker, /kiosk\.html/);

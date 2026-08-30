@@ -56,10 +56,10 @@ test('полный сброс не оставляет данные предыд�
   );
 });
 
-test('успешная оплата сохраняет заказ и открывает отдельный экран успеха', () => {
+test('только подтверждённый QR-платёж открывает отдельный экран успеха', () => {
   let state = {
     ...createKioskState(),
-    screen: 'card-payment',
+    screen: 'qr-payment',
     fulfillment: 'takeaway',
     lines: [{ lineId: 'x', quantity: 1 }],
     order: { id: 'order-7', number: '31' },
@@ -73,6 +73,12 @@ test('успешная оплата сохраняет заказ и откры�
   assert.equal(state.screen, 'success');
   assert.equal(state.order.number, '31');
   assert.equal(state.payment.status, 'succeeded');
+
+  const card = reduceKioskState(
+    { ...createKioskState(), screen: 'card-payment' },
+    { type: 'PAYMENT_SUCCEEDED', payment: { status: 'succeeded' } },
+  );
+  assert.equal(card.screen, 'card-payment');
 });
 
 test('карточка, открытая из корзины, закрывается обратно в корзину', () => {
