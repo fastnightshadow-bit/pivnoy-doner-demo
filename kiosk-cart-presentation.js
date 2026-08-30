@@ -6,6 +6,8 @@ import {
   PRODUCT_SAUCES,
   SIZE_LABELS,
 } from './product-config.js';
+import { formatOptionQuantities } from './option-quantities.js';
+import { getKioskAvailability } from './kiosk-availability.js';
 
 const escapeHtml = (value = '') => String(value)
   .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -26,10 +28,15 @@ const renderRecommendation = (product) => `
     <span><strong>${escapeHtml(product.name)}</strong><b>${money(product.price)}</b></span><i aria-hidden="true">${plusGlyph}</i>
   </button>`;
 
+const optionLabels = (value, labels) =>
+  formatOptionQuantities(value).map((entry) => {
+    const [id, quantity] = entry.split(' ×');
+    const label = labels[id]?.label || id;
+    return quantity ? `${label} ×${quantity}` : label;
+  });
+
 export const renderKioskCart = (state, context = {}) => {
   const summary = calculateCartSummary(state.lines);
-  const addonLabel = (id) => PRODUCT_ADDONS[id]?.label || id;
-  const sauceLabel = (id) => PRODUCT_SAUCES[id]?.label || id;
   const products = context.products?.length ? context.products : PRODUCTS;
   return `
     <section class="kiosk-screen kiosk-cart" aria-labelledby="kiosk-cart-title">
@@ -38,18 +45,28 @@ export const renderKioskCart = (state, context = {}) => {
         <div><p class="kiosk-eyebrow">Ваш заказ</p><h1 id="kiosk-cart-title">Корзина</h1></div>${brand}
       </header>
       <main class="kiosk-cart-content">
+        ${context.notice ? `<p class="kiosk-cart-notice" role="status">${escapeHtml(context.notice)}</p>` : ''}
         ${state.lines.length ? `<div class="kiosk-cart-lines">${state.lines.map((line) => `
           <article class="kiosk-cart-line kiosk-touch" data-kiosk-edit-line="${escapeHtml(line.lineId)}" role="button" tabindex="0" aria-label="Изменить ${escapeHtml(line.name)}">
-            <img src="${escapeHtml(line.image || '')}" alt="${escapeHtml(line.name)}" decoding="async" />
+            ${line.image ? `<img src="${escapeHtml(line.image)}" alt="${escapeHtml(line.name)}" decoding="async" />` : '<span class="kiosk-cart-line__placeholder" aria-hidden="true">•</span>'}
             <div class="kiosk-cart-line__copy"><h2>${escapeHtml(line.name)}</h2>
-              <p>${[MEAT_LABELS[line.meat], SIZE_LABELS[line.size], line.sauce ? `Соус: ${sauceLabel(line.sauce)}` : '', ...(line.addons || []).map(addonLabel)].filter(Boolean).map(escapeHtml).join(' · ')}</p>
+              <p>${[
+                MEAT_LABELS[line.meat],
+                SIZE_LABELS[line.size],
+                ...optionLabels(line.addons, PRODUCT_ADDONS),
+                ...optionLabels(line.sauces, PRODUCT_SAUCES).map((label) => `Соус: ${label}`),
+              ].filter(Boolean).map(escapeHtml).join(' · ')}</p>
               <strong>${money(line.unitPrice * line.quantity)}</strong>
             </div>
             <div class="kiosk-line-quantity" data-kiosk-line-quantity>
               <button type="button" data-kiosk-change-line="${line.lineId}" data-delta="-1" aria-label="Уменьшить">${minusGlyph}</button><b>${line.quantity}</b><button type="button" data-kiosk-change-line="${line.lineId}" data-delta="1" aria-label="Увеличить">${plusGlyph}</button>
             </div>
           </article>`).join('')}</div>` : `<div class="kiosk-cart-empty">${cartIcon}<h2>Корзина пока пуста</h2><p>Вернитесь в меню и выберите любимые блюда</p></div>`}
-        <section class="kiosk-cart-recommendations"><p class="kiosk-eyebrow">Можно добавить</p><h2>Попробуйте вместе</h2><div>${products.filter(({ category }) => category === 'snacks').slice(0, 4).map(renderRecommendation).join('')}</div></section>
+        <section class="kiosk-cart-recommendations"><p class="kiosk-eyebrow">Можно добавить</p><h2>Попробуйте вместе</h2><div>${products
+          .filter(({ category }) => category === 'snacks')
+          .filter((product) => getKioskAvailability(product, {}, context.settings || {}).available)
+          .slice(0, 4)
+          .map(renderRecommendation).join('')}</div></section>
       </main>
       <footer class="kiosk-cart-checkout">
         <div><span>${state.fulfillment === 'dine-in' ? 'Здесь' : 'С собой'}</span><small>Итого</small><strong>${money(summary.total)}</strong></div>

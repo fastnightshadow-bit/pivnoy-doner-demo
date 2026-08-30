@@ -19,7 +19,7 @@ const context = {
   settings: emptySettings,
   connected: true,
   activeCategory: 'shawarma',
-  selection: { meat: 'chicken', size: 'standard', sauce: 'tasty', addons: [], quantity: 1 },
+  selection: { meat: 'chicken', size: 'standard', sauces: {}, addons: {}, quantity: 1 },
 };
 
 test('стойка имеет отдельную страницу и одну кнопку на старте', () => {
@@ -70,7 +70,7 @@ test('карточка блюда содержит крупные опции и 
   assert.match(markup, /data-kiosk-option="size"/);
   assert.match(markup, /data-kiosk-add-line/);
   assert.match(markup, /Добавить/);
-  assert.match(markup, /350\s*₽/);
+  assert.match(markup, /300\s*₽/);
 });
 
 test('основные элементы стойки рассчитаны на крупное касание', () => {

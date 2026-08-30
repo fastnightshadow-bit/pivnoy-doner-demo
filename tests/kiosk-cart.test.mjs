@@ -8,7 +8,7 @@ import { renderKioskCart } from '../kiosk-cart-presentation.js';
 const context = { settings: { acceptingOrders: true, stoppedProductIds: [], stoppedMeatIds: [], stoppedSauceIds: [], stoppedAddonIds: [] }, connected: true };
 
 test('корзина показывает состав, количество и итог', () => {
-  const line = createCartLine({ productId: 'classic-shawarma', name: 'Классическая шаурма', unitPrice: 350, meat: 'chicken', size: 'standard', sauce: 'tasty', addons: ['cheese'], quantity: 2, image: 'assets/catalog/classic-shawarma.webp' });
+  const line = createCartLine({ productId: 'classic-shawarma', name: 'Классическая шаурма', unitPrice: 400, meat: 'chicken', size: 'standard', addons: { cheese: 1 }, quantity: 2, image: 'assets/catalog/classic-shawarma.webp' });
   const state = { ...createKioskState(), screen: 'cart', fulfillment: 'dine-in', lines: [line] };
   const markup = renderKioskCart(state, context);
   assert.match(markup, /Классическая шаурма/);
@@ -16,7 +16,7 @@ test('корзина показывает состав, количество и 
   assert.match(markup, /Сыр/);
   assert.match(markup, /data-kiosk-line-quantity/);
   assert.match(markup, new RegExp(`data-kiosk-edit-line="${line.lineId}"`));
-  assert.match(markup, /700\s*₽/);
+  assert.match(markup, /800\s*₽/);
   assert.match(markup, /Перейти к оплате/);
   assert.match(markup, /data-delta="1"[^>]*>[\s\S]*?kiosk-plus-glyph/);
 });

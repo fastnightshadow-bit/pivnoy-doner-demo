@@ -11,6 +11,8 @@ import {
   getProductDescription,
 } from './product-config.js';
 import { calculateCartSummary, getCartItemCount } from './cart-state.js';
+import { normalizeOptionQuantities } from './option-quantities.js';
+import { getKioskAvailability } from './kiosk-availability.js';
 
 const escapeHtml = (value = '') => String(value)
   .replaceAll('&', '&amp;')
@@ -43,19 +45,6 @@ const cartIcon = `
     <path d="M5.5 8.5h13l-1.1 9.2H6.6L5.5 8.5Z" />
     <path d="M9 8.5v-1a3 3 0 0 1 6 0v1" />
   </svg>`;
-
-export const getKioskAvailability = (product, selection = {}, settings = {}) => {
-  if (!product) return { available: false, reason: 'Блюдо не найдено' };
-  if (settings.acceptingOrders === false) return { available: false, reason: 'Приём заказов приостановлен' };
-  if ((settings.stoppedProductIds || []).includes(product.id)) return { available: false, reason: 'Временно нет в наличии' };
-  if (selection.meat && (settings.stoppedMeatIds || []).includes(selection.meat)) {
-    return { available: false, reason: `${MEAT_LABELS[selection.meat] || 'Выбранное мясо'} временно недоступна` };
-  }
-  if (selection.sauce && (settings.stoppedSauceIds || []).includes(selection.sauce)) return { available: false, reason: 'Выбранный соус временно недоступен' };
-  const stoppedAddon = (selection.addons || []).find((id) => (settings.stoppedAddonIds || []).includes(id));
-  if (stoppedAddon) return { available: false, reason: 'Одна из добавок временно недоступна' };
-  return { available: true, reason: '' };
-};
 
 const renderStart = (context) => `
   <section class="kiosk-screen kiosk-start" aria-labelledby="kiosk-start-title">
@@ -98,28 +87,48 @@ const renderFulfillment = () => `
     </div>
   </section>`;
 
-const renderCategoryTabs = (activeCategory) => `
+const defaultSelectionFor = (product, settings = {}) => {
+  const meats = getAvailableMeats(product.id);
+  const meat =
+    meats.find((id) => !(settings.stoppedMeatIds || []).includes(id)) ||
+    meats[0] ||
+    'default';
+  return {
+    meat,
+    size: getAvailableSizes(product.id, meat)[0] || 'single',
+    addons: {},
+    sauces: {},
+  };
+};
+
+const availableProducts = (products, settings) =>
+  products.filter((product) =>
+    getKioskAvailability(
+      product,
+      defaultSelectionFor(product, settings),
+      settings,
+    ).available,
+  );
+
+const renderCategoryTabs = (activeCategory, categories) => `
   <nav class="kiosk-categories" aria-label="Категории меню">
-    ${CATEGORIES.map((category) => `
+    ${categories.map((category) => `
       <button type="button" class="kiosk-category kiosk-touch${category.id === activeCategory ? ' is-active' : ''}"
         data-kiosk-category="${category.id}"><span class="kiosk-category__label">${escapeHtml(category.label)}</span></button>`).join('')}
   </nav>`;
 
 const renderProductCard = (product, settings) => {
-  const meat = getAvailableMeats(product.id).find((id) => !(settings.stoppedMeatIds || []).includes(id)) || getAvailableMeats(product.id)[0];
-  const selection = { meat, size: getAvailableSizes(product.id, meat)[0] };
-  const availability = getKioskAvailability(product, selection, settings);
+  const quickAdd = product.quickAdd === true;
   return `
-    <button class="kiosk-product kiosk-touch${availability.available ? '' : ' is-disabled'}" type="button"
-      data-kiosk-product="${product.id}" ${availability.available ? '' : 'disabled'}>
-      <span class="kiosk-product__visual${product.category === 'shawarma' ? ' is-shawarma' : ''}">
+    <button class="kiosk-product kiosk-touch${product.textOnly ? ' is-text-only' : ''}" type="button"
+      ${quickAdd ? `data-kiosk-quick-add="${product.id}"` : `data-kiosk-product="${product.id}"`}>
+      ${product.textOnly ? '' : `<span class="kiosk-product__visual${product.category === 'shawarma' ? ' is-shawarma' : ''}">
         ${product.badge ? `<b>${escapeHtml(product.badge)}</b>` : ''}
         <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" />
-      </span>
+      </span>`}
       <span class="kiosk-product__body">
         <strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.description)}</small>
         <span class="kiosk-product__bottom"><b>${product.pricePrefix ? `${product.pricePrefix} ` : ''}${money(product.price)}</b><i aria-hidden="true">${plusGlyph}</i></span>
-        ${availability.available ? '' : `<em>${escapeHtml(availability.reason)}</em>`}
       </span>
     </button>`;
 };
@@ -134,15 +143,25 @@ const renderCartBar = (state) => {
 };
 
 const renderCatalog = (state, context) => {
-  const category = context.activeCategory || 'shawarma';
-  const products = (context.products?.length ? context.products : PRODUCTS).filter((product) => product.category === category);
+  const sourceProducts = context.products?.length ? context.products : PRODUCTS;
+  const products = availableProducts(sourceProducts, context.settings || {});
+  const categories = CATEGORIES.filter((candidate) =>
+    products.some((product) => product.category === candidate.id),
+  );
+  const requestedCategory = context.activeCategory || 'shawarma';
+  const category = categories.some(({ id }) => id === requestedCategory)
+    ? requestedCategory
+    : categories[0]?.id || 'shawarma';
+  const categoryProducts = products.filter(
+    (product) => product.category === category,
+  );
   return `
     <section class="kiosk-screen kiosk-catalog" aria-labelledby="kiosk-catalog-title">
       <header class="kiosk-menu-header">${brand}<span>${state.fulfillment === 'dine-in' ? 'Здесь' : 'С собой'}</span></header>
-      ${renderCategoryTabs(category)}
+      ${renderCategoryTabs(category, categories)}
       <main class="kiosk-menu-content">
         <p class="kiosk-eyebrow">Меню</p><h1 id="kiosk-catalog-title">${escapeHtml(CATEGORIES.find(({ id }) => id === category)?.label || 'Блюда')}</h1>
-        ${products.length ? `<div class="kiosk-products">${products.map((product) => renderProductCard(product, context.settings || {})).join('')}</div>` : `<div class="kiosk-empty-category"><strong>Скоро появится</strong><span>Мы уже готовим новинки для этой категории</span></div>`}
+        ${categoryProducts.length ? `<div class="kiosk-products">${categoryProducts.map((product) => renderProductCard(product, context.settings || {})).join('')}</div>` : `<div class="kiosk-empty-category"><strong>Сейчас нет доступных блюд</strong><span>Выберите другую категорию</span></div>`}
       </main>${renderCartBar(state)}
     </section>`;
 };
@@ -166,10 +185,10 @@ const renderProduct = (state, context) => {
   const meat = selection.meat || meats[0] || 'default';
   const sizes = getAvailableSizes(product.id, meat);
   const size = selection.size || sizes[0] || 'single';
-  const sauce = selection.sauce ?? '';
-  const addons = selection.addons || [];
+  const addons = normalizeOptionQuantities(selection.addons);
+  const sauces = normalizeOptionQuantities(selection.sauces);
   const quantity = Math.max(1, Number(selection.quantity) || 1);
-  const normalized = { meat, size, sauce, addons };
+  const normalized = { meat, size, addons, sauces };
   const availability = getKioskAvailability(product, normalized, context.settings || {});
   const unitPrice = calculateProductPrice(product.id, normalized);
   return `
@@ -187,18 +206,31 @@ const renderProduct = (state, context) => {
               <div class="kiosk-addon-grid">${config.addons.map((id) => {
                 const item = PRODUCT_ADDONS[id];
                 const stopped = (context.settings?.stoppedAddonIds || []).includes(id);
-                return `<button type="button" class="kiosk-addon kiosk-touch${addons.includes(id) ? ' is-selected' : ''}" data-kiosk-toggle-addon="${id}" ${stopped ? 'disabled' : ''}>
-                  <span>${escapeHtml(item.label)}<small>+${money(item.price)}</small></span><b>${addons.includes(id) ? '<span class="kiosk-check-glyph" aria-hidden="true">✓</span>' : plusGlyph}</b>
-                </button>`;
+                const optionQuantity = addons[id] || 0;
+                return `<div class="kiosk-addon${optionQuantity ? ' is-selected' : ''}${stopped ? ' is-disabled' : ''}">
+                  <span>${escapeHtml(item.label)}<small>+${money(item.price)} / порция</small></span>
+                  <div class="kiosk-option-quantity" aria-label="Количество: ${escapeHtml(item.label)}">
+                    <button type="button" data-kiosk-addon-change="${id}" data-delta="-1" ${optionQuantity ? '' : 'disabled'} aria-label="Уменьшить">${minusGlyph}</button>
+                    <b>${optionQuantity}</b>
+                    <button type="button" data-kiosk-addon-change="${id}" data-delta="1" ${stopped || optionQuantity >= 5 ? 'disabled' : ''} aria-label="Увеличить">${plusGlyph}</button>
+                  </div>
+                </div>`;
               }).join('')}</div>
             </fieldset>` : ''}
           ${config.sauces?.length ? `
-            <fieldset class="kiosk-option-group"><legend>Соус <small>по желанию · +50 ₽</small></legend>
-              <div class="kiosk-sauce-row">
-                <button type="button" class="kiosk-option kiosk-touch${sauce ? '' : ' is-selected'}" data-kiosk-set-sauce="">Без соуса</button>
-                ${config.sauces.map((id) => {
+            <fieldset class="kiosk-option-group" data-kiosk-option="sauces"><legend>Соусы <small>до 5 порций каждого</small></legend>
+              <div class="kiosk-sauce-row">${config.sauces.map((id) => {
                 const stopped = (context.settings?.stoppedSauceIds || []).includes(id);
-                return `<button type="button" class="kiosk-option kiosk-touch${sauce === id ? ' is-selected' : ''}" data-kiosk-set-sauce="${id}" ${stopped ? 'disabled' : ''}>${escapeHtml(PRODUCT_SAUCES[id]?.label || id)} <small>+50 ₽</small></button>`;
+                const optionQuantity = sauces[id] || 0;
+                const label = PRODUCT_SAUCES[id]?.label || id;
+                return `<div class="kiosk-addon kiosk-sauce${optionQuantity ? ' is-selected' : ''}${stopped ? ' is-disabled' : ''}">
+                  <span>${escapeHtml(label)}<small>+50 ₽ / порция</small></span>
+                  <div class="kiosk-option-quantity" aria-label="Количество: ${escapeHtml(label)}">
+                    <button type="button" data-kiosk-sauce-change="${id}" data-delta="-1" ${optionQuantity ? '' : 'disabled'} aria-label="Уменьшить">${minusGlyph}</button>
+                    <b>${optionQuantity}</b>
+                    <button type="button" data-kiosk-sauce-change="${id}" data-delta="1" ${stopped || optionQuantity >= 5 ? 'disabled' : ''} aria-label="Увеличить">${plusGlyph}</button>
+                  </div>
+                </div>`;
               }).join('')}</div>
             </fieldset>` : ''}
         </div>
@@ -217,3 +249,5 @@ export const renderKiosk = (state, context = {}) => {
   if (state.screen === 'product') return renderProduct(state, context);
   return renderCatalog({ ...state, screen: 'catalog' }, context);
 };
+
+export { getKioskAvailability };

@@ -11,6 +11,11 @@ import {
   getAvailableSizes,
   getProductConfiguration,
 } from './product-config.js';
+import { normalizeOptionQuantities } from './option-quantities.js';
+import {
+  getKioskAvailability,
+  reconcileKioskCart,
+} from './kiosk-availability.js';
 import { createKioskState, reduceKioskState } from './kiosk-state.js';
 import {
   createDemoKioskApi,
@@ -19,7 +24,7 @@ import {
 } from './kiosk-api.js';
 import { renderKioskCart } from './kiosk-cart-presentation.js';
 import { renderKioskPayment } from './kiosk-payment-presentation.js';
-import { getKioskAvailability, renderKiosk } from './kiosk-presentation.js';
+import { renderKiosk } from './kiosk-presentation.js';
 import { createKioskImageCache } from './kiosk-image-cache.js';
 
 const root = document.querySelector('[data-kiosk-app]');
@@ -33,6 +38,7 @@ let context = {
   selection: null,
   editingLineId: '',
   paymentPending: false,
+  notice: '',
   settings: {
     acceptingOrders: true,
     stoppedProductIds: [],
@@ -86,8 +92,8 @@ const createDefaultSelection = (productId) => {
   return {
     meat,
     size: getAvailableSizes(productId, meat)[0] || 'single',
-    sauce: '',
-    addons: [],
+    sauces: {},
+    addons: {},
     quantity: 1,
   };
 };
@@ -95,8 +101,8 @@ const createDefaultSelection = (productId) => {
 const createLineSelection = (line) => ({
   meat: line.meat || getAvailableMeats(line.productId)[0] || 'default',
   size: line.size || 'single',
-  sauce: line.sauce || '',
-  addons: Array.isArray(line.addons) ? [...line.addons] : [],
+  sauces: normalizeOptionQuantities(line.sauces),
+  addons: normalizeOptionQuantities(line.addons),
   quantity: Math.max(1, Number(line.quantity) || 1),
 });
 
@@ -235,21 +241,45 @@ root.addEventListener('click', async (event) => {
     return;
   }
 
-  const sauce = event.target.closest('[data-kiosk-set-sauce]');
-  if (sauce) {
-    updateSelection({ sauce: sauce.dataset.kioskSetSauce });
+  const optionButton = event.target.closest(
+    '[data-kiosk-addon-change], [data-kiosk-sauce-change]',
+  );
+  if (optionButton) {
+    const kind = optionButton.hasAttribute('data-kiosk-addon-change')
+      ? 'addons'
+      : 'sauces';
+    const optionId = optionButton.dataset.kioskAddonChange ||
+      optionButton.dataset.kioskSauceChange;
+    const current = normalizeOptionQuantities(context.selection[kind]);
+    const nextQuantity = Math.max(
+      0,
+      Math.min(5, (current[optionId] || 0) + Number(optionButton.dataset.delta)),
+    );
+    if (nextQuantity) current[optionId] = nextQuantity;
+    else delete current[optionId];
+    updateSelection({ [kind]: current });
     return;
   }
 
-  const addon = event.target.closest('[data-kiosk-toggle-addon]');
-  if (addon) {
-    const value = addon.dataset.kioskToggleAddon;
-    const current = context.selection.addons || [];
-    updateSelection({
-      addons: current.includes(value)
-        ? current.filter((id) => id !== value)
-        : [...current, value],
+  const quickAdd = event.target.closest('[data-kiosk-quick-add]');
+  if (quickAdd) {
+    const product = findProduct(quickAdd.dataset.kioskQuickAdd);
+    if (!product) return;
+    const selection = createDefaultSelection(product.id);
+    state = reduceKioskState(state, {
+      type: 'SET_LINES',
+      lines: addCartLine(state.lines, createCartLine({
+        productId: product.id,
+        name: product.name,
+        unitPrice: calculateProductPrice(product.id, selection),
+        ...selection,
+        quantity: 1,
+        image: product.image,
+        icon: product.icon,
+      })),
     });
+    context = { ...context, notice: `${product.name} добавлен в корзину` };
+    render();
     return;
   }
 
@@ -281,7 +311,7 @@ root.addEventListener('click', async (event) => {
       unitPrice: calculateProductPrice(product.id, selection),
       meat: selection.meat,
       size: selection.size,
-      sauce: selection.sauce,
+      sauces: selection.sauces,
       addons: selection.addons,
       quantity: selection.quantity,
       image: product.image,
@@ -374,7 +404,19 @@ const start = async () => {
     api.subscribe(
       (message) => {
         if (message.type === 'settings.updated') {
-          context = { ...context, settings: message.settings };
+          const reconciled = reconcileKioskCart(
+            state.lines,
+            message.settings,
+            context.products?.length ? context.products : PRODUCTS,
+          );
+          state = { ...state, lines: reconciled.lines };
+          context = {
+            ...context,
+            settings: message.settings,
+            notice: reconciled.changed
+              ? 'Меню обновилось: недоступные позиции удалены из корзины'
+              : context.notice,
+          };
           if (
             state.screen === 'product' &&
             !getKioskAvailability(
