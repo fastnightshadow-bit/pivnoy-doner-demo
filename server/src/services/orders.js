@@ -6,18 +6,9 @@ import {
 } from '../domain/order-access.js';
 import { DomainError } from '../domain/errors.js';
 import { priceOrder } from '../domain/pricing.js';
+import { assertCatalogAvailability } from '../domain/catalog-availability.js';
 import { toPublicClientOrder } from '../domain/public-order.js';
 import { LEGAL_VERSIONS } from '../../../shared/legal.js';
-import {
-  getAvailableMeats,
-  getProductMeatIds,
-  normalizeOptionQuantities,
-  PRODUCT_ADDONS,
-  PRODUCT_SAUCES,
-} from '../../../shared/catalog.js';
-
-const knownSauces = new Set(Object.keys(PRODUCT_SAUCES));
-const knownAddons = new Set(Object.keys(PRODUCT_ADDONS));
 
 export const createOrderService = ({
   orders,
@@ -74,90 +65,7 @@ export const createOrderService = ({
 
       if (catalogSettings?.get) {
         const catalog = await catalogSettings.get();
-        if (catalog?.acceptingOrders === false) {
-          throw new DomainError('ORDERING_PAUSED');
-        }
-        const stopped = new Set(
-          Array.isArray(catalog?.stoppedProductIds)
-            ? catalog.stoppedProductIds.map(String)
-            : [],
-        );
-        const productIds = [
-          ...new Set(
-            input.items
-              .map(({ productId }) => String(productId))
-              .filter((productId) => stopped.has(productId)),
-          ),
-        ];
-        if (productIds.length > 0) {
-          throw new DomainError('PRODUCT_UNAVAILABLE', { productIds });
-        }
-
-        const stoppedMeats = new Set(
-          Array.isArray(catalog?.stoppedMeatIds)
-            ? catalog.stoppedMeatIds.map(String)
-            : [],
-        );
-        const stoppedSauces = new Set(
-          Array.isArray(catalog?.stoppedSauceIds)
-            ? catalog.stoppedSauceIds.map(String)
-            : [],
-        );
-        const stoppedAddons = new Set(
-          Array.isArray(catalog?.stoppedAddonIds)
-            ? catalog.stoppedAddonIds.map(String)
-            : [],
-        );
-        const selectedMeats = new Set();
-        const selectedSauces = new Set();
-        const selectedAddons = new Set();
-        for (const item of input.items) {
-          const availableMeats = getAvailableMeats(String(item.productId));
-          const meat = availableMeats.includes(item.meat)
-            ? item.meat
-            : availableMeats[0];
-          if (meat && stoppedMeats.has(meat)) selectedMeats.add(meat);
-          if (availableMeats.every((meatId) => meatId === 'default')) {
-            for (const productMeatId of getProductMeatIds(String(item.productId))) {
-              if (stoppedMeats.has(productMeatId)) {
-                selectedMeats.add(productMeatId);
-              }
-            }
-          }
-          for (const [sauceId, quantity] of Object.entries(
-            normalizeOptionQuantities(item.sauces),
-          )) {
-            if (
-              quantity > 0 &&
-              knownSauces.has(sauceId) &&
-              stoppedSauces.has(sauceId)
-            ) {
-              selectedSauces.add(sauceId);
-            }
-          }
-          for (const [addonId, quantity] of Object.entries(
-            normalizeOptionQuantities(item.addons),
-          )) {
-            if (
-              quantity > 0 &&
-              knownAddons.has(addonId) &&
-              stoppedAddons.has(addonId)
-            ) {
-              selectedAddons.add(addonId);
-            }
-          }
-        }
-        if (
-          selectedMeats.size > 0 ||
-          selectedSauces.size > 0 ||
-          selectedAddons.size > 0
-        ) {
-          throw new DomainError('PRODUCT_OPTION_UNAVAILABLE', {
-            meatIds: [...selectedMeats].sort(),
-            sauceIds: [...selectedSauces].sort(),
-            addonIds: [...selectedAddons].sort(),
-          });
-        }
+        assertCatalogAvailability(input.items, catalog);
       }
 
       const priced = priceOrder(input, settings);

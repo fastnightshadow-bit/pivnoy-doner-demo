@@ -6,6 +6,9 @@ const mapOrder = (row) => ({
   idempotencyKey: row.idempotency_key,
   status: row.status,
   paymentStatus: row.payment_status,
+  source: row.source || 'web',
+  serviceMode: row.service_mode || null,
+  kioskDeviceId: row.kiosk_device_id || null,
   fulfillment: row.fulfillment,
   customerName: row.customer_name,
   phone: row.phone,
@@ -67,6 +70,7 @@ export const createOrdersRepository = (pool) => ({
       const result = await client.query(
         `insert into orders (
           id, idempotency_key, status, fulfillment, payment_status,
+          source, service_mode, kiosk_device_id,
           customer_name, phone, address, customer_comment, courier_comment,
           items_total, delivery_total, discount_total, total,
           eta_min, eta_max, version, created_at, updated_at,
@@ -74,10 +78,11 @@ export const createOrdersRepository = (pool) => ({
           offer_version, access_token_hash
         ) values (
           $1, $2, $3, $4, $5,
-          $6, $7, $8, $9, $10,
-          $11, $12, $13, $14,
-          $15, $16, $17, $18, $18,
-          $19, $20, $21, $22
+          $6, $7, $8,
+          $9, $10, $11, $12, $13,
+          $14, $15, $16, $17,
+          $18, $19, $20, $21, $21,
+          $22, $23, $24, $25
         ) returning *`,
         [
           order.id,
@@ -85,6 +90,9 @@ export const createOrdersRepository = (pool) => ({
           order.status,
           order.fulfillment,
           order.paymentStatus,
+          order.source || 'web',
+          order.serviceMode || null,
+          order.kioskDeviceId || null,
           order.customerName,
           order.phone,
           order.address,

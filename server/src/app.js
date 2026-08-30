@@ -17,6 +17,7 @@ import { createOwnerRouter } from './routes/owner.js';
 import { createPaymentsRouter } from './routes/payments.js';
 import { createPushRouter } from './routes/push.js';
 import { createKioskAuthRouter } from './routes/kiosk-auth.js';
+import { createKioskOrdersRouter } from './routes/kiosk-orders.js';
 
 export const createApp = ({
   db,
@@ -31,6 +32,7 @@ export const createApp = ({
   paymentService = null,
   pushService = null,
   kioskAuthService = null,
+  kioskOrderService = null,
   nodeEnv = 'development',
 }) => {
   const app = express();
@@ -45,6 +47,16 @@ export const createApp = ({
     app.use(
       '/api/kiosk',
       createKioskAuthRouter({ authService: kioskAuthService, nodeEnv }),
+    );
+  }
+  if (kioskAuthService && kioskOrderService && settingsService) {
+    app.use(
+      '/api/kiosk',
+      createKioskOrdersRouter({
+        authService: kioskAuthService,
+        orderService: kioskOrderService,
+        settings: settingsService,
+      }),
     );
   }
   if (authService) {

@@ -24,6 +24,7 @@ import { createPushRepository } from './repositories/push.js';
 import { createPushService } from './services/push.js';
 import { createKioskDevicesRepository } from './repositories/kiosk-devices.js';
 import { createKioskAuthService } from './auth/kiosk-session.js';
+import { createKioskOrderService } from './services/kiosk-orders.js';
 import { createPushWorker } from './push/worker.js';
 import { createWebPushSender } from './push/web-push-sender.js';
 import {
@@ -52,6 +53,11 @@ const orderService = createOrderService({
 const authService = createAuthService({ repository: createAuthRepository(db) });
 const kioskAuthService = createKioskAuthService({
   repository: createKioskDevicesRepository(db),
+});
+const kioskOrderService = createKioskOrderService({
+  orders,
+  settings: DEFAULT_ORDER_SETTINGS,
+  catalogSettings: settingsService,
 });
 const staffOrders = createStaffOrdersRepository(db);
 const statusService = createStatusService({ orders: staffOrders });
@@ -115,6 +121,7 @@ const server = createApp({
   paymentService,
   pushService,
   kioskAuthService,
+  kioskOrderService,
   nodeEnv: config.nodeEnv,
 }).listen(config.port, '0.0.0.0', () => {
   console.log(`Pivdoner API listening on port ${config.port}`);
