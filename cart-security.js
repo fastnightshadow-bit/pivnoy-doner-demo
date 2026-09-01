@@ -1,4 +1,4 @@
-import { PRODUCTS } from './catalog-data.js';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 import { createCartLine } from './cart-state.js';
 import { normalizeOptionQuantities } from './option-quantities.js';
 import {
@@ -12,7 +12,7 @@ import {
   PRODUCT_SAUCES,
   SIZE_LABELS,
   SIZE_WEIGHT_LABELS,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 
 export const MAX_CART_LINE_QUANTITY = 20;
 export const MAX_CART_ITEM_COUNT = 50;

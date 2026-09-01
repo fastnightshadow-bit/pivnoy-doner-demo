@@ -126,18 +126,19 @@ test('web container maps each host to its own PWA entry point', async () => {
 
 test('client pages version their changed immutable assets', async () => {
   const releaseKey = '2026081402';
-  const catalogReleaseKey = '2026081702';
-  const productSheetReleaseKey = '2026082101';
+  const menuReleaseKey = '2026090101';
+  const catalogReleaseKey = menuReleaseKey;
+  const productSheetReleaseKey = menuReleaseKey;
   const productSheetStyleReleaseKey = '2026082101';
-  const checkoutScriptReleaseKey = '2026082702';
+  const checkoutScriptReleaseKey = menuReleaseKey;
   const checkoutStyleReleaseKey = '2026082101';
   const checkoutClientApiReleaseKey = '2026082702';
   const handoffReleaseKey = '2026081404';
   const styleReleaseKey = '2026081405';
   const homeStyleReleaseKey = '2026081702';
-  const homeReleaseKey = '2026082101';
+  const homeReleaseKey = menuReleaseKey;
   const themeReleaseKey = '2026081406';
-  const kitchenReleaseKey = '2026082801';
+  const kitchenReleaseKey = menuReleaseKey;
   const courierReleaseKey = '2026082202';
   const nginx = await read('deploy/nginx.conf');
   const cartHtml = await read('cart.html');
@@ -211,9 +212,9 @@ test('client pages version their changed immutable assets', async () => {
     courierSource,
     new RegExp(`staff-live-sync\\.js\\?v=${courierReleaseKey}`),
   );
-  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v15/);
+  assert.match(kitchenWorker, /pivnoy-doner-kitchen-shell-v16/);
   assert.match(kitchenWorker, /'kitchen\.html'/);
-  assert.match(kitchenWorker, /kitchen-menu\.js\?v=2026082801/);
+  assert.match(kitchenWorker, new RegExp(`kitchen-menu\\.js\\?v=${kitchenReleaseKey}`));
   assert.doesNotMatch(kitchenWorker, /kitchen\.html\?demo=1/);
   assert.match(courierWorker, /pivnoy-doner-courier-shell-v7/);
 
@@ -223,15 +224,20 @@ test('client pages version their changed immutable assets', async () => {
   assert.deepEqual(
     getVersionedImports(checkoutSource),
     [
+      `./cart-storage.js?v=${menuReleaseKey}`,
       './checkout-state.js?v=20260811',
       `./order-storage.js?v=${releaseKey}`,
       `./client-api.js?v=${checkoutClientApiReleaseKey}`,
       './shared/legal.js?v=20260811',
+      `./product-config.js?v=${menuReleaseKey}`,
+      `./cart-security.js?v=${menuReleaseKey}`,
     ],
   );
   assert.deepEqual(getVersionedImports(homeSource), [
     `./home-menu.js?v=${catalogReleaseKey}`,
-    './product-config.js?v=2026082102',
+    `./cart-storage.js?v=${menuReleaseKey}`,
+    `./catalog-data.js?v=${menuReleaseKey}`,
+    `./product-config.js?v=${menuReleaseKey}`,
     `./order-state.js?v=${handoffReleaseKey}`,
     `./order-storage.js?v=${releaseKey}`,
     `./product-sheet.js?v=${productSheetReleaseKey}`,

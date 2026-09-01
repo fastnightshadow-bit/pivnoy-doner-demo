@@ -1,15 +1,15 @@
-import { CATEGORIES, PRODUCTS } from './catalog-data.js';
+import { CATEGORIES, PRODUCTS } from './catalog-data.js?v=2026090101';
 import {
   MEAT_LABELS,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 import {
   buildCategorySummaries,
   filterOwnerMenu,
   getGlobalMeatOptions,
   getProductOptionGroups,
-} from './owner-menu.js?v=2026082102';
+} from './owner-menu.js?v=2026090101';
 import { createDemoOwnerApi, createOwnerApi } from './owner-api.js?v=2026082102';
 
 const refs = {

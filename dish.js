@@ -3,8 +3,8 @@ import {
   changeCartLineQuantity,
   createCartLine,
 } from './cart-state.js';
-import { loadCart, saveCart } from './cart-storage.js';
-import { PRODUCTS } from './catalog-data.js';
+import { loadCart, saveCart } from './cart-storage.js?v=2026090101';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 import { pulseMotion, revealMotion } from './motion.js';
 import {
   calculateProductPrice,
@@ -13,7 +13,7 @@ import {
   getSizeLabelWithWeight,
   MEAT_LABELS,
   PRODUCT_ADDONS,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 
 export const DISH_NAME = 'Классическая шаурма';
 const DISH_ID = 'classic-shawarma';

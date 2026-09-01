@@ -1,10 +1,10 @@
-import { CATEGORIES, PRODUCTS } from './catalog-data.js';
+import { CATEGORIES, PRODUCTS } from './catalog-data.js?v=2026090101';
 import { getProductsByCategory } from './catalog-state.js';
 import {
   calculateProductPrice,
   getProductDescription,
   MEAT_LABELS,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 
 export const getMenuCategory = (categoryId) =>
   CATEGORIES.find(({ id }) => id === categoryId) ?? null;

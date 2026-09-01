@@ -1,4 +1,4 @@
-import { PRODUCTS } from './catalog-data.js';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 import { normalizeOptionQuantities } from './option-quantities.js';
 
 export const MEAT_LABELS = Object.freeze({

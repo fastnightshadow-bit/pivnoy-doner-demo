@@ -24,7 +24,7 @@ const markActivity = () => { hideWarning(); controller.activity(getScreenState()
 });
 sync();
 
-const KIOSK_BUILD = '20260830-2';
+const KIOSK_BUILD = '2026090101';
 const SW_RELOAD_KEY = 'kiosk-sw-reloaded';
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {

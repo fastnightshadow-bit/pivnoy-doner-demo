@@ -1,4 +1,4 @@
-import { PRODUCTS } from './catalog-data.js';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 

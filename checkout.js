@@ -1,4 +1,4 @@
-import { loadCart, saveCart } from './cart-storage.js';
+import { loadCart, saveCart } from './cart-storage.js?v=2026090101';
 import {
   createCheckoutSummary,
   createTimeSlots,
@@ -36,8 +36,8 @@ import {
   MEAT_LABELS,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
-} from './product-config.js';
-import { createCanonicalCheckoutItems } from './cart-security.js';
+} from './product-config.js?v=2026090101';
+import { createCanonicalCheckoutItems } from './cart-security.js?v=2026090101';
 
 const CHECKOUT_ATTEMPT_STORAGE_KEY = 'pivnoy-doner-checkout-attempt-v1';
 

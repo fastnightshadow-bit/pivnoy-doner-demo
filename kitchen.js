@@ -2,32 +2,32 @@ import {
   createDemoKitchenApi,
   createKitchenApi,
   isKitchenDemoLocation,
-} from './kitchen-api.js?v=2026082801';
+} from './kitchen-api.js?v=2026090101';
 import {
   CANCELLATION_REASONS,
   KITCHEN_COLUMNS,
   getNextKitchenAction,
   groupKitchenOrders,
-} from './kitchen-model.js?v=2026082801';
+} from './kitchen-model.js?v=2026090101';
 import {
   getKitchenItemOptions,
   initKitchenPresentation,
 } from './kitchen-presentation.js';
-import { CATEGORIES, PRODUCTS } from './catalog-data.js';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082801';
+import { CATEGORIES, PRODUCTS } from './catalog-data.js?v=2026090101';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026090101';
 import {
   buildCategorySummaries,
   getGlobalMeatOptions,
-} from './owner-menu.js?v=2026082801';
+} from './owner-menu.js?v=2026090101';
 import {
   getKitchenStoppedEntries,
   renderKitchenMenu,
   renderKitchenStoppedMenu,
-} from './kitchen-menu.js?v=2026082801';
+} from './kitchen-menu.js?v=2026090101';
 import {
   createStaffLiveSync,
   executeVersionedAction,
-} from './staff-live-sync.js?v=2026082801';
+} from './staff-live-sync.js?v=2026090101';
 
 const STATUS_LABELS = Object.freeze({
   new: 'Новый',
@@ -1785,7 +1785,7 @@ export const initKitchen = async ({ windowRef, documentRef, api } = {}) => {
     'serviceWorker' in windowRef.navigator &&
     (windowRef.isSecureContext || hostname === 'localhost')
   ) {
-    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026082801').catch(() => {});
+    windowRef.navigator.serviceWorker.register('./kitchen-sw.js?v=2026090101').catch(() => {});
   }
 
   return {

@@ -2,11 +2,11 @@ import {
   MEAT_LABELS,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 import {
   filterOwnerMenu,
   getProductOptionGroups,
-} from './owner-menu.js';
+} from './owner-menu.js?v=2026090101';
 
 const escapeHtml = (value) =>
   String(value ?? '')

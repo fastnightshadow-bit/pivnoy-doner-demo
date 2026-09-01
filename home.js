@@ -9,15 +9,15 @@ import {
   getMenuProducts,
   normalizeMenuMeat,
   resolveMenuProductLine,
-} from './home-menu.js?v=2026081702';
+} from './home-menu.js?v=2026090101';
 import {
   addCartLine,
   changeCartLineQuantity,
   createCartLine,
 } from './cart-state.js';
-import { loadCart, saveCart } from './cart-storage.js';
-import { PRODUCTS } from './catalog-data.js';
-import { isProductAvailableForMeats } from './product-config.js?v=2026082102';
+import { loadCart, saveCart } from './cart-storage.js?v=2026090101';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
+import { isProductAvailableForMeats } from './product-config.js?v=2026090101';
 import { getCatalogCartCount } from './catalog-state.js';
 import {
   loadFulfillment,
@@ -39,7 +39,7 @@ import {
   resolvePreferredProductLine,
   savePreferredProductLine,
 } from './product-preference-storage.js';
-import { initProductSheet } from './product-sheet.js?v=2026082101';
+import { initProductSheet } from './product-sheet.js?v=2026090101';
 import { createReviewService } from './review-service.js?v=2026081402';
 import { createReviewsSectionMarkup } from './review-view.js?v=2026081402';
 import { clientApi } from './client-api.js?v=2026081402';

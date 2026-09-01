@@ -1,4 +1,4 @@
-const VERSION = '20260830-2';
+const VERSION = '2026090101';
 const CACHE = `pivnoy-doner-kiosk-${VERSION}`;
 const SHELL = [
   './kiosk.html',
@@ -21,7 +21,12 @@ const SHELL = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE)
-      .then((cache) => cache.addAll(SHELL))
+      .then((cache) => Promise.all(SHELL.map(async (asset) => {
+        const request = new Request(asset, { cache: 'reload' });
+        const response = await fetch(request);
+        if (!response.ok) throw new Error(`Failed to cache ${asset}`);
+        return cache.put(request, response);
+      })))
       .then(() => self.skipWaiting()),
   );
 });
@@ -40,7 +45,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.includes('/api/')) return;
 
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-cache' })
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put(event.request, copy));

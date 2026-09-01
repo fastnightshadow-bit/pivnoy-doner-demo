@@ -1,4 +1,4 @@
-import { createKioskBootstrapFixture } from './kiosk-fixtures.js';
+import { createKioskBootstrapFixture } from './kiosk-fixtures.js?v=2026090101';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const wait = (milliseconds) =>

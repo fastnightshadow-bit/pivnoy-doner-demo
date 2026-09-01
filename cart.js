@@ -1,4 +1,4 @@
-import { PRODUCTS } from './catalog-data.js';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 import {
   addCartLine,
   calculateCartSummary,
@@ -6,7 +6,7 @@ import {
   createCartLine,
   getCartItemCount,
 } from './cart-state.js';
-import { loadCart, saveCart } from './cart-storage.js';
+import { loadCart, saveCart } from './cart-storage.js?v=2026090101';
 import { loadFulfillment } from './fulfillment-storage.js';
 import { formatOptionQuantities } from './option-quantities.js';
 import {
@@ -21,7 +21,7 @@ import {
 import {
   getSizeLabelWithWeight,
   SIZE_LABELS,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 
 export const CART_RECOMMENDATION_IDS = Object.freeze([
   'fries',

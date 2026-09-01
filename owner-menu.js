@@ -1,10 +1,10 @@
-import { CATEGORIES, PRODUCTS } from './catalog-data.js';
+import { CATEGORIES, PRODUCTS } from './catalog-data.js?v=2026090101';
 import {
   getProductConfiguration,
   MEAT_LABELS,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 
 const normalizeSearch = (value) =>
   String(value || '').trim().toLocaleLowerCase('ru-RU');

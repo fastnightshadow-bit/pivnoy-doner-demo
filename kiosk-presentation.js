@@ -1,4 +1,4 @@
-import { CATEGORIES, PRODUCTS } from './catalog-data.js';
+import { CATEGORIES, PRODUCTS } from './catalog-data.js?v=2026090101';
 import {
   MEAT_LABELS,
   PRODUCT_ADDONS,
@@ -9,10 +9,10 @@ import {
   getAvailableSizes,
   getProductConfiguration,
   getProductDescription,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 import { calculateCartSummary, getCartItemCount } from './cart-state.js';
 import { normalizeOptionQuantities } from './option-quantities.js';
-import { getKioskAvailability } from './kiosk-availability.js';
+import { getKioskAvailability } from './kiosk-availability.js?v=2026090101';
 
 const escapeHtml = (value = '') => String(value)
   .replaceAll('&', '&amp;')

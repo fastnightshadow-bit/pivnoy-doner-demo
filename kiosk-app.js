@@ -1,4 +1,4 @@
-import { PRODUCTS } from './catalog-data.js';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 import {
   addCartLine,
   changeCartLineQuantity,
@@ -10,21 +10,21 @@ import {
   getAvailableMeats,
   getAvailableSizes,
   getProductConfiguration,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 import { normalizeOptionQuantities } from './option-quantities.js';
 import {
   getKioskAvailability,
   reconcileKioskCart,
-} from './kiosk-availability.js';
+} from './kiosk-availability.js?v=2026090101';
 import { createKioskState, reduceKioskState } from './kiosk-state.js';
 import {
   createDemoKioskApi,
   createKioskApi,
   isKioskDemoLocation,
-} from './kiosk-api.js';
-import { renderKioskCart } from './kiosk-cart-presentation.js';
+} from './kiosk-api.js?v=2026090101';
+import { renderKioskCart } from './kiosk-cart-presentation.js?v=2026090101';
 import { renderKioskPayment } from './kiosk-payment-presentation.js';
-import { renderKiosk } from './kiosk-presentation.js';
+import { renderKiosk } from './kiosk-presentation.js?v=2026090101';
 import { createKioskImageCache } from './kiosk-image-cache.js';
 import { createKioskPaymentController } from './kiosk-payment-flow.js';
 import { renderKioskActivation } from './kiosk-activation-presentation.js';

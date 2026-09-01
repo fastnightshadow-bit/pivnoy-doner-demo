@@ -1,4 +1,4 @@
-import { sanitizeCartLines } from './cart-security.js';
+import { sanitizeCartLines } from './cart-security.js?v=2026090101';
 
 export const CART_STORAGE_KEY = 'pivnoy-doner-cart-v1';
 

@@ -2,19 +2,19 @@ import {
   CANCELLATION_REASONS,
   createStatusHistoryEntry,
   getNextKitchenAction,
-} from './kitchen-model.js?v=2026082801';
+} from './kitchen-model.js?v=2026090101';
 import {
   createDemoEmployees,
   createDemoOrders,
-} from './kitchen-fixtures.js?v=2026082101';
-import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026082701';
-import { PRODUCTS } from './catalog-data.js';
+} from './kitchen-fixtures.js?v=2026090101';
+import { normalizeKitchenSettings } from './kitchen-settings.js?v=2026090101';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 import {
   MEAT_LABELS,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
   SIZE_LABELS,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 import { normalizeOptionQuantities } from './option-quantities.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));

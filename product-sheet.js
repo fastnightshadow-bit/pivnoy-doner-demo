@@ -1,10 +1,10 @@
-import { PRODUCTS } from './catalog-data.js';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 import {
   addCartLine,
   changeCartLineQuantity,
   createCartLine,
 } from './cart-state.js';
-import { loadCart, saveCart } from './cart-storage.js';
+import { loadCart, saveCart } from './cart-storage.js?v=2026090101';
 import {
   calculateProductPrice,
   getAvailableMeats,
@@ -17,7 +17,7 @@ import {
   PRODUCT_SAUCES,
   SIZE_LABELS,
   SIZE_WEIGHT_LABELS,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 import { pulseMotion } from './motion.js';
 import { normalizeOptionQuantities } from './option-quantities.js';
 

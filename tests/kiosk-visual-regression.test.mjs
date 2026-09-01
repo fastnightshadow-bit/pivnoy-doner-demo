@@ -31,8 +31,8 @@ test('итог корзины оптически поднят к центру к
 
 test('версия ресурсов киоска меняется вместе с исправлениями', () => {
   const html = readText('kiosk.html');
-  assert.match(html, /kiosk-fixes-v3\.css\?v=20260830-2/);
-  assert.match(html, /kiosk-app\.js\?v=20260830-2/);
+  assert.match(html, /kiosk-fixes-v3\.css\?v=2026090101/);
+  assert.match(html, /kiosk-app\.js\?v=2026090101/);
 });
 
 

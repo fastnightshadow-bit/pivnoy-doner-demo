@@ -1,13 +1,13 @@
-import { PRODUCTS } from './catalog-data.js';
+import { PRODUCTS } from './catalog-data.js?v=2026090101';
 import { calculateCartSummary } from './cart-state.js';
 import {
   MEAT_LABELS,
   PRODUCT_ADDONS,
   PRODUCT_SAUCES,
   SIZE_LABELS,
-} from './product-config.js';
+} from './product-config.js?v=2026090101';
 import { formatOptionQuantities } from './option-quantities.js';
-import { getKioskAvailability } from './kiosk-availability.js';
+import { getKioskAvailability } from './kiosk-availability.js?v=2026090101';
 
 const escapeHtml = (value = '') => String(value)
   .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')

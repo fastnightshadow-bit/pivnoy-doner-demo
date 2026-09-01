@@ -1,19 +1,19 @@
-const CACHE_NAME = 'pivnoy-doner-kitchen-shell-v15';
+const CACHE_NAME = 'pivnoy-doner-kitchen-shell-v16';
 const SHELL_FILES = [
   'kitchen.html',
-  'kitchen.css?v=2026082801',
-  'kitchen.js?v=2026082801',
+  'kitchen.css?v=2026090101',
+  'kitchen.js?v=2026090101',
   'kitchen-presentation.js',
-  'kitchen-model.js?v=2026082801',
-  'kitchen-api.js?v=2026082801',
-  'kitchen-fixtures.js?v=2026082101',
-  'kitchen-settings.js?v=2026082801',
-  'owner-menu.js?v=2026082801',
+  'kitchen-model.js?v=2026090101',
+  'kitchen-api.js?v=2026090101',
+  'kitchen-fixtures.js?v=2026090101',
+  'kitchen-settings.js?v=2026090101',
+  'owner-menu.js?v=2026090101',
   'owner-menu.js',
-  'kitchen-menu.js?v=2026082801',
+  'kitchen-menu.js?v=2026090101',
   'product-config.js',
   'option-quantities.js',
-  'staff-live-sync.js?v=2026082801',
+  'staff-live-sync.js?v=2026090101',
   'preparation-time.js',
   'catalog-data.js',
   'kitchen.webmanifest',
@@ -27,7 +27,12 @@ const API_PATH = new URL('api/', self.registration.scope).pathname;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)),
+    caches.open(CACHE_NAME).then((cache) => Promise.all(SHELL_ASSETS.map(async (asset) => {
+      const request = new Request(asset, { cache: 'reload' });
+      const response = await fetch(request);
+      if (!response.ok) throw new Error(`Failed to cache ${asset}`);
+      return cache.put(request, response);
+    }))),
   );
   self.skipWaiting();
 });
@@ -65,7 +70,7 @@ self.addEventListener('fetch', (event) => {
   }
   event.respondWith(
     caches.open(CACHE_NAME).then((cache) =>
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-cache' })
         .then((response) => {
           if (response.ok) cache.put(event.request, response.clone());
           return response;
