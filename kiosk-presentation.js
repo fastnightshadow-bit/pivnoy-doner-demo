@@ -161,7 +161,7 @@ const renderCatalog = (state, context) => {
       ${renderCategoryTabs(category, categories)}
       <main class="kiosk-menu-content">
         <p class="kiosk-eyebrow">Меню</p><h1 id="kiosk-catalog-title">${escapeHtml(CATEGORIES.find(({ id }) => id === category)?.label || 'Блюда')}</h1>
-        ${categoryProducts.length ? `<div class="kiosk-products">${categoryProducts.map((product) => renderProductCard(product, context.settings || {})).join('')}</div>` : `<div class="kiosk-empty-category"><strong>Сейчас нет доступных блюд</strong><span>Выберите другую категорию</span></div>`}
+        ${categoryProducts.length ? `<div class="kiosk-products${category === 'sauces' ? ' is-compact' : ''}">${categoryProducts.map((product) => renderProductCard(product, context.settings || {})).join('')}</div>` : `<div class="kiosk-empty-category"><strong>Сейчас нет доступных блюд</strong><span>Выберите другую категорию</span></div>`}
       </main>${renderCartBar(state)}
     </section>`;
 };

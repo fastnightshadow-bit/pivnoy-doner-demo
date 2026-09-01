@@ -61,6 +61,14 @@
 .kiosk-menu-content { min-width: 0; padding: 22px clamp(16px, 3.4vw, 30px) 40px; }
 .kiosk-menu-content h1 { max-width: 100%; margin: 3px 0 24px; overflow-wrap: anywhere; font-size: clamp(30px, 4.7vw, 42px); }
 .kiosk-products { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 18px; }
+.kiosk-products.is-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.kiosk-products.is-compact .kiosk-product.is-text-only { min-height: 148px; }
+.kiosk-products.is-compact .kiosk-product__body {
+  max-width: 100%;
+  padding: 18px 20px 16px;
+}
+.kiosk-products.is-compact .kiosk-product__body > small { margin-top: 4px; }
+.kiosk-products.is-compact .kiosk-product__bottom { padding-top: 10px; }
 
 .kiosk-product {
   position: relative;
@@ -395,6 +403,7 @@
   .kiosk-menu-content h1 { margin-bottom: 16px; font-size: clamp(28px, 3.4vw, 40px); }
   .kiosk-menu-content .kiosk-eyebrow { margin-bottom: 10px; }
   .kiosk-products { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .kiosk-products.is-compact { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .kiosk-product { min-height: 200px; }
   .kiosk-product__body { padding-top: 18px; padding-bottom: 16px; }
   .kiosk-cart-bar { right: 28px; bottom: 14px; left: 28px; height: 70px; border-radius: 20px; }

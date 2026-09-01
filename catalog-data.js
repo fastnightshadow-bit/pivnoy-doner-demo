@@ -5,7 +5,7 @@ export const CATEGORIES = Object.freeze([
   { id: 'hotdogs', label: 'Хот-доги', icon: 'hotdog' },
   { id: 'snacks', label: 'Закуски', icon: 'fries' },
   { id: 'sauces', label: 'Соусы', icon: 'sauce' },
-  { id: 'vegan', label: 'Веган', icon: 'leaf', empty: true },
+  { id: 'vegan', label: 'Веган', icon: 'leaf' },
   { id: 'drinks', label: 'Напитки', icon: 'cup', empty: true },
 ]);
 
@@ -93,6 +93,18 @@ export const PRODUCTS = Object.freeze([
     image: 'assets/catalog/classic-shawarma.webp',
     icon: 'wrap',
     configurable: true,
+  },
+  {
+    id: 'falafel-shawarma',
+    category: 'vegan',
+    name: 'Шаурма с фалафелем',
+    description: 'Фалафель, лаваш, салат, огурец, томат и фирменный соус',
+    price: 350,
+    pricePrefix: '',
+    badge: 'Новинка',
+    image: 'assets/catalog/classic-shawarma.webp',
+    icon: 'leaf',
+    configurable: false,
   },
   {
     id: 'doner',

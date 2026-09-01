@@ -43,9 +43,27 @@ test('поиск находит и категорию, и отдельный т�
   const byCategory = filterOwnerMenu(categories, 'шаурма');
   const byProduct = filterOwnerMenu(categories, 'наггетсы');
 
-  assert.equal(byCategory.length, 1);
-  assert.equal(byCategory[0].id, 'shawarma');
-  assert.equal(byCategory[0].products.length, 7);
+  assert.deepEqual(
+    byCategory.map(({ id, products }) => ({
+      id,
+      products: products.map(({ id: productId }) => productId),
+    })),
+    [
+      {
+        id: 'shawarma',
+        products: [
+          'classic-shawarma',
+          'tasty-shawarma',
+          'curry-shawarma',
+          'burger-shawarma',
+          'bbq-shawarma',
+          'truffle-shawarma',
+          'four-cheese-shawarma',
+        ],
+      },
+      { id: 'vegan', products: ['falafel-shawarma'] },
+    ],
+  );
   assert.equal(byProduct.length, 1);
   assert.equal(byProduct[0].id, 'snacks');
   assert.deepEqual(byProduct[0].products.map(({ id }) => id), ['nuggets']);

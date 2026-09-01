@@ -22,7 +22,7 @@ const available = Object.freeze({
 
 test('киоск использует полное каноническое меню без собственной копии', () => {
   assert.equal(CATEGORIES.length, 8);
-  assert.equal(PRODUCTS.length, 28);
+  assert.equal(PRODUCTS.length, 29);
   assert.deepEqual(getProductConfiguration('classic-shawarma').sauces, []);
   assert.deepEqual(getProductConfiguration('doner').sauces, []);
   assert.equal(
